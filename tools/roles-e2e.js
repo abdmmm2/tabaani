@@ -365,6 +365,17 @@ async function backupSuite(page, base, hitsFn) {
   const rq = await page.eval('return { p:!!Store.drivePending(), last:Store.driveLog()[0].name };');
   ok(rq.p === false && rq.last === 'pending.json', 'السحابة: الطابور يُفرَّغ ويُرفع عند عودة الاتصال', JSON.stringify(rq));
 
+  /* فحص شكل الرابط: رسالة محددة لكل خطأ شائع في «النشر» */
+  const u = await page.eval('var f = function (x) { var r = App.cloud.urlCheck(x); return r.ok ? "OK" : r.msg.slice(0, 40); };' +
+    'return { dev:f("https://script.google.com/macros/s/AKfy/exec".replace("/exec","/dev")),' +
+    ' doc:f("https://docs.google.com/document/d/abc/edit"), win:f("https://script.google.com/home/projects/x/edit"),' +
+    ' empty:f(""), good:f("https://script.google.com/macros/s/AKfybC-123_x/exec"), q:f("https://script.google.com/macros/s/AKfybC-123_x/exec?x=1") };');
+  ok(/dev/.test(u.dev), 'الرابط /dev يُرفَض برسالة صريحة (رابط اختبار)', u.dev);
+  ok(/ملف|مستند/.test(u.doc) && /رابط/.test(u.win) && /الصق/.test(u.empty), 'الأخطاء الشائعة تُشرح بالتفصيل (درايف · محرّر المشروع · فارغ)');
+  ok(u.good === 'OK' && u.q === 'OK', 'رابط /exec الصحيح (ومعه ?معامل) يُقبل');
+  const tp = await page.eval('return { s:App.cloud.steps().length, t:App.cloud.traps().length, code:App.cloud.scriptCode().length, wiz:typeof App.cloud.wizard };');
+  ok(tp.s >= 8 && tp.t >= 4 && tp.code > 500, 'التعليمات التفصيلية (٨ خطوات) + الأخطاء الأربعة + الكود متاحة', 'steps=' + tp.s + ' traps=' + tp.t);
+
   /* لوحة الإعداد ظاهرة فعلًا في وحدة «بيانات تابعني» (بدخول المشرف العام) */
   await loginAsRaw(page, base, OWNER.username, OWNER.password);
   await B.sleep(500);

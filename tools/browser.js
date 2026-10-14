@@ -196,7 +196,8 @@ function connect(wsUrl) {
       });
       if (r.exceptionDetails) {
         const d = r.exceptionDetails;
-        throw new Error((d.exception && d.exception.description) || d.text || 'خطأ في التقييم');
+        const snip = String(expr).replace(/\s+/g, ' ').slice(0, 220);
+        throw new Error(((d.exception && d.exception.description) || d.text || 'خطأ في التقييم') + '\n     ↳ ' + snip);
       }
       return r.result && r.result.value;
     };

@@ -41,14 +41,23 @@
     '}'
   ].join('\n');
 
-  /* خطوات الإعداد كما تظهر في المعالج */
+  /* خطوات الإعداد كما تظهر في المعالج (زر-بزر · بالعربي والإنجليزي) */
   var STEPS = [
-    'افتح script.google.com ← «مشروع جديد» وسمِّه «تابعني — نسخ احتياطية».',
-    'احذف ما في المحرّر والصق الكود (زر «انسخ الكود» بالأسفل).',
-    'أعلى اليمين: «نشر» ← «نشر جديد» ← نوع النشر: «تطبيق ويب».',
-    'في الإعدادات: «تنفيذ باسمي» · «من لديه صلاحية الوصول: أي شخص» ← «نشر».',
-    'وافق على الأذونات (راجع ← متقدم ← الانتقال إلى المشروع ← سماح).',
-    'انسخ رابط تطبيق الويب (ينتهي بـ /exec) والصقه في الحقل بالأسفل ← «احفظ واختبر».'
+    'زر «افتح Apps Script — مشروع جديد» بالأسفل. احذف السطر function myFunction() { }',
+    'اضغط «انسخ الكود» بالأسفل، ثم الصقه في المحرّر، ثم احفظ بأيقونة 💾 أو Ctrl+S.',
+    'أعلى اليمين: «نشر / Deploy» ← «نشر جديد / New deployment».',
+    'اضغط ⚙ «اختر النوع» ← اختر «تطبيق ويب / Web app» (هذا أهم زر — بدونه لا يظهر الرابط).',
+    'في «تنفيذ باسم / Execute as» اختر: «أنا / Me».',
+    'في «من لديه صلاحية الوصول / Who has access» اختر: «أي شخص / Anyone» (لا تختر «أنا فقط» وإلا لن تعمل).',
+    'اضغط «نشر / Deploy» ثم «إذن الوصول / Authorize access» ← اختر حسابك ← «متقدم / Advanced» ← «الانتقال إلى… (غير آمن)» ← «سماح / Allow».',
+    'انسخ «رابط تطبيق الويب / Web app URL» (ينتهي بـ /exec — وليس /dev) والصقه في الحقل، ثم «احفظ واختبر».'
+  ];
+  /* الأخطاء الأربعة التي تُفشل النشر غالبًا */
+  var TRAPS = [
+    'الرابط ينتهي بـ /dev ← هذا «رابط اختبار» لا يعمل. خُذ «رابط تطبيق الويب» المنتهي بـ /exec من نفس النافذة.',
+    '«من لديه صلاحية الوصول» = «أنا فقط» ← اجعلها «أي شخص / Anyone» ثم «نشر».',
+    'لم تختر النوع «تطبيق ويب» في الخطوة ٤ ⇒ لا يظهر رابط أصلًا. أعد: نشر ← نشر جديد ← ⚙ اختر النوع ← تطبيق ويب.',
+    'عدّلت الكود بعد النشر ← لازم «نشر ← إدارة عمليات النشر ← ✏️ تعديل ← الإصدار: جديد ← نشر» ليأخذ التغيير.'
   ];
 
   /* ---------------------------------------------------------------- الطلب */
@@ -92,6 +101,17 @@
   App.cloud = {
     scriptCode: function () { return SCRIPT_CODE; },
     steps: function () { return STEPS.slice(); },
+    traps: function () { return TRAPS.slice(); },
+    /** فحص شكل الرابط برسالة محددة لكل حالة خطأ شائعة */
+    urlCheck: function (raw) {
+      var url = String(raw || '').trim().replace(/\?.*$/, '');
+      if (!url) return { ok: false, msg: 'الصق رابط تطبيق الويب من نافذة النشر.' };
+      if (/\/dev$/.test(url)) return { ok: false, msg: 'هذا «رابط الاختبار» (.../dev) ولا يعمل مع تابعني — انسخ «رابط تطبيق الويب» المنتهي بـ /exec.' };
+      if (/docs\.google\.com|drive\.google\.com|sheets\.google\.com/.test(url)) return { ok: false, msg: 'هذا رابط ملف/مستند — المطلوب «رابط تطبيق الويب» من نافذة «نشر» (يبدأ بـ script.google.com وينتهي بـ /exec).' };
+      var m = url.match(/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/(exec|dev)$/);
+      if (!m) return { ok: false, msg: 'الرابط غير مكتمل. الشكل الصحيح: https://script.google.com/macros/s/.../exec — انسخه من نافذة النشر بلا زيادة.' };
+      return { ok: true, msg: '' };
+    },
     folderName: 'تابعني — النسخ الاحتياطية',
     post: post,
     copy: function (t) {
@@ -166,6 +186,11 @@
         return h('li', { text: s });
       }));
       var extra = h('div', {}, [
+        h('div', { class: 'cloud-open' }, [
+          h('a', { class: 'btn btn-primary btn-sm', href: 'https://script.google.com/home/projects/create',
+            target: '_blank', rel: 'noopener', text: 'افتح Apps Script — مشروع جديد' }),
+          h('span', { class: 'muted', text: 'يفتح لك المحرّر جاهزًا (بلا بحث عن «مشروع جديد»).' })
+        ]),
         steps,
         h('div', { class: 'cloud-code' }, [
           h('div', { class: 'cloud-code-head' }, [
@@ -173,6 +198,10 @@
             h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'انسخ الكود', onClick: function () { App.cloud.copy(SCRIPT_CODE); } })
           ]),
           codeBox
+        ]),
+        h('div', { class: 'callout warn' }, [
+          h('strong', { text: 'إن علِقت في «النشر» — هذه الأربعة هي السبب دائمًا: ' }),
+          h('ol', { class: 'cloud-steps' }, TRAPS.map(function (t) { return h('li', { text: t }); }))
         ]),
         h('div', { class: 'callout warn', text: 'الرابط سرّي: من يعرفه يستطيع رفع ملفات إلى مجلد النسخ فقط (لا يقرأ شيئًا من درايفك). لا تشاركه، وأعد النشر لإبطاله.' })
       ]);
@@ -205,10 +234,14 @@
         submitLabel: 'احفظ واختبر',
         onSubmit: function (data, ctx) {
           var url = (urlField.input.value || '').trim();
-          if (!url) { urlField.wrap.classList.add('has-error'); return false; }
-          if (!/^https:\/\/script\.google\.com\//.test(url) && !/^https?:\/\/[^\s]+/.test(url)) {
-            urlField.wrap.classList.add('has-error'); return false;
+          var chk = App.cloud.urlCheck(url);
+          if (!chk.ok) {
+            urlField.wrap.classList.add('has-error');
+            result.hidden = false; result.className = 'cloud-result bad';
+            result.textContent = '✗ ' + chk.msg;
+            return false;
           }
+          urlField.wrap.classList.remove('has-error');
           S.saveDriveConfig({ url: url, enabled: true, auto: true });
           runTest();
           return false;   /* أبقِ النافذة مفتوحة لعرض نتيجة الاختبار */
