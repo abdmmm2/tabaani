@@ -101,11 +101,58 @@
         ]));
       }
 
+      /* ----------------------- ربط تلقرام (لتصلك الرسائل خاصة) ----------------------- */
+      var tgSlot = h('div');
+      function drawTelegram() {
+        clear(tgSlot);
+        if (S.session.role === 'student') return;
+        var me = S.user(uid) || {};
+        var linked = String(me.telegramChatId || '').trim();
+        var canSend = S.telegramSendable();
+        var f = UI.field({
+          name: 'tgChat', label: 'محادثة تلقرام الشخصية (chat_id)', value: linked,
+          placeholder: 'مثال: 123456789',
+          help: 'الصق معرّف محادثتك الرقمية. اتركه فارغًا لإلغاء الربط الشخصي.'
+        });
+        function save() {
+          S.setTelegramChatId(uid, f.input.value);
+          UI.toast(String(f.input.value || '').trim() ? 'رُبطت محادثتك الشخصية — الرسائل الخاصة تصلك وحدك' : 'أُلغي الربط الشخصي — ستعود الرسائل لمجموعة المدرسة', 'ok');
+          drawTelegram();
+        }
+        function test() {
+          var chat = String(f.input.value || '').trim();
+          if (!chat) { UI.toast('أدخل chat_id أولًا', 'warn'); return; }
+          if (!canSend) { UI.toast('الإرسال الفعلي غير مفعّل — فعّله من «سجل تلقرام ← ربط البوت»', 'warn'); return; }
+          S.setTelegramChatId(uid, chat);
+          S.telegramSendTo(chat, 'اختبار ربط: رسالة من منصة تابعني — وصلتك خاصة ✓').then(function (r) {
+            UI.toast(r.ok ? 'وصلت الرسالة ✓ تحقّق من تلقرام' : ('لم تُرسل: ' + (r.detail || 'خطأ غير معروف')), r.ok ? 'ok' : 'err');
+            drawTelegram();
+          });
+        }
+        tgSlot.appendChild(UI.panel('ربط تلقرام (رسائل خاصة)', 'لتصلك أذون دخول الفصل والرسائل الخاصة على جوالك وحدك، لا في مجموعة المدرسة.', [
+          h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ', onClick: save }),
+          h('button', { class: 'btn btn-soft', type: 'button', text: 'إرسال رسالة تجريبية', onClick: test })
+        ], [
+          h('div', { class: 'grid-2-app' }, [f.wrap]),
+          h('div', { class: 'muted', style: { marginTop: '6px' },
+            text: linked ? 'الحالة: مرتبطة ✓ — الرسائل الخاصة تصلك وحدك.' : 'الحالة: غير مرتبطة — تصلك التنبيهات في مجموعة المدرسة.' }),
+          h('ol', { class: 'muted', style: { marginTop: '10px', paddingInlineStart: '18px', lineHeight: '1.9' } }, [
+            h('li', { text: 'افتح بوت المنصة في تلقرام واضغط «ابدأ» (Start) — أو أرسل /start.' }),
+            h('li', { text: 'افتح @userinfobot في تلقرام وأرسل أي رسالة — سيرد بمعرّفك الرقمي (chat_id).' }),
+            h('li', { text: 'الصق الرقم أعلاه واضغط «حفظ»، ثم «إرسال رسالة تجريبية» للتأكد أنها تصلك وحدك.' })
+          ]),
+          !canSend ? h('div', { class: 'callout', style: { marginTop: '10px' },
+            text: 'تنبيه: الإرسال الفعلي إلى تلقرام غير مفعّل حاليًا (الوضع: محاكاة). تُسجَّل الرسائل داخل المنصة فقط حتى يُفعّله مدير المدرسة من «سجل تلقرام ← ربط البوت».' }) : null
+        ]));
+      }
+
       function drawAll() { drawStats(); drawInbox(); drawOutbox(); }
       view.appendChild(statSlot);
       view.appendChild(inSlot);
       view.appendChild(outSlot);
+      view.appendChild(tgSlot);
       drawAll();
+      drawTelegram();
 
       /* يُسجَّل الاطلاع بمجرد فتح الصندوق (أثر متابعة) */
       S.readAllMessages(uid);

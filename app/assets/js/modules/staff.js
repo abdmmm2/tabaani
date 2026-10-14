@@ -319,6 +319,9 @@
         var nid = UI.field({ name: 'nationalId', label: 'رقم الهوية', half: true, value: user ? user.nationalId || '' : '' });
         var phone = UI.field({ name: 'phone', label: 'الجوال', half: true, value: user ? user.phone || '' : '' });
         var email = UI.field({ name: 'email', label: 'البريد الإلكتروني', half: true, value: user ? user.email || '' : '' });
+        var tgChat = UI.field({ name: 'tgChat', label: 'محادثة تلقرام الشخصية (chat_id)', half: true,
+          value: user ? user.telegramChatId || '' : '',
+          help: 'اختياري — للرسائل الخاصة (مثل إذن دخول الفصل). اتركها فارغة ليصل التنبيه إلى مجموعة المدرسة.' });
 
         var teacherBox = teacherAssignSection(draft);
         teacherBox.hidden = !(user && user.role === 'teacher');
@@ -335,7 +338,8 @@
         function submit(close) {
           var d = {
             name: name.input.value.trim(), role: role.input.value,
-            nationalId: nid.input.value.trim(), phone: phone.input.value.trim(), email: email.input.value.trim()
+            nationalId: nid.input.value.trim(), phone: phone.input.value.trim(), email: email.input.value.trim(),
+            tgChat: tgChat.input.value.trim()
           };
           var bad = false;
           bad = markRequired(name, bad);
@@ -355,14 +359,14 @@
           var summary = isT ? (' — ' + classIds.length + ' فصل · ' + subjects.length + ' مادة') : '';
 
           if (user) {
-            var patch = { name: d.name, role: d.role, nationalId: d.nationalId, phone: d.phone, email: d.email };
+            var patch = { name: d.name, role: d.role, nationalId: d.nationalId, phone: d.phone, email: d.email, telegramChatId: d.tgChat };
             if (isT) { patch.classIds = classIds; patch.subjects = subjects; patch.qualified = subjects.slice(); }
             S.update('users', user.id, patch);
             UI.toast('حُدّث الحساب' + summary, 'ok');
           } else {
             var row = {
               schoolId: schoolId, role: d.role, name: d.name, nationalId: d.nationalId,
-              phone: d.phone, email: d.email, status: 'active', canLogin: true, subjects: []
+              phone: d.phone, email: d.email, telegramChatId: d.tgChat, status: 'active', canLogin: true, subjects: []
             };
             if (isT) { row.subjects = subjects; row.qualified = subjects.slice(); row.classIds = classIds; row.locked = false; }
             S.insert('users', row);
@@ -379,7 +383,7 @@
           body: [
             h('p', { class: 'muted', style: { marginBottom: '14px' },
               text: 'يُتحقّق من عدم تكرار البريد الإلكتروني أو رقم الهوية. وعند اختيار دور «معلم» تُختار الفصول والمواد من مراحل المدرسة فقط.' }),
-            h('div', { class: 'form-grid' }, [name.wrap, role.wrap, nid.wrap, phone.wrap, email.wrap]),
+            h('div', { class: 'form-grid' }, [name.wrap, role.wrap, nid.wrap, phone.wrap, email.wrap, tgChat.wrap]),
             teacherBox,
             error
           ],

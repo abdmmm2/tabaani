@@ -1195,11 +1195,12 @@
       sc.telegramBotToken = String(token || '').trim();
       save(); return sc.telegramBotToken;
     },
-    /** إرسال رسالة فعلية حسب الوضع المُعدّ — مع رجوع تلقائي للإرسال المباشر إن فشل الوسيط */
-    telegramSend: function (text, schoolId) {
+    /** إرسال رسالة فعلية حسب الوضع المُعدّ — مع رجوع تلقائي للإرسال المباشر إن فشل الوسيط.
+        chatOverride: محادثة بعينها (chat_id شخصي لمعلم) بدلًا من مجموعة المدرسة. */
+    telegramSend: function (text, schoolId, chatOverride) {
       var c = store.telegramConfig();
       var dest = store.telegramFor(schoolId);
-      var chat = dest.chatId;
+      var chat = String(chatOverride || dest.chatId || '').trim();
       var token = dest.botToken || c.botToken;
       function direct() {
         if (!token || !chat) return Promise.resolve({ ok: false, detail: 'لا يوجد رمز بوت أو معرّف محادثة' });
@@ -1247,26 +1248,45 @@
         return r;
       });
     },
+    /* ------------------------ تلقرام: المحادثة الشخصية لكل معلم ------------------------ */
+    /** إرسال خاص إلى chat_id بعينه (يعمل حتى لو لم تُضبط مجموعة المدرسة) */
+    telegramSendTo: function (chatId, text) { return store.telegramSend(text, null, chatId); },
+    /** يضبط المحادثة الشخصية لمستخدم (chat_id من بوت تلقرام) */
+    setTelegramChatId: function (userId, chatId) {
+      var u = store.user(userId); if (!u) return null;
+      u.telegramChatId = String(chatId || '').trim();
+      save(); return u.telegramChatId;
+    },
+    hasTelegramChat: function (userId) { var u = store.user(userId); return !!(u && String(u.telegramChatId || '').trim()); },
+    /** هل الإرسال الفعلي متاح (بوت مباشر أو وسيط منشور)؟ */
+    telegramSendable: function () {
+      var c = store.telegramConfig();
+      return c.mode === 'relay' ? !!c.relayUrl : !!c.botToken;
+    },
 
     /* ------------------------------------- تلقرام: السجل (يُرسل فعليًا إن كان مُعدًّا) */
     tg: function (messages) {
       var ready = store.telegramReady();
-      function cfgMode() { return store.telegramConfig().mode; }
       [].concat(messages).forEach(function (m) {
         /* موجَّه لمستخدم بعينه (معلم محدد) وإلا فأول صاحب الدور */
         var chat = m.toUserId ? store.user(m.toUserId) : null;
         if (!chat) chat = store.usersByRole(m.to)[0] || store.usersByRole(m.to, null)[0];
         if (!chat) chat = store.list('users').find(function (u) { return u.role === m.to; });
+        /* إن كان للمستخدم محادثة شخصية ⇒ رسالة خاصة إليه، وإلا مجموعة المدرسة */
+        var personal = String((chat && chat.telegramChatId) || '').trim();
+        var cfg = store.telegramConfig();
+        var canSend = personal ? store.telegramSendable() : ready;
         var rec = {
-          id: uid('tg'), to: (chat && chat.role) || m.to, toName: chat ? chat.name : m.to, chat: chat ? chat.telegram : '',
+          id: uid('tg'), to: (chat && chat.role) || m.to, toName: chat ? chat.name : m.to,
+          chat: personal || (chat ? chat.telegram : ''), private: !!personal,
           schoolId: (chat && chat.schoolId) || store.session.schoolId,
-          text: m.text, at: now(), status: ready ? 'sending' : 'queued', via: ready ? store.telegramConfig().mode : 'queued'
+          text: m.text, at: now(), status: canSend ? 'sending' : 'queued', via: canSend ? cfg.mode : 'queued'
         };
         db.telegram.unshift(rec);
-        if (ready) {
-          store.telegramSend(m.text, rec.schoolId).then(function (r) {
+        if (canSend) {
+          store.telegramSend(m.text, rec.schoolId, personal || null).then(function (r) {
             rec.status = r.ok ? 'sent' : 'failed';
-            rec.via = r.viaFallback ? 'fallback' : (cfgMode());
+            rec.via = r.viaFallback ? 'fallback' : cfg.mode;
             rec.error = r.ok ? '' : (r.detail || '');
             rec.sentAt = now();
             save();
@@ -2011,6 +2031,7 @@
         schoolId: role === 'super' ? null : (d.schoolId || store.session.schoolId || (store.list('schools')[0] || {}).id),
         role: role, name: name, username: username, password: pw,
         email: String(d.email || '').trim(), phone: String(d.phone || '').trim(), telegram: String(d.phone || '').trim(),
+        telegramChatId: String(d.telegramChatId || '').trim(),
         status: d.status || 'active', canLogin: (d.status || 'active') === 'active',
         mustChange: !!d.mustChange, createdAt: new Date().toISOString(), createdBy: store.session.name || 'مشرف المنصة'
       };
@@ -2035,7 +2056,7 @@
         u.role = p.role;
         if (p.role === 'super') u.schoolId = null;
       }
-      ['name', 'email', 'phone', 'telegram', 'schoolId', 'status', 'canLogin', 'mustChange'].forEach(function (k) {
+      ['name', 'email', 'phone', 'telegram', 'telegramChatId', 'schoolId', 'status', 'canLogin', 'mustChange'].forEach(function (k) {
         if (p[k] !== undefined) u[k] = p[k];
       });
       save();

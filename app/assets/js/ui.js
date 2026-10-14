@@ -572,6 +572,7 @@
       return h('article', { class: 'tg-item' }, [
         h('header', {}, [
           h('span', { class: 'tg-to', text: 'إلى: ' + m.toName }),
+          m.private ? badge('خاصة', 'brand') : badge('مجموعة المدرسة', 'plain'),
           h('span', { class: 'tg-at muted', text: fmtDateTime(m.at) })
         ]),
         h('pre', { class: 'tg-text', text: m.text }),
