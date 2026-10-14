@@ -1044,6 +1044,13 @@
       db.settings.telegram = Object.assign({}, store.telegramConfig(), patch || {});
       save(); return store.telegramConfig();
     },
+    /** إيقاف/تشغيل الإرسال مؤقتًا (يتذكر الوضع السابق) */
+    telegramPause: function (pause) {
+      var c = store.telegramConfig();
+      if (pause) return store.saveTelegramConfig({ prevMode: (c.mode === 'sim' ? (c.prevMode || 'direct') : c.mode), mode: 'sim' });
+      return store.saveTelegramConfig({ mode: c.prevMode || 'direct' });
+    },
+    telegramPaused: function () { return store.telegramConfig().mode === 'sim'; },
     /** هل الإرسال الحقيقي جاهز؟ */
     telegramReady: function () {
       var c = store.telegramConfig();

@@ -31,6 +31,22 @@
       var ready = S.telegramReady();
       var dest = S.telegramFor(S.session.schoolId);
 
+      /* مفتاح الإيقاف/التشغيل المؤقت */
+      var paused = S.telegramPaused();
+      slot.appendChild(h('div', { class: 'tg-switch ' + (paused ? 'is-off' : 'is-on') }, [
+        h('div', {}, [
+          h('strong', { text: paused ? 'الإرسال الفعلي متوقّف (محاكاة)' : 'الإرسال الفعلي يعمل' }),
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
+            text: paused ? 'التنبيهات تُسجَّل داخل المنصة فقط ولا تُرسل إلى تلقرام — والرمز يبقى محفوظًا.' : 'التنبيهات تُرسل إلى محادثة/مجموعة المدرسة.' })
+        ]),
+        h('button', { class: 'btn ' + (paused ? 'btn-primary' : 'btn-outline') + ' btn-sm', type: 'button',
+          text: paused ? 'تشغيل الإرسال' : 'إيقاف مؤقت', onClick: function () {
+            S.telegramPause(!paused);
+            UI.toast(paused ? 'شُغّل الإرسال الفعلي ✓' : 'أُوقف الإرسال مؤقتًا — تُسجَّل التنبيهات داخل المنصة فقط', 'ok');
+            if (onChange) onChange();
+          } })
+      ]));
+
       /* قائمة التحقق */
       var stepsDone = [
         { ok: !!cfg.botToken || !!cfg.relayUrl, label: '١) بيانات الإرسال (رمز البوت أو رابط الوسيط)' },

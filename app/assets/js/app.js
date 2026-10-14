@@ -65,6 +65,7 @@
       main.appendChild(topbar); main.appendChild(content);
 
       root.appendChild(h('div', { class: 'app-shell' }, [sidebar, main]));
+      if (App._stamp) setTimeout(App._stamp, 30);   /* ختم الإصدار أسفل القائمة */
 
       /* الشريط الجانبي */
       var school = S.school(S.session.schoolId);
@@ -232,6 +233,7 @@
         sub ? h('p', { class: 'muted', text: sub }) : null
       ]));
       panel.appendChild(content);
+      panel.appendChild(h('p', { class: 'app-ver', text: 'تابعني · الإصدار ' + App.version() }));
 
       var aside = h('aside', { class: 'login-aside' }, [
         h('span', { class: 'eyebrow eyebrow-ghost', text: 'منصة تابعني للخدمات التعليمية' }),
@@ -507,6 +509,24 @@
 
     boot: function () {
       UI.setupTelegram();
+      App._stamp = App._stamp || function () {
+        try {
+          var sb = document.getElementById('sidebar') || document.querySelector('.side-nav');
+          if (sb && !sb.querySelector('.app-ver-side')) {
+            var el = h('div', { class: 'app-ver-side', text: 'الإصدار ' + App.version() });
+            sb.appendChild(el);
+          }
+        } catch (e) {}
+        setTimeout(function () {
+          var sb = document.getElementById('sidebar') || document.querySelector('.side-nav');
+          if (sb && !sb.querySelector('.app-ver-side')) {
+            var el = document.createElement('div');
+            el.className = 'app-ver-side'; el.textContent = 'الإصدار ' + App.version();
+            sb.appendChild(el);
+          }
+        }, 900);
+      };
+      App._stamp();
       if (S.needsSetup()) { App.setupScreen(); return; }   /* أول تشغيل: لا كلمات مرور في الكود */
       var u = S.restore();
       if (u) App.shell(); else App.login();
@@ -564,6 +584,12 @@
         text: 'يمكنك تغيير كلمة المرور لاحقًا من: بياناتي ← تغيير كلمة المرور.' }));
       root.appendChild(panel);
     },
+  };
+
+  /* رقم الإصدار الظاهر (للتأكد من التحديث) */
+  App.version = function () {
+    var m = document.querySelector('meta[name=app-version]');
+    return m ? m.getAttribute('content') : '';
   };
 
   /* =========================================================================
