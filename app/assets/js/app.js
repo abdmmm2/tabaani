@@ -507,9 +507,63 @@
 
     boot: function () {
       UI.setupTelegram();
+      if (S.needsSetup()) { App.setupScreen(); return; }   /* أول تشغيل: لا كلمات مرور في الكود */
       var u = S.restore();
       if (u) App.shell(); else App.login();
-    }
+    },
+
+    /* ============ التهيئة الأولى: إنشاء حساب المشرف العام بطريقة آمنة ============ */
+    setupScreen: function () {
+      var root = document.getElementById('app');
+      clear(root);
+      var panel = h('div', { class: 'login-panel' });
+      var nameF = UI.field({ name: 'supName', label: 'اسم المشرف العام', placeholder: 'مثال: عبدالله العتيبي', half: true });
+      var userF = UI.field({ name: 'supUser', label: 'اسم المستخدم', placeholder: 'a-otaibi', dir: 'ltr', half: true,
+        help: 'به تدخل المنصة (يمكنك الدخول بالبريد أيضًا).' });
+      var mailF = UI.field({ name: 'supMail', label: 'البريد الإلكتروني (اختياري)', dir: 'ltr', half: true });
+      var p1 = UI.field({ name: 'supPass', label: 'كلمة المرور', type: 'password', half: true, help: '٨ أحرف على الأقل.' });
+      var p2 = UI.field({ name: 'supPass2', label: 'تأكيد كلمة المرور', type: 'password', half: true });
+      var mode = { demo: true };
+      function modeCard(val, title, desc) {
+        var box = h('label', { class: 'setup-card' + (mode.demo === val ? ' is-on' : '') }, [
+          (function () { var i = h('input', { type: 'radio', name: 'setupMode' }); i.checked = mode.demo === val;
+            i.addEventListener('change', function () { mode.demo = val; draw(); }); return i; })(),
+          h('div', {}, [h('strong', { text: title }), h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: desc })])
+        ]);
+        return box;
+      }
+      var cards = h('div', { class: 'setup-modes' });
+      function draw() {
+        clear(cards);
+        cards.appendChild(modeCard(true, 'بيانات عرض تجريبية', 'مدرسة كاملة وأدوار وطلاب جاهزون — للتجربة والعرض على العملاء.'));
+        cards.appendChild(modeCard(false, 'مدرسة حقيقية — ابدأ من الصفر', 'بلا أي بيانات: تُنشئ مدرستك وحساباتك بنفسك.'));
+      }
+      draw();
+      var err = h('p', { class: 'form-error', hidden: true });
+      panel.appendChild(h('div', {}, [
+        h('span', { class: 'eyebrow', text: 'التهيئة الأولى' }),
+        h('h1', { style: { fontSize: '1.9rem', marginTop: '10px' }, text: 'إنشاء حساب المشرف العام' }),
+        h('p', { class: 'muted', text: 'هذه الشاشة تظهر مرة واحدة فقط عند أول تشغيل — لا توجد أي كلمة مرور مكتوبة داخل المنصة، وأنت من يُنشئ حسابك بنفسك.' })
+      ]));
+      panel.appendChild(cards);
+      panel.appendChild(h('div', { class: 'form-grid' }, [nameF.wrap, userF.wrap, mailF.wrap, p1.wrap, p2.wrap]));
+      panel.appendChild(err);
+      panel.appendChild(h('button', { class: 'btn btn-primary btn-lg', type: 'button', text: 'إنشاء الحساب والبدء', onClick: function () {
+        err.hidden = true;
+        if (!nameF.input.value.trim()) { err.hidden = false; err.textContent = 'اكتب اسم المشرف العام'; return; }
+        if (!userF.input.value.trim()) { err.hidden = false; err.textContent = 'اكتب اسم المستخدم'; return; }
+        if (p1.input.value.length < 8) { err.hidden = false; err.textContent = 'كلمة المرور ٨ أحرف على الأقل'; return; }
+        if (p1.input.value !== p2.input.value) { err.hidden = false; err.textContent = 'كلمتا المرور غير متطابقتين'; return; }
+        var r = S.setupOwner({ name: nameF.input.value, username: userF.input.value, email: mailF.input.value,
+          password: p1.input.value, demo: mode.demo });
+        if (!r.ok) { err.hidden = false; err.textContent = r.error; return; }
+        UI.toast('أُنشئ حساب المشرف العام ✓', 'ok');
+        App._doEnter(r.user.id);
+      } }));
+      panel.appendChild(h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
+        text: 'يمكنك تغيير كلمة المرور لاحقًا من: بياناتي ← تغيير كلمة المرور.' }));
+      root.appendChild(panel);
+    },
   };
 
   /* =========================================================================

@@ -389,3 +389,15 @@
 .tg-bot-id code { background: var(--bg-soft); padding: 3px 8px; border-radius: 6px; }
 .tg-files { border: 1px dashed var(--border); border-radius: var(--r-md); padding: 10px 14px; background: var(--bg-soft);
   font-size: var(--fs-sm); margin-bottom: 12px; }
+
+/* --------------------------- شاشة التهيئة الأولى */
+.setup-modes { display: grid; gap: 10px; margin: 14px 0; }
+.setup-card { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--border); border-radius: var(--r-md);
+  padding: 12px 14px; background: #fff; cursor: pointer; font-size: var(--fs-sm); }
+.setup-card.is-on { border-color: var(--brand-500); background: var(--brand-50); }
+.setup-card input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand-600); }
+.btn-lg { width: 100%; font-size: var(--fs-md); font-weight: 800; padding: 14px; }
+.form-error { background: #FBEDE7; border: 1px solid #C4562F; color: #8B3A1E; border-radius: var(--r-sm);
+  padding: 8px 12px; font-size: var(--fs-sm); margin: 10px 0; }
+.tg-warn { background: #FCF6E8; border: 1px solid #E3C88A; border-radius: var(--r-md); padding: 12px 14px;
+  font-size: var(--fs-sm); color: #6A4E12; line-height: 1.8; margin-bottom: 12px; }

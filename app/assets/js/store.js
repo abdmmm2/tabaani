@@ -221,13 +221,6 @@
       status: 'active', createdAt: now(), canLogin: true
     });
 
-    /* حساب المالك — الدخول بالبريد الإلكتروني أو باسم المستخدم */
-    db.users.push({
-      id: 'u-super-owner', schoolId: null, role: 'super', name: 'عبدالله — مشرف المنصة',
-      username: 'abdmmm9', password: 'Koad055282312',
-      email: 'abdmmm9@gmail.com', phone: '', telegram: '',
-      status: 'active', createdAt: now(), canLogin: true, owner: true
-    });
     db.students.slice(0, 4).forEach(function (st, i) {
       db.users.push({
         id: st.id, schoolId: school.id, role: 'student', name: st.name, studentId: st.id,
@@ -490,29 +483,51 @@
 
   /* ------------------------------------------------------------------ IO */
   var db = null;
+  /* قاعدة بيانات فارغة تمامًا: تُستخدم عند أول تشغيل قبل التهيئة */
+  function emptyDb() {
+    return {
+      meta: { version: 1, createdAt: now(), needsSetup: true, empty: true },
+      users: [], schools: [], classes: [], students: [], assignments: [], transfers: [], periods: [],
+      sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
+      activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
+      faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
+      letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
+        mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
+    };
+  }
+
+  /* يجعل أي قاعدة بيانات (قديمة أو ناقصة) سليمة البنية: يضيف المجموعات الناقصة بلا مساس بالبيانات */
+  var COLLECTIONS = ['users', 'schools', 'classes', 'students', 'assignments', 'transfers', 'periods',
+    'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
+    'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
+    'audit', 'notif', 'subjects', 'exits'];
+  function normalizeDb(d) {
+    if (!d || typeof d !== 'object') return emptyDb();
+    if (!d.meta) d.meta = { version: 1, createdAt: now() };
+    if (!d.settings || typeof d.settings !== 'object') d.settings = { hijri: true };
+    COLLECTIONS.forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
+    if (!Array.isArray(d.schools)) d.schools = [];
+    return d;
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
-      db = raw ? JSON.parse(raw) : seed();
-    } catch (e) { db = seed(); }
+      db = raw ? JSON.parse(raw) : emptyDb();     /* بلا بيانات تجريبية إلا إذا اختارها المستخدم */
+    } catch (e) { db = emptyDb(); }
+    db = normalizeDb(db);
     if (!db || !db.schools) db = seed();
-    ensureOwner(db);
+    ensureSuper(db);
     return db;
   }
-  /* يتأكد من وجود حساب المالك في أي قاعدة بيانات محفوظة سابقًا */
-  function ensureOwner(d) {
+  /* لا تُخزَّن أي كلمة مرور في الكود: إن لم يوجد مشرف عام ⇒ تُطلب التهيئة الأولى */
+  function ensureSuper(d) {
     try {
       if (!d || !d.users) return;
-      var user = 'abdmmm9', email = 'abdmmm9@gmail.com';
-      var found = d.users.filter(function (u) {
-        return (u.username || '').toLowerCase() === user || (u.email || '').toLowerCase() === email;
-      })[0];
-      if (!found) {
-        d.users.push({ id: 'u-super-owner', schoolId: null, role: 'super', name: 'عبدالله — مشرف المنصة', username: user,
-          password: 'Koad055282312', email: email, phone: '', telegram: '',
-          status: 'active', createdAt: now(), canLogin: true, owner: true });
-        try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {}
-      }
+      var hasSuper = d.users.some(function (u) { return u.role === 'super' && u.status !== 'deleted'; });
+      if (!d.meta) d.meta = { version: 1, createdAt: now() };
+      if (!hasSuper) { d.meta.needsSetup = true; try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+      else if (d.meta.needsSetup) d.meta.needsSetup = false;
     } catch (e) {}
   }
 
@@ -550,6 +565,35 @@
     resetDem: function () { return reset(); },
     reset: reset,
     uid: uid, now: now,
+
+    /* ------------------------- التهيئة الأولى (بلا أي كلمة مرور في الكود) ------------------------- */
+    needsSetup: function () { return !!(store.db.meta && store.db.meta.needsSetup); },
+    /** إنشاء حساب المشرف العام: demo=true يعني الإبقاء على البيانات التجريبية */
+    setupOwner: function (data) {
+      data = data || {};
+      if (!data.username || !data.password) return { ok: false, error: 'اسم المستخدم وكلمة المرور مطلوبان' };
+      var uname = String(data.username).trim(), email = String(data.email || '').trim();
+      if (uname.length < 3) return { ok: false, error: 'اسم المستخدم قصير (٣ أحرف على الأقل)' };
+      if (String(data.password).length < 8) return { ok: false, error: 'كلمة المرور يجب أن تكون ٨ أحرف على الأقل' };
+      if (store.list('users').some(function (u) { return (u.username || '').toLowerCase() === uname.toLowerCase(); })) {
+        return { ok: false, error: 'اسم المستخدم مستخدم من قبل' };
+      }
+      if (email && store.list('users').some(function (u) { return (u.email || '').toLowerCase() === email.toLowerCase(); })) {
+        return { ok: false, error: 'البريد مستخدم من قبل' };
+      }
+      if (data.demo) { db = seed(); db.users = db.users.filter(function (u) { return u.role !== 'super'; }); }
+      else { db = emptyDb(); }                          /* مدرسة حقيقية: بلا بيانات تجريبية ولا حسابات */
+      var u = store.insert('users', {
+        id: 'u-super-owner', schoolId: null, role: 'super', owner: true,
+        name: String(data.name || 'مشرف المنصة').trim(), username: uname, password: String(data.password),
+        email: email, phone: '', telegram: '', status: 'active', createdAt: now(), canLogin: true, mustChange: false
+      });
+      store.db.meta = Object.assign({}, store.db.meta, { needsSetup: false, setupAt: now(), demo: !!data.demo });
+      save();
+      /* في المدرسة الحقيقية: الوحدة الأساسية تعتمد على وجود مدرسة */
+      if (!data.demo) store._pendingSetup = true;
+      return { ok: true, user: u };
+    },
 
     /* ------------------------------ جنس المدرسة والتأنيث ------------------------------ */
     genders: [{ id: 'boys', name: 'طلاب (بنين)' }, { id: 'girls', name: 'طالبات (بنات)' }],

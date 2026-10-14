@@ -7,7 +7,6 @@
 <meta name="description" content="منصة تابعني لإدارة خدمات المدارس: الحسابات، إسناد المواد، التحضير، المخالفات السلوكية، الاستئذان، التطوع، النشاط الطلابي، والتقارير الرسمية بالباركود.">
 <meta name="theme-color" content="#14100A">
 <link rel="icon" href="assets/img/favicon.png" type="image/png">
-<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -61,7 +60,13 @@
 <script src="assets/js/modules/telegram.js"></script>
 <script>
 /* تسجيل عامل الخدمة: يشتغل على https (GitHub Pages) — للعمل بلا إنترنت وللتثبيت كتطبيق */
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+var secure = (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+/* مانيفست التطبيق يُضاف على https فقط (على file:// يسبب خطأ CORS بلا فائدة) */
+if (secure) {
+  var mf = document.createElement('link'); mf.rel = 'manifest'; mf.href = 'manifest.webmanifest';
+  document.head.appendChild(mf);
+}
+if ('serviceWorker' in navigator && secure) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').then(function (r) { window.__SW__ = r; }).catch(function () {});
   });

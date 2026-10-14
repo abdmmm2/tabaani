@@ -108,8 +108,8 @@
           } })
         ]));
       } else if (cfg.mode === 'direct') {
-        var tkF = UI.field({ name: 'botToken', label: 'رمز البوت (Bot Token)', dir: 'ltr', value: cfg.botToken, half: true,
-          placeholder: '1234567890:AA…', help: 'من @BotFather. تحذير: يظهر في المتصفح — استخدمه للتجربة فقط.' });
+        var tkF = UI.field({ name: 'botToken', label: 'رمز البوت (Bot Token)', type: 'password', dir: 'ltr', value: cfg.botToken, half: true,
+          placeholder: '1234567890:AA…', help: 'من @BotFather — يُخزَّن في متصفح هذا الجهاز فقط (الوضع المباشر للتجربة).' });
         var chF = UI.field({ name: 'chatId', label: 'معرّف المجموعة (chat id)', dir: 'ltr', value: cfg.chatId, half: true,
           placeholder: '-1001234567890', help: 'أضف @userinfobot للمجموعة ليخبرك بالمعرّف.' });
         slot.appendChild(h('div', { class: 'form-grid' }, [tkF.wrap, chF.wrap]));
@@ -151,6 +151,24 @@
           } })
         ]));
         slot.appendChild(found);
+        slot.appendChild(h('div', { class: 'tg-warn' }, [
+          h('strong', { html: '&#9888;&#65039; تنبيه أمان: ' }),
+          h('span', { text: 'الوضع المباشر يحفظ رمز البوت داخل متصفح هذا الجهاز — أي شخص يفتح المنصة على نفس الجهاز يستطيع قراءته. للاستخدام الرسمي حوّل إلى «الوسيط» (الرمز يبقى بعيدًا عن المتصفح).' }),
+          h('div', { class: 'cluster', style: { marginTop: '8px' } }, [
+            cfg.botToken ? h('span', { class: 'muted', dir: 'ltr', style: { fontSize: 'var(--fs-xs)' },
+              text: 'الرمز المحفوظ: ' + String(cfg.botToken).slice(0, 5) + '…' + String(cfg.botToken).slice(-4) }) : null,
+            h('a', { class: 'btn btn-outline btn-sm', href: '../docs/telegram-relay/apps-script.gs', target: '_blank', rel: 'noopener', text: 'جهّز الوسيط (الأفضل)' }),
+            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'امسح الرمز من هذا الجهاز', onClick: function () {
+              UI.confirm('سيُمسح رمز البوت ومعرّف المحادثة من هذا الجهاز (يتوقف الإرسال حتى تعيد إدخالها أو تستخدم الوسيط). متابعة؟',
+                { ok: 'امسح', danger: true }).then(function (ok) {
+                if (!ok) return;
+                S.saveTelegramConfig({ botToken: '', chatId: '', botUsername: '', botName: '', lastTestOk: false, lastTest: null, lastTestMsg: '' });
+                UI.toast('مُسح الرمز من هذا الجهاز', 'ok');
+                draw();
+              });
+            } })
+          ])
+        ]));
       }
 
       /* جدول المدارس عند تشغيل الإعداد المستقل */
