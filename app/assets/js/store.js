@@ -64,6 +64,8 @@
     { id: 'activity', name: 'مسؤول النشاط الطلابي', nameF: 'مسؤولة النشاط الطلابي', desc: 'الأنشطة وطلبات المشاركة' },
     { id: 'absence_monitor', name: 'مراقب الغياب', nameF: 'مراقبة الغياب', desc: 'متابعة غياب الطلاب — تُضاف خصائصه لاحقًا' },
     { id: 'guard', name: 'حارس البوابة', nameF: 'حارسة البوابة', desc: 'مسح تصاريح الخروج بالكاميرا وتسجيل خروج الطلاب بوقته وسببه' },
+    { id: 'accountant', name: 'المحاسب المالي للمنصة', nameF: 'المحاسبة المالية للمنصة', desc: 'السدادات والفواتير والمصروفات والتقارير المالية' },
+    { id: 'support', name: 'موظف الدعم الفني', nameF: 'موظفة الدعم الفني', desc: 'متابعة تذاكر الدعم والرد على المدارس والزوار' },
     { id: 'student', name: 'طالب', nameF: 'طالبة', desc: 'طلبات النشاط والتطوع والاستئذان' }
   ];
 
@@ -157,6 +159,19 @@
     var absenceMonitor = mk('absence_monitor', 'أ. عبدالإله بن سعد الجهني', 7);
     var volunteer = mk('volunteer', 'أ. بدر بن عبدالله الشهري', 4);
     var activity = mk('activity', 'أ. ياسر بن تركي الدوسري', 5);
+
+    /* حسابات المنصة (بلا مدرسة): المحاسب المالي وموظف الدعم الفني */
+    var platformUser = function (role, name, i, uname) {
+      var u = {
+        id: 'u-' + role + '-' + i, schoolId: null, role: role, name: name,
+        nationalId: nationalId(i + 71), phone: phone(i + 71), email: role + '@tabaani.sa',
+        username: uname, password: 'Tabaani@2026', status: 'active',
+        telegramChatId: String(700000000 + i * 2311), createdAt: now(), canLogin: true, subjects: []
+      };
+      db.users.push(u); return u;
+    };
+    var accountant = platformUser('accountant', 'أ. سعد بن عبدالله القحطاني', 3, 'accountant');
+    var supportAgent = platformUser('support', 'أ. نورة بنت فهد العتيبي', 4, 'support1');
 
     var teachers = [
       { name: 'أ. سعد بن إبراهيم المطيري', subjects: ['الرياضيات'], female: false },
@@ -489,6 +504,39 @@
       });
     })();
 
+    /* المالية والدعم — بيانات عرض جاهزة للتقارير */
+    (function seedFinanceDemo() {
+      var day = function (n) { return new Date(Date.now() - n * 864e5).toISOString(); };
+      var yr = new Date().getFullYear();
+      db.invoices = [
+        { id: 'inv-demo-2', no: 'TBN-' + yr + '-0002', at: day(20), schoolId: school.id, schoolName: school.name,
+          schoolCity: school.city, plan: 'pro', kind: 'annual', years: 1, amount: 1500,
+          seller: 'تابعني للخدمات التعليمية', by: accountant.name, paidUntil: school.license.paidUntil,
+          note: 'تحويل بنكي — سند مختوم بختم المدرسة', vat: false },
+        { id: 'inv-demo-1', no: 'TBN-' + yr + '-0001', at: day(24), schoolId: school.id, schoolName: school.name,
+          schoolCity: school.city, plan: 'pro', kind: 'setup', years: 1, amount: 1000,
+          seller: 'تابعني للخدمات التعليمية', by: accountant.name, paidUntil: '', note: 'رسم التأسيس والتهيئة', vat: false }
+      ];
+      db.expenses = [
+        { id: 'exp-1', at: day(22).slice(0, 10), category: 'servers', title: 'استضافة السيرفرات — شهري', amount: 450, vendor: 'مزوّد الاستضافة', note: '', by: accountant.name },
+        { id: 'exp-2', at: day(18).slice(0, 10), category: 'domain', title: 'تجديد الدومين والشهادة الأمنية', amount: 320, vendor: 'مسجّل النطاقات', note: 'tabaani.sa', by: accountant.name },
+        { id: 'exp-3', at: day(12).slice(0, 10), category: 'maintenance', title: 'صيانة المنصة ودورة تحسينات', amount: 1200, vendor: 'فريق التطوير', note: '', by: accountant.name },
+        { id: 'exp-4', at: day(6).slice(0, 10), category: 'operations', title: 'تشغيل ومتابعة يومية', amount: 500, vendor: '—', note: '', by: accountant.name }
+      ];
+      db.tickets = [{
+        id: 'tkt-demo-1', no: 'TKT-' + yr + '-0001', at: day(2), updatedAt: day(2),
+        status: 'progress', category: 'attendance', priority: 'normal',
+        subject: 'ما أقدر أسكّر التحضير', schoolId: school.id, byUser: principal.id,
+        byName: principal.name, byRole: 'principal', phone: principal.phone || '',
+        viaBot: true, agentId: 'fares', assignee: 'support', lastFrom: 'agent',
+        messages: [
+          { at: day(2), from: 'bot', name: 'فارس الحربي', text: 'هلا والله ومسهلا! أنا فارس من الدعم الفني في تابعني — وش عندك؟' },
+          { at: day(2), from: 'user', name: principal.name, text: 'ما أقدر أسكّر التحضير، الزر مطفّي' },
+          { at: day(2), from: 'bot', name: 'فارس الحربي', text: 'أبشر بسعدك! ما يمديك تسكّر الحصة إلا بعد نصّ وقتها — ولو مازال مطفّي فمعناه أن وقت الحصة بالجدول ما بدأ بعد. تأكد من وقت الحصة في الجدول، وإذا فيه لبس كلّم وكيل شؤون الطلاب يضبطه وحنا معك.' }
+        ]
+      }];
+    })();
+
     return db;
   }
 
@@ -502,7 +550,7 @@
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
       faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
-      entryPermits: [], messages: [],
+      entryPermits: [], messages: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
       letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
         mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
     };
@@ -512,7 +560,8 @@
   var COLLECTIONS = ['users', 'schools', 'classes', 'students', 'assignments', 'transfers', 'periods',
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
-    'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages'];
+    'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages',
+    'paymentRequests', 'invoices', 'expenses', 'tickets'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -1165,6 +1214,449 @@
       });
       save();
       return { ok: true, action: action, changed: changed, total: targets.length, scope: scopeLabel };
+    },
+
+    /* =====================================================================
+       المالية — التحويل البنكي · سند التحويل · الفاتورة الإلكترونية · المصروفات
+       ---------------------------------------------------------------------
+       المسار: المدرسة تحوّل المبلغ بنكيًا ← ترفع صورة سند التحويل مختومة بختم
+       المدرسة ← تُراجع (المشرف العام أو المحاسب المالي) ← تُصدر فاتورة إلكترونية
+       مختومة بختم «تابعني للخدمات التعليمية» ← وتُفعَّل الباقة آليًا.
+       ===================================================================== */
+    EXPENSE_CATS: [
+      { id: 'maintenance', name: 'صيانة المنصة' },
+      { id: 'servers', name: 'السيرفرات والاستضافة' },
+      { id: 'operations', name: 'التشغيل' },
+      { id: 'domain', name: 'الدومين والشهادات' },
+      { id: 'support', name: 'الدعم الفني' },
+      { id: 'other', name: 'مصروفات أخرى' }
+    ],
+    expenseCat: function (id) {
+      var c = store.EXPENSE_CATS.find(function (x) { return x.id === id; });
+      return c ? c.name : 'مصروفات أخرى';
+    },
+    /* ------------------------------ الحساب البنكي ------------------------------ */
+    bank: function () {
+      var b = (db.settings && db.settings.bank) || {};
+      return {
+        beneficiary: b.beneficiary || 'مؤسسة تابعني للخدمات التعليمية',
+        bankName: b.bankName || 'مصرف الراجحي',
+        account: b.account || '000-0000-000000-0',
+        iban: b.iban || 'SA00 0000 0000 0000 0000 0000',
+        note: b.note || 'حوّل قيمة الاشتراك ثم ارفع صورة سند التحويل مختومًا بختم المدرسة — تصدر لك فاتورة إلكترونية مختومة وتُفعَّل الباقة آليًا.'
+      };
+    },
+    saveBank: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.bank = Object.assign({}, store.bank(), patch || {});
+      save(); return store.bank();
+    },
+    /* ------------------------------- الفواتير ------------------------------- */
+    nextInvoiceNo: function () {
+      var y = new Date().getFullYear();
+      var n = store.list('invoices').filter(function (i) { return String(i.no || '').indexOf('TBN-' + y + '-') === 0; }).length + 1;
+      return 'TBN-' + y + '-' + ('000' + n).slice(-4);
+    },
+    /** بيان البند في الفاتورة */
+    invoiceTitle: function (inv) {
+      if (inv.kind === 'setup') return 'رسم التأسيس والتهيئة — منصة تابعني';
+      return 'اشتراك سنوي — باقة «' + store.planDef(inv.plan).name + '»' +
+        ((inv.years || 1) > 1 ? ' (' + inv.years + ' سنوات)' : '');
+    },
+    invoiceTotal: function (inv) { return Number((inv || {}).amount) || 0; },
+    invoices: function (schoolId) {
+      var all = store.list('invoices').slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+      return schoolId ? all.filter(function (i) { return i.schoolId === schoolId; }) : all;
+    },
+    invoice: function (id) { return store.list('invoices').find(function (i) { return i.id === id; }) || null; },
+    /** إصدار فاتورة إلكترونية مختومة بختم «تابعني للخدمات التعليمية» */
+    issueInvoice: function (data) {
+      data = data || {};
+      var sc = store.school(data.schoolId) || {};
+      var inv = {
+        id: uid('inv'), no: store.nextInvoiceNo(), at: now(),
+        schoolId: sc.id || '', schoolName: sc.name || '', schoolCity: sc.city || '', schoolCode: sc.code || '',
+        plan: data.plan || store.planOf(sc.id),
+        kind: data.kind === 'setup' ? 'setup' : 'annual',
+        years: Math.max(1, parseInt(data.years, 10) || 1),
+        amount: Number(data.amount) || 0, vat: !!data.vat,
+        seller: 'تابعني للخدمات التعليمية',
+        by: store.session.name || '',
+        paidUntil: data.paidUntil || ((store.licenseState(sc.id) || {}).paidUntil || ''),
+        note: data.note || '', requestId: data.requestId || '',
+        receipt: data.receipt || '', schoolStamp: data.schoolStamp || ''
+      };
+      db.invoices.unshift(inv);
+      save();
+      return inv;
+    },
+    /* --------------------------- طلبات السداد (سند التحويل) --------------------------- */
+    paymentRequests: function (opts) {
+      opts = opts || {};
+      var all = store.list('paymentRequests').slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+      if (opts.status) all = all.filter(function (r) { return r.status === opts.status; });
+      if (opts.schoolId) all = all.filter(function (r) { return r.schoolId === opts.schoolId; });
+      return all;
+    },
+    /** المدرسة ترفع سند التحويل المختوم بختمها وتطلب التفعيل */
+    createPaymentRequest: function (d) {
+      d = d || {};
+      var sc = store.school(d.schoolId || store.session.schoolId);
+      if (!sc) return { ok: false, error: 'مدرسة غير معروفة' };
+      var kind = d.kind === 'setup' ? 'setup' : 'annual';
+      var plan = (d.plan === 'pro' || d.plan === 'classic') ? d.plan : store.planOf(sc.id);
+      var years = Math.max(1, parseInt(d.years, 10) || 1);
+      var amount = kind === 'setup' ? store.planFees().setupFee : store.annualFee(plan) * years;
+      var rec = (d.receipt || '').slice(0, 400000);
+      if (!rec) return { ok: false, error: 'ارفع صورة سند التحويل أولًا' };
+      var r = {
+        id: uid('prq'), at: now(), schoolId: sc.id, schoolName: sc.name,
+        plan: plan, kind: kind, years: years, amount: amount,
+        receipt: rec, schoolStamp: (d.schoolStamp || '').slice(0, 400000),
+        transferRef: String(d.transferRef || '').trim(), transferDate: d.transferDate || '',
+        note: String(d.note || '').trim(), status: 'pending',
+        byUser: store.session.userId || '', byName: store.session.name || '',
+        decidedAt: '', decidedBy: '', invoiceId: '', rejectReason: ''
+      };
+      db.paymentRequests.unshift(r);
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'payment_requested', by: store.session.name || '',
+        text: 'طلب سداد — ' + sc.name + ' · ' + store.invoiceTitle(r) + ' · ' + amount + ' ر.س' });
+      store.notify({ kind: 'finance', title: 'طلب تفعيل باقة — ' + sc.name,
+        body: store.invoiceTitle(r) + ' · ' + amount + ' ر.س · سند تحويل مرفق', to: ['super', 'accountant'] });
+      save();
+      return { ok: true, request: r };
+    },
+    /** اعتماد السداد: يُسجَّل الدفع (تفعيل آلي للباقة) ثم تُصدار الفاتورة */
+    approvePaymentRequest: function (id, opts) {
+      opts = opts || {};
+      var r = store.paymentRequests().find(function (x) { return x.id === id; }) || null;
+      if (!r) return { ok: false, error: 'الطلب غير موجود' };
+      if (r.status !== 'pending') return { ok: false, error: 'الطلب مُعالج مسبقًا' };
+      var pay = store.recordPayment(r.schoolId, { kind: r.kind, years: r.years, unblock: true });
+      var inv = store.issueInvoice({
+        schoolId: r.schoolId, plan: r.plan, kind: r.kind, years: r.years, amount: r.amount,
+        requestId: r.id, receipt: r.receipt, schoolStamp: r.schoolStamp,
+        note: 'تحويل بنكي — سند مختوم بختم المدرسة' + (r.transferRef ? ' · مرجع التحويل: ' + r.transferRef : ''),
+        paidUntil: (pay.state || {}).paidUntil || ''
+      });
+      r.status = 'approved'; r.decidedAt = now(); r.decidedBy = store.session.name || ''; r.invoiceId = inv.id;
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'payment_approved', by: store.session.name || '',
+        text: 'اعتماد سداد ' + r.schoolName + ' · ' + r.amount + ' ر.س · فاتورة ' + inv.no });
+      var toUsers = store.list('users').filter(function (u) {
+        return u.schoolId === r.schoolId && (u.role === 'principal' || u.role === 'deputy');
+      }).map(function (u) { return u.id; });
+      store.notify({ kind: 'finance', title: 'فُعّلت باقة ' + r.schoolName + ' ✓',
+        body: 'فاتورة ' + inv.no + ' صادرة — السريان حتى ' + ((pay.state || {}).paidUntil || '') + '. اطبعها من «الاشتراك والدفع».',
+        toUsers: toUsers, to: ['super', 'accountant'] });
+      save();
+      return { ok: true, invoice: inv, payment: pay, state: pay.state };
+    },
+    rejectPaymentRequest: function (id, why) {
+      var r = store.paymentRequests().find(function (x) { return x.id === id; }) || null;
+      if (!r) return { ok: false, error: 'الطلب غير موجود' };
+      if (r.status !== 'pending') return { ok: false, error: 'الطلب مُعالج مسبقًا' };
+      r.status = 'rejected'; r.decidedAt = now(); r.decidedBy = store.session.name || '';
+      r.rejectReason = String(why || '').trim();
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'payment_rejected', by: store.session.name || '',
+        text: 'رفض سداد ' + r.schoolName + ' · ' + r.amount + ' ر.س' + (why ? ' — ' + why : '') });
+      var toUsers = store.list('users').filter(function (u) {
+        return u.schoolId === r.schoolId && (u.role === 'principal' || u.role === 'deputy');
+      }).map(function (u) { return u.id; });
+      store.notify({ kind: 'finance', title: 'سند التحويل لم يُعتمد — ' + r.schoolName,
+        body: (why || 'تحقّق من صورة السند والمبلغ ثم أعد الإرسال.'), toUsers: toUsers, to: ['super', 'accountant'] });
+      save();
+      return { ok: true, request: r };
+    },
+    /* ------------------------------ المصروفات ------------------------------ */
+    expenses: function (opts) {
+      opts = opts || {};
+      var all = store.list('expenses').slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+      if (opts.category) all = all.filter(function (e) { return e.category === opts.category; });
+      return all;
+    },
+    addExpense: function (d) {
+      d = d || {};
+      var amount = Number(d.amount) || 0;
+      if (!String(d.title || '').trim()) return { ok: false, error: 'اكتب بيان المصروف' };
+      if (amount <= 0) return { ok: false, error: 'اكتب مبلغًا صحيحًا' };
+      var e = {
+        id: uid('exp'), at: d.at || now().slice(0, 10), category: d.category || 'other',
+        title: String(d.title).trim(), amount: amount, vendor: String(d.vendor || '').trim(),
+        note: String(d.note || '').trim(), by: store.session.name || ''
+      };
+      db.expenses.unshift(e);
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'expense_added', by: store.session.name || '',
+        text: 'مصروف ' + store.expenseCat(e.category) + ' — ' + e.title + ' · ' + amount + ' ر.س' });
+      save();
+      return { ok: true, expense: e };
+    },
+    deleteExpense: function (id) {
+      var i = store.list('expenses').findIndex(function (e) { return e.id === id; });
+      if (i < 0) return { ok: false, error: 'المصروف غير موجود' };
+      var e = db.expenses[i];
+      db.expenses.splice(i, 1);
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'expense_deleted', by: store.session.name || '',
+        text: 'حذف مصروف ' + store.expenseCat(e.category) + ' — ' + e.title + ' · ' + e.amount + ' ر.س' });
+      save();
+      return { ok: true };
+    },
+    /* ---------------------- الفترات المالية والتقارير ---------------------- */
+    PERIODS: [
+      { id: 'daily', name: 'يومي', days: 1 },
+      { id: 'weekly', name: 'أسبوعي', days: 7 },
+      { id: 'monthly', name: 'شهري', days: 30 },
+      { id: 'quarterly', name: 'ربع سنوي (٣ أشهر)', days: 90 },
+      { id: 'half', name: 'نصف سنوي (٦ أشهر)', days: 180 },
+      { id: 'annual', name: 'سنوي', days: 365 }
+    ],
+    periodRange: function (kind) {
+      var p = store.PERIODS.find(function (x) { return x.id === kind; }) || store.PERIODS[0];
+      var from = new Date(Date.now() - (p.days - 1) * 864e5); from.setHours(0, 0, 0, 0);
+      var to = new Date(); to.setHours(23, 59, 59, 999);
+      return { id: p.id, name: p.name, days: p.days, from: from.toISOString(), to: to.toISOString() };
+    },
+    /** الملخّص المالي لفترة: إيرادات (تأسيس + اشتراكات) · مصروفات · صافي */
+    financeSummary: function (kind) {
+      var r = store.periodRange(kind);
+      var inR = function (at) { return at && at >= r.from && at <= r.to; };
+      var invs = store.list('invoices').filter(function (i) { return inR(i.at); });
+      var sum = function (arr) { return arr.reduce(function (a, i) { return a + (Number(i.amount) || 0); }, 0); };
+      var setup = sum(invs.filter(function (i) { return i.kind === 'setup'; }));
+      var annual = sum(invs.filter(function (i) { return i.kind === 'annual'; }));
+      var exps = store.list('expenses').filter(function (e) { return inR(e.at); });
+      var expTotal = sum(exps);
+      var byCat = {};
+      store.EXPENSE_CATS.forEach(function (c) { byCat[c.id] = 0; });
+      exps.forEach(function (e) { byCat[e.category] = (byCat[e.category] || 0) + (Number(e.amount) || 0); });
+      var pend = store.paymentRequests({ status: 'pending' });
+      var lic = store.licenseStats();
+      return {
+        period: r, invoices: invs, expenses: exps,
+        invoiceCount: invs.length, expenseCount: exps.length,
+        setup: setup, annual: annual, revenue: setup + annual,
+        expensesTotal: expTotal, net: setup + annual - expTotal,
+        byCat: byCat,
+        pendingCount: pend.length, pendingAmount: sum(pend),
+        annualExpected: lic.annualExpected, suspended: lic.suspended, overdue: lic.overdue, schools: lic.total
+      };
+    },
+    /** كل الفترات معًا (للتقرير الجامع) */
+    financeAllPeriods: function () {
+      return store.PERIODS.map(function (p) { return store.financeSummary(p.id); });
+    },
+
+    /* =====================================================================
+       الدعم الفني — بوت (فارس الحربي · هند المطيري) بلهجة سعودية + نظام تذاكر
+       ---------------------------------------------------------------------
+       شفتان: فارس ٨ ص – ٨ م · هند ٨ م – ٨ ص. البوت يفرز الاستفسار ويردّ بلهجة
+       سعودية، ويستقبل صورة لقطة الشاشة ويفتح تذكرة تصل «الدعم الفني» و«المشرف العام».
+       ===================================================================== */
+    AGENTS: [
+      { id: 'fares', name: 'فارس الحربي', img: 'assets/img/support-fares.png', from: 8, to: 20,
+        shift: 'الشفت الأول · ٨ صباحًا – ٨ مساءً' },
+      { id: 'hind', name: 'هند المطيري', img: 'assets/img/support-hind.png', from: 20, to: 8,
+        shift: 'الشفت الثاني · ٨ مساءً – ٨ صباحًا' }
+    ],
+    agentNow: function (d) {
+      var h = (d || new Date()).getHours();
+      return (h >= 8 && h < 20) ? store.AGENTS[0] : store.AGENTS[1];
+    },
+    agent: function (id) { return store.AGENTS.find(function (a) { return a.id === id; }) || store.AGENTS[0]; },
+    /* قاعدة معرفة البوت — لغة سعودية، مفاتيح بلا تشكيل وتُطبَّع عند البحث */
+    BOT_KB: [
+      { id: 'attendance', cat: 'attendance', title: 'التحضير وإغلاق الحصة',
+        k: ['تحضير', 'الحصة', 'حضور', 'غياب', 'سكر', 'اسكر', 'اغلق', 'قفل', 'طالب غايب'],
+        a: 'أبشر بسعدك! التحضير سهل: «التحضير» ← اختر الحصة ← حدّد حالة كل طالب ← إغلاق. وترى ما يمديك تسكّر الحصة إلا بعد نصّ وقتها؛ ولو الزر مطفّي فمعناه أن وقت الحصة بالجدول ما بدأ بعد — تأكد من وقت الحصة وإذا فيه لبس كلّم وكيل شؤون الطلاب يضبط الجدول.' },
+      { id: 'login', cat: 'login', title: 'الدخول وكلمة المرور',
+        k: ['دخول', 'باسورد', 'كلمة المرور', 'ما ادخل', 'ما يفتح', 'نسيت', 'استعادة'],
+        a: 'هلا والله! إذا ما قدرت تدخل: تأكد من اسم المستخدم (بالإنجليزية) وكلمة المرور، وتقدر تضغط «نسيت كلمة المرور» وتوصلك رسالة استرجاع. ولو الحساب جديد، لازم مدير المدرسة يعتمده أول. عطني اسم المستخدم عندك وأنا أتابع معاك.' },
+      { id: 'otp', cat: 'otp', title: 'رمز التحقق بمرحلتين',
+        k: ['رمز', 'تحقق', 'مرحلتين', 'otp', 'ما وصلني الرمز', 'توثيق'],
+        a: 'أبشر! الرمز ينزل على تلقرام في محادثتك الخاصة مع البوت — تأكد أنك مرسل /start للبوت، وأدخل الرمز خلال ٥ دقايق (يُستهلك مرة وحدة). ولو ما وصلك، كلّم مدير المدرسة يربط محادثتك من «الموظفون والحسابات».' },
+      { id: 'telegram', cat: 'telegram', title: 'تلقرام والإشعارات',
+        k: ['تلقرام', 'تلجرام', 'بوت', 'اشعار', 'إشعار', 'رسالة ما توصل', 'قناة'],
+        a: 'تمام! للإشعارات: تابعنا في باقتين — «كلاسيك» المنصة كاملة بلا تلقرام، و«برو» فيها تلقرام. ولو باقتك «برو» وما توصل الرسائل: تأكد من التوكن ومعرّف المحادثة في «سجل تلقرام»، وجرّب «إرسال رسالة تجريبية».' },
+      { id: 'reports', cat: 'reports', title: 'التقارير والطباعة',
+        k: ['تقرير', 'تقارير', 'طباعة', 'اطبع', 'بي دي اف', 'pdf', 'باركود', 'ترويسة'],
+        a: 'أبشر! التقارير من «التقارير» ← اختر النوع والفترة ← «تصدير PDF / طباعة»، وتطلع بترويسة الوزارة والباركود. ولو الترويسة مو مضبوطة، مدير المدرسة يعدّلها من «ترويسة التقارير».' },
+      { id: 'students', cat: 'students', title: 'الطلاب والاستيراد',
+        k: ['طالب', 'طلاب', 'استيراد', 'اكسل', 'excel', 'نور', 'اسكان', 'نقل طالب', 'فصل'],
+        a: 'هلا بك! استيراد الطلاب من «الفصول والطلاب» ← استيراد Excel/CSV، وتقدر تسكنهم فصول وتنقلهم فردي أو جماعي. ولو الملف ما قبل، تأكد أن الصفوف فيها الأعمدة المطلوبة (الاسم ورقم الهوية) بلا صفوف فاضية.' },
+      { id: 'violations', cat: 'violations', title: 'المخالفات السلوكية',
+        k: ['مخالفة', 'مخالفات', 'توجيه', 'لائحة', 'خصم درجة', 'سلوك'],
+        a: 'علمًا! المخالفة دورة كاملة: المعلم يسجّلها ← التوجيه يرد ← الوكيل يعتمد الخصم أو اللائحة ← تُغلق. ولو المخالفة واقفة عند أحد، افتح تفاصيلها وبتشوف في أي مرحلة هي.' },
+      { id: 'permissions', cat: 'permissions', title: 'الاستئذان وأذون الخروج',
+        k: ['استئذان', 'تصريح', 'خروج', 'بوابة', 'حارس', 'باص', 'مغادرة'],
+        a: 'هلا! الاستئذان من «الاستئذان»: الطلب يروح للتوجيه ← الوكيل يمنح ← يطلع تصريح خروج بباركود، والحارس يمسحه من «بوابة الخروج». ولو الباركود ما انقرأ، قرّب الجوال وزوّد إضاءة الشاشة.' },
+      { id: 'subscription', cat: 'subscription', title: 'الاشتراك والفاتورة',
+        k: ['اشتراك', 'فاتورة', 'سداد', 'تحويل', 'بنك', 'سند', 'رسوم', 'باقة', 'برو', 'كلاسيك', 'تجديد'],
+        a: 'أبشر! نظامنا: تحويل بنكي ثم ترفع صورة سند التحويل مختوم بختم المدرسة من «الاشتراك والدفع» ← نعتمدها ← تصدر فاتورة إلكترونية مختومة من تابعني وتُفعَّل الباقة على طول، وتقدر تطبع الفاتورة في أي وقت.' },
+      { id: 'install', cat: 'install', title: 'تثبيت التطبيق والإنترنت',
+        k: ['تثبيت', 'تطبيق', 'ايباد', 'جوال', 'بدون انترنت', 'اوفلاين', 'تحميل', 'كاش'],
+        a: 'حياك! التطبيق يُثبَّت من المتصفح: مشاركة ← «إضافة إلى الشاشة الرئيسية» (آيباد) أو «تثبيت التطبيق» (كروم). وبعد أول فتح يشتغل بدون إنترنت. ولو طلعت نسخة قديمة، اطلع من التطبيق وافتحه من جديد أو حدّث الصفحة.' },
+      { id: 'camera', cat: 'camera', title: 'الكاميرا وبصمة الوجه',
+        k: ['كاميرا', 'بصمة', 'وجه', 'face', 'صلاحية الكاميرا', 'ما يفتح الكاميرا'],
+        a: 'هلا! بصمة الوجه تحتاج إذن الكاميرا وموقع آمن (https أو localhost). افتح إعدادات المتصفح ← الأذونات ← الكاميرا ← «سماح»، ثم أعد تحميل الصفحة. ولو الجهاز فيه كاميرا مغطاة، اكشفها وجرّب من جديد.' },
+      { id: 'backup', cat: 'backup', title: 'النسخ الاحتياطي والبيانات',
+        k: ['نسخة', 'احتياطي', 'باك اب', 'بيانات', 'استرجاع', 'تصفير', 'ضاعت'],
+        a: 'انتبه لي: البيانات محفوظة في متصفح الجهاز نفسه (نموذج أولي بلا خادم). خذ نسخة احتياطية دوريًا من «بيانات المنصة ← نسخة احتياطية» واحفظها بمكان آمن — ومنها تقدر تسترجع كل شي.' }
+    ],
+    /** يطبّع النص العربي للبحث */
+    _norm: function (t) {
+      return String(t || '').toLowerCase()
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+        .replace(/[^\u0621-\u064A0-9a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+    },
+    /** ردّ البوت بلهجة سعودية — يرجّع {agent, text, category, subject, matched, offerTicket} */
+    botReply: function (text, ctx) {
+      ctx = ctx || {};
+      var agent = store.agent(ctx.agentId || store.agentNow().id);
+      var q = store._norm(text);
+      var best = null, bestScore = 0;
+      store.BOT_KB.forEach(function (e) {
+        var score = 0;
+        e.k.forEach(function (kw) {
+          var k = store._norm(kw);
+          if (k && q.indexOf(k) > -1) score += (k.length > 3 ? 2 : 1);
+        });
+        if (score > bestScore) { bestScore = score; best = e; }
+      });
+      /* الترحيب */
+      if (!q && !ctx.image) {
+        return { agent: agent, category: 'greeting', matched: '', offerTicket: false, subject: 'ترحيب',
+          text: 'هلا والله ومسهلا! أنا ' + agent.name + ' من الدعم الفني في تابعني (' + agent.shift + '). ' +
+                'اسألني عن التحضير أو المخالفات أو التقارير أو الاشتراك… وإن حبيت أفتح لك تذكرة ويرد عليك الفريق، قول «افتح تذكرة».' };
+      }
+      /* صورة مرفقة: فرز أوّلي + عرض فتح تذكرة */
+      if (ctx.image) {
+        var meta = ctx.imageMeta || {};
+        var bits = [];
+        if (meta.type) bits.push(meta.type);
+        if (meta.w && meta.h) bits.push(meta.w + '×' + meta.h);
+        if (meta.kb) bits.push(meta.kb + ' كيلوبايت');
+        var info = bits.length ? ' (' + bits.join(' · ') + ')' : '';
+        var body = 'وصلتني الصورة' + info + '. ';
+        if (best) body += 'وشفت كلامك عن ' + best.title + ' — ' + best.a;
+        else body += 'عطيت فريق الدعم الصورة داخل التذكرة عشان يشوفونها بعينهم.';
+        return { agent: agent, category: best ? best.cat : 'other', matched: best ? best.id : '', offerTicket: true,
+          subject: best ? best.title : 'صورة من المستخدم',
+          text: body + ' وحنا نسوّي لك تذكرة متابعة — اكتب لي بجملة وش صار بالضبط وأنا أفتحها فورًا.' };
+      }
+      if (best) {
+        var extra = (q.indexOf('تذكره') > -1 || q.indexOf('تذكرة') > -1 || q.indexOf('مشكله') > -1 || q.indexOf('مشكلة') > -1)
+          ? ' وإن حبيت، أفتح لك تذكرة ويرد عليك أحد فريق الدعم.' : '';
+        return { agent: agent, category: best.cat, matched: best.id, offerTicket: false, subject: best.title, text: best.a + extra };
+      }
+      return { agent: agent, category: 'other', matched: '', offerTicket: true, subject: 'استفسار عام',
+        text: 'أبشر، ما فهمت عليك عدل. وضّح لي أكثر الله يعافيك — أو عطني كلمة واحدة (مثل: تحضير · فاتورة · تلقرام · تقارير · دخول) وأنا أفهمك. ' +
+              'وإذا تبي، أفتح لك تذكرة ويرد عليك أحد فريق الدعم.' };
+    },
+    /* ------------------------------ التذاكر ------------------------------ */
+    openTicket: function (d) {
+      d = d || {};
+      var yr = new Date().getFullYear();
+      var n = store.list('tickets').filter(function (t) { return String(t.no || '').indexOf('TKT-' + yr + '-') === 0; }).length + 1;
+      var agent = store.agent(d.agentId || store.agentNow().id);
+      var t = {
+        id: uid('tkt'), no: 'TKT-' + yr + '-' + ('000' + n).slice(-4), at: now(), updatedAt: now(),
+        status: 'open', category: d.category || 'other', priority: d.priority === 'high' ? 'high' : 'normal',
+        subject: String(d.subject || 'استفسار من الدعم الفني').trim(),
+        schoolId: d.schoolId !== undefined ? (d.schoolId || '') : (store.session.schoolId || ''),
+        byUser: d.byUser !== undefined ? d.byUser : (store.session.userId || ''),
+        byName: d.byName || store.session.name || 'زائر', byRole: d.byRole || store.session.role || 'visitor',
+        phone: String(d.phone || ''), email: String(d.email || ''),
+        viaBot: true, agentId: agent.id, assignee: d.assignee || 'support',
+        lastFrom: 'user', messages: [].concat(d.messages || [])
+      };
+      db.tickets.unshift(t);
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'ticket_opened', by: store.session.name || t.byName,
+        text: 'تذكرة دعم ' + t.no + ' — ' + t.subject });
+      store.notify({ kind: 'support', title: 'تذكرة دعم جديدة: ' + t.no,
+        body: t.subject + ' — ' + t.byName + (t.schoolId ? ' · ' + ((store.school(t.schoolId) || {}).name || '') : ' · زائر'),
+        to: ['support', 'super'] });
+      save();
+      return { ok: true, ticket: t };
+    },
+    tickets: function (opts) {
+      opts = opts || {};
+      var all = store.list('tickets').slice().sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); });
+      if (opts.status) all = all.filter(function (t) { return t.status === opts.status; });
+      if (opts.schoolId) all = all.filter(function (t) { return t.schoolId === opts.schoolId; });
+      if (opts.mine) all = all.filter(function (t) { return t.byUser === store.session.userId; });
+      if (opts.assignee) all = all.filter(function (t) { return t.assignee === opts.assignee; });
+      return all;
+    },
+    ticket: function (id) { return store.list('tickets').find(function (t) { return t.id === id; }) || null; },
+    /** إضافة رسالة للتذكرة: من المستخدم أو البوت أو الدعم */
+    ticketAdd: function (id, msg) {
+      var t = store.ticket(id);
+      if (!t) return { ok: false, error: 'التذكرة غير موجودة' };
+      msg = msg || {};
+      var text = String(msg.text || '').trim();
+      if (!text && !msg.image) return { ok: false, error: 'اكتب رسالة أو ارفق صورة' };
+      var from = (msg.from === 'agent' || msg.from === 'bot') ? msg.from : 'user';
+      var entry = {
+        at: now(), from: from,
+        name: msg.name || (from === 'agent' ? (store.session.name || 'الدعم الفني') : (from === 'bot' ? store.agent(t.agentId).name : store.session.name || '')),
+        text: text, image: (msg.image || '').slice(0, 400000)
+      };
+      t.messages.push(entry);
+      t.updatedAt = now(); t.lastFrom = from;
+      if (from === 'user') t.status = t.status === 'closed' ? 'open' : t.status;
+      if (from === 'agent' && t.status === 'open') t.status = 'progress';
+      if (from === 'agent' || from === 'bot') {
+        var toUsers = [t.byUser].filter(Boolean).concat(store.list('users').filter(function (u) {
+          return u.schoolId && u.schoolId === t.schoolId && u.role === 'principal';
+        }).map(function (u) { return u.id; }));
+        store.notify({ kind: 'support', title: 'ردّ على تذكرتك ' + t.no,
+          body: (entry.name || 'الدعم الفني') + ': ' + (text || 'أرفق صورة').slice(0, 90),
+          toUsers: toUsers, to: ['support', 'super'] });
+      } else {
+        t.assignee = t.assignee || 'support';
+      }
+      save();
+      return { ok: true, ticket: t, message: entry };
+    },
+    /** محادثة كاملة مع البوت: ردّه ثم (اختياريًا) فتح تذكرة */
+    botChat: function (text, opts) {
+      opts = opts || {};
+      var r = store.botReply(text, opts);
+      return r;
+    },
+    ticketStatus: function (id, status) {
+      var t = store.ticket(id);
+      if (!t) return { ok: false, error: 'التذكرة غير موجودة' };
+      t.status = ['open', 'progress', 'closed', 'waiting'].indexOf(status) > -1 ? status : t.status;
+      t.updatedAt = now();
+      if (status === 'closed') { t.closedAt = now(); t.closedBy = store.session.name || ''; }
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: 'ticket_status', by: store.session.name || '',
+        text: 'تذكرة ' + t.no + ' → ' + store.ticketStatusName(t.status) });
+      save();
+      return { ok: true, ticket: t };
+    },
+    ticketAssign: function (id, to) {
+      var t = store.ticket(id);
+      if (!t) return { ok: false, error: 'التذكرة غير موجودة' };
+      t.assignee = to === 'super' ? 'super' : 'support';
+      t.updatedAt = now();
+      save();
+      return { ok: true, ticket: t };
+    },
+    ticketStatusName: function (st) {
+      return { open: 'جديدة', progress: 'قيد المعالجة', waiting: 'بانتظار المستخدم', closed: 'مغلقة' }[st] || st;
+    },
+    ticketCatName: function (id) {
+      var e = store.BOT_KB.find(function (x) { return x.cat === id; });
+      return e ? e.title : 'استفسار آخر';
+    },
+    ticketStats: function () {
+      var all = store.list('tickets');
+      var open = all.filter(function (t) { return t.status === 'open'; }).length;
+      var prog = all.filter(function (t) { return t.status === 'progress'; }).length;
+      var closed = all.filter(function (t) { return t.status === 'closed'; }).length;
+      var mine = all.filter(function (t) { return t.byUser === store.session.userId; }).length;
+      return { total: all.length, open: open, progress: prog, closed: closed, active: open + prog, mine: mine };
     },
 
     /* =====================================================================

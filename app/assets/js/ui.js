@@ -557,6 +557,335 @@
     }, [h('span', { html: '&#128424;&#65039;' }), h('span', { text: ' ' + label })]);
   }
 
+  /* ======================================================================
+     المالية — ختم المنصة · الفاتورة الإلكترونية · ضغط الصور
+     ====================================================================== */
+  /** مجلد التطبيق بمسار مطلق (للاستخدام داخل وثيقة الطباعة) */
+  function appBase() {
+    var u = String(location.href).split('?')[0].split('#')[0];
+    return u.replace(/[^\/]*$/, '');
+  }
+
+  /** ختم دائري رسمي (SVG داخل الصفحة — بلا صور ولا إنترنت) */
+  function stampSvg(opts) {
+    opts = opts || {};
+    var color = opts.color || '#1E7A5A';
+    var top = opts.top || 'تابعني للخدمات التعليمية';
+    var mid = opts.mid || 'ختم رسمي';
+    var sub = opts.sub || 'منصة الخدمات التعليمية للمدارس';
+    var bot = opts.bottom || 'ختم إلكتروني معتمد';
+    var size = opts.size || 190;
+    var id = 'st' + Math.random().toString(36).slice(2, 8);
+    return '<svg viewBox="0 0 200 200" width="' + size + '" height="' + size + '" dir="ltr" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
+      '<defs><path id="' + id + '" d="M26,100 A74,74 0 0 1 174,100"/></defs>' +
+      '<circle cx="100" cy="100" r="95" fill="none" stroke="' + color + '" stroke-width="3.2"/>' +
+      '<circle cx="100" cy="100" r="89.5" fill="none" stroke="' + color + '" stroke-width="1.1"/>' +
+      '<circle cx="100" cy="100" r="57" fill="none" stroke="' + color + '" stroke-width="1.1" stroke-dasharray="4 3"/>' +
+      '<text fill="' + color + '" font-size="14.5" font-weight="700" letter-spacing="0.5">' +
+        '<textPath xlink:href="#' + id + '" href="#' + id + '" startOffset="50%" text-anchor="middle">' + top + '</textPath>' +
+      '</text>' +
+      '<text fill="' + color + '" font-size="19" font-weight="800" x="100" y="92" text-anchor="middle">' + mid + '</text>' +
+      '<text fill="' + color + '" font-size="10.5" x="100" y="110" text-anchor="middle">' + sub + '</text>' +
+      '<text fill="' + color + '" font-size="9.5" font-weight="700" x="100" y="178" text-anchor="middle">' + bot + '</text>' +
+      '</svg>';
+  }
+
+  /** تنسيق المبالغ: 1,500.00 */
+  function fmtMoney(n) {
+    var x = Number(n) || 0;
+    var parts = x.toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
+  /** وثيقة طباعة عامة (نفس إطار التقارير المخفي) */
+  function printDoc(html) {
+    var frame = document.getElementById('print-frame');
+    if (!frame) {
+      frame = h('iframe', { id: 'print-frame', class: 'print-frame', title: 'طباعة' });
+      document.body.appendChild(frame);
+    }
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+    var go = function () {
+      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch (e) { toast('تعذّر فتح نافذة الطباعة', 'warn'); }
+    };
+    setTimeout(function () {
+      if (frame.contentDocument && frame.contentDocument.readyState === 'complete') go();
+      else if (frame.contentWindow) frame.contentWindow.onload = go;
+      else go();
+    }, 300);
+  }
+
+  var INVOICE_CSS = '' +
+    '@page{size:A4;margin:14mm 12mm}' +
+    'body{font-family:"IBM Plex Sans Arabic",-apple-system,"Segoe UI",Tahoma,sans-serif;color:#14100A;margin:0;direction:rtl;background:#fff}' +
+    '.inv{border:1.4px solid #E3D9C6;border-radius:10px;padding:16px 18px}' +
+    '.inv-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #1E7A5A;padding-bottom:10px}' +
+    '.inv-brand{display:flex;align-items:center;gap:10px}' +
+    '.inv-brand img{width:64px;height:auto}' +
+    '.inv-brand .bn{font-size:19px;font-weight:800;color:#14100A}' +
+    '.inv-brand .bs{font-size:11.5px;color:#6B6152}' +
+    '.inv-tag{text-align:left;font-size:11.5px;color:#3A3023;line-height:1.7}' +
+    '.inv-tag .big{font-size:15px;font-weight:800;color:#1E7A5A}' +
+    '.inv-num{background:#F5F1E8;border:1px dashed #C9BFA9;border-radius:8px;padding:6px 10px;display:inline-block;font-weight:700}' +
+    '.inv h1{font-size:16px;margin:14px 0 6px;text-align:center}' +
+    '.inv-sub{text-align:center;font-size:11px;color:#6B6152;margin-bottom:12px}' +
+    '.inv-parties{display:flex;gap:10px;margin-bottom:12px}' +
+    '.inv-parties>div{flex:1;border:1px solid #E9E1D2;border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.9}' +
+    '.inv-parties .k{color:#6B6152}' +
+    'table.inv-tbl{width:100%;border-collapse:collapse;font-size:12px}' +
+    'table.inv-tbl th,table.inv-tbl td{border:1px solid #E3D9C6;padding:8px 9px;text-align:right}' +
+    'table.inv-tbl th{background:#F5F1E8;font-size:11.5px}' +
+    'table.inv-tbl td.num{font-variant-numeric:tabular-nums;white-space:nowrap}' +
+    '.inv-tot{margin-top:10px;display:flex;justify-content:flex-start}' +
+    '.inv-tot .box{border:1.6px solid #1E7A5A;border-radius:8px;padding:8px 14px;font-weight:800;font-size:15px;color:#1E7A5A}' +
+    '.inv-stamps{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;margin-top:16px;border-top:1px dashed #E3D9C6;padding-top:12px}' +
+    '.inv-stamp{text-align:center;font-size:11px;color:#3A3023}' +
+    '.inv-stamp .cap{margin-top:4px;font-weight:700}' +
+    '.inv-stamp .hint{color:#6B6152;font-size:10px}' +
+    '.inv-ph{border:1.4px dashed #C9BFA9;border-radius:8px;width:150px;height:110px;display:flex;align-items:center;justify-content:center;color:#8C8271;font-size:11px;text-align:center;padding:8px}' +
+    '.inv-receipt img{max-width:230px;max-height:150px;border:1px solid #E3D9C6;border-radius:6px}' +
+    '.inv-foot{margin-top:14px;border-top:1.4px solid #E9E1D2;padding-top:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}' +
+    '.inv-foot .note{font-size:10.5px;color:#6B6152;line-height:1.8}' +
+    '.inv-sign{display:flex;gap:26px;font-size:11px;text-align:center;margin-top:14px}' +
+    '.inv-sign div{border-top:1px solid #C9BFA9;padding-top:5px;min-width:150px;color:#3A3023}' +
+    '.inv-qr{text-align:center;font-size:10px;color:#6B6152}' +
+    '.inv-qr svg{width:84px;height:84px}' +
+    '.inv-print{text-align:center;margin:16px 0 0}' +
+    '.inv-print button{font:inherit;font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid #1E7A5A;background:#1E7A5A;color:#fff;cursor:pointer}' +
+    '@media print{.inv-print{display:none}}';
+
+  /** يبني HTML الفاتورة الإلكترونية (منفصل عن الطباعة ليمكن فحصه واختباره) */
+  function invoiceHtml(inv) {
+    var S = global.Store || {};
+    var base = appBase();
+    var d = new Date(inv.at || Date.now());
+    var planName = S.planDef ? S.planDef(inv.plan).name : 'تابعني';
+    var title = S.invoiceTitle ? S.invoiceTitle(inv) : 'اشتراك';
+    var amount = Number(inv.amount) || 0;
+    var schoolStamp = inv.schoolStamp || '';
+    var receipt = inv.receipt || '';
+    var bank = S.bank ? S.bank() : {};
+    var esc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+
+    var html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
+      '<base href="' + base + '">' +
+      '<title>فاتورة ' + esc(inv.no) + '</title>' +
+      '<link rel="stylesheet" href="assets/fonts/fonts.css">' +
+      '<style>' + INVOICE_CSS + '</style></head><body>' +
+      '<div class="inv">' +
+        '<div class="inv-head">' +
+          '<div class="inv-brand">' +
+            '<img src="assets/img/logo-mark.png" alt="تابعني">' +
+            '<div><div class="bn">تابعني للخدمات التعليمية</div>' +
+            '<div class="bs">منصة الخدمات التعليمية للمدارس · tabaani.sa</div></div>' +
+          '</div>' +
+          '<div class="inv-tag">' +
+            '<div class="big">فاتورة إلكترونية</div>' +
+            '<div class="inv-num">رقم الفاتورة: ' + esc(inv.no) + '</div><br>' +
+            '<div>التاريخ: <strong>' + dateLabel(d) + '</strong></div>' +
+            '<div>الوقت: <strong>' + fmtTime(d) + '</strong></div>' +
+          '</div>' +
+        '</div>' +
+        '<h1>فاتورة إلكترونية — «تابعني للخدمات التعليمية»</h1>' +
+        '<div class="inv-sub">صدرت إلكترونيًا من منصة تابعني · ' + esc(inv.seller || 'تابعني للخدمات التعليمية') +
+          ' · حساب بنكي: ' + esc(bank.bankName || '') + '</div>' +
+        '<div class="inv-parties">' +
+          '<div><div class="k">المشتري (المدرسة):</div>' +
+            '<div><strong>' + esc(inv.schoolName || '—') + '</strong></div>' +
+            '<div class="k">' + esc(inv.schoolCity || '') + (inv.schoolCode ? ' · رمز المدرسة: ' + esc(inv.schoolCode) : '') + '</div>' +
+            '<div class="k">الباقة: <strong>' + esc(planName) + '</strong></div>' +
+          '</div>' +
+          '<div><div class="k">البائع (المنصة):</div>' +
+            '<div><strong>' + esc(inv.seller || 'تابعني للخدمات التعليمية') + '</strong></div>' +
+            '<div class="k">طريقة السداد: تحويل بنكي — سند مختوم بختم المدرسة</div>' +
+            (inv.paidUntil ? '<div class="k">سريان الاشتراك حتى: <strong>' + esc(inv.paidUntil) + '</strong></div>' : '') +
+            (inv.note ? '<div class="k">' + esc(inv.note) + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<table class="inv-tbl">' +
+          '<thead><tr><th style="width:52%">البند</th><th style="width:12%">الكمية</th><th style="width:18%">السعر</th><th style="width:18%">الإجمالي</th></tr></thead>' +
+          '<tbody><tr>' +
+            '<td>' + esc(title) + '</td>' +
+            '<td class="num">' + (inv.kind === 'setup' ? '1' : String(inv.years || 1)) + '</td>' +
+            '<td class="num">' + fmtMoney(inv.kind === 'setup' ? amount : (amount / (inv.years || 1))) + ' ر.س</td>' +
+            '<td class="num">' + fmtMoney(amount) + ' ر.س</td>' +
+          '</tr></tbody>' +
+        '</table>' +
+        '<div class="inv-tot"><div class="box">الإجمالي المستحق: ' + fmtMoney(amount) + ' ر.س</div></div>' +
+        '<div class="inv-stamps">' +
+          '<div class="inv-stamp">' + stampSvg({ mid: 'تابعني', top: 'تابعني للخدمات التعليمية', bottom: 'ختم إلكتروني معتمد' }) +
+            '<div class="cap">ختم «تابعني للخدمات التعليمية»</div>' +
+            '<div class="hint">صادر مع الفاتورة إلكترونيًا</div></div>' +
+          '<div class="inv-stamp inv-receipt">' +
+            (receipt ? '<img src="' + receipt + '" alt="سند التحويل">' : '<div class="inv-ph">لم يُرفق سند تحويل</div>') +
+            '<div class="cap">سند التحويل المصرفي</div>' +
+            '<div class="hint">مختوم بختم المدرسة</div></div>' +
+          '<div class="inv-stamp">' +
+            (schoolStamp && schoolStamp !== receipt
+              ? '<img src="' + schoolStamp + '" alt="ختم المدرسة" style="max-width:150px;max-height:120px">'
+              : '<div class="inv-ph">ختم المدرسة<br>(يرفعه مدير المدرسة مع السند)</div>') +
+            '<div class="cap">ختم المدرسة</div></div>' +
+        '</div>' +
+        '<div class="inv-foot">' +
+          '<div class="note">هذه الفاتورة صادرة إلكترونيًا من منصة تابعني، ولا تحتاج توقيعًا أو ختمًا ورقيًا.<br>' +
+            'أُصدرت بواسطة: <strong>' + esc(inv.by || 'إدارة المنصة') + '</strong>' +
+            (inv.requestId ? ' · على طلب السداد رقم ' + esc(inv.requestId) : '') + '</div>' +
+          '<div class="inv-qr">' + qrSvg(inv.no + '|' + Math.round(amount), 3, 1) +
+            '<div>رقم الفاتورة: ' + esc(inv.no) + '</div></div>' +
+        '</div>' +
+        '<div class="inv-sign">' +
+          '<div>المحاسب المالي للمنصة</div><div>المشرف العام</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inv-print"><button onclick="window.print()">طباعة / حفظ PDF</button></div>' +
+      '</body></html>';
+    return html;
+  }
+
+  /** فاتورة إلكترونية مختومة بختم «تابعني للخدمات التعليمية» — تفتح نافذة الطباعة */
+  function printInvoice(inv, opts) {
+    opts = opts || {};
+    var html = invoiceHtml(inv);
+    printDoc(html);
+    if (opts.after) opts.after();
+    return true;
+  }
+
+  var PLATFORM_CSS = '' +
+    '@page{size:A4;margin:14mm 12mm}' +
+    'body{font-family:"IBM Plex Sans Arabic",-apple-system,"Segoe UI",Tahoma,sans-serif;color:#14100A;margin:0;direction:rtl;background:#fff}' +
+    '.pd{border:1.4px solid #E3D9C6;border-radius:10px;padding:16px 18px}' +
+    '.pd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:2px solid #1E7A5A;padding-bottom:10px}' +
+    '.pd-brand{display:flex;align-items:center;gap:10px}' +
+    '.pd-brand img{width:62px;height:auto}' +
+    '.pd-brand .bn{font-size:18px;font-weight:800}' +
+    '.pd-brand .bs{font-size:11.5px;color:#6B6152}' +
+    '.pd-tag{text-align:left;font-size:11.5px;line-height:1.8;color:#3A3023}' +
+    '.pd-tag .big{font-size:15px;font-weight:800;color:#1E7A5A}' +
+    '.pd h1{font-size:16px;text-align:center;margin:14px 0 4px}' +
+    '.pd-sub{text-align:center;font-size:11px;color:#6B6152;margin-bottom:12px}' +
+    '.pd-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}' +
+    '.pd-meta>div{border:1px solid #E9E1D2;border-radius:8px;padding:7px 10px;font-size:11.5px;min-width:150px}' +
+    '.pd-meta .k{color:#6B6152}' +
+    '.pd h3{font-size:13px;margin:14px 0 6px;border-inline-start:4px solid #1E7A5A;padding-inline-start:8px}' +
+    'table.pd-tbl{width:100%;border-collapse:collapse;font-size:11.5px}' +
+    'table.pd-tbl th,table.pd-tbl td{border:1px solid #E3D9C6;padding:7px 8px;text-align:right}' +
+    'table.pd-tbl th{background:#F5F1E8;font-size:11px}' +
+    'table.pd-tbl td.num{font-variant-numeric:tabular-nums;white-space:nowrap}' +
+    'table.pd-tbl tr.tot td{background:#F5F1E8;font-weight:800}' +
+    '.pd-foot{margin-top:14px;border-top:1.4px solid #E9E1D2;padding-top:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}' +
+    '.pd-foot .note{font-size:10.5px;color:#6B6152;line-height:1.8}' +
+    '.pd-stamp{text-align:center}' +
+    '.pd-stamp .cap{font-size:10.5px;color:#3A3023;margin-top:3px}' +
+    '.pd-sign{display:flex;justify-content:flex-start;gap:30px;font-size:11px;margin-top:16px}' +
+    '.pd-sign div{border-top:1px solid #C9BFA9;padding-top:5px;min-width:160px;text-align:center;color:#3A3023}' +
+    '.pd-qr{text-align:center;font-size:10px;color:#6B6152}' +
+    '.pd-qr svg{width:80px;height:80px}' +
+    '@media print{.pd-print{display:none}}';
+
+  /** يبني وثيقة رسمية بترويسة المنصة (تقارير مالية…) */
+  function platformDoc(o) {
+    o = o || {};
+    var base = appBase();
+    var esc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var d = new Date();
+    var meta = (o.meta || []).map(function (m) {
+      return '<div><span class="k">' + esc(m.label) + ':</span> <strong>' + esc(m.value) + '</strong></div>';
+    }).join('');
+    var sections = (o.sections || []).map(function (sec) {
+      var body = '';
+      if (sec.text) body += '<p style="font-size:11.5px;line-height:1.9">' + String(sec.text).replace(/\n/g, '<br>') + '</p>';
+      if (sec.table) {
+        var cols = sec.table.cols || [], rows = sec.table.rows || [];
+        body += '<table class="pd-tbl"><thead><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          (rows.length ? rows.map(function (r) {
+            var tot = r && r.__tot;
+            return '<tr' + (tot ? ' class="tot"' : '') + '>' + r.filter(function (x, i) { return i !== 0 || true; }).map(function (c) {
+              var v = String(c == null ? '—' : c);
+              var isNum = /^[\d,.\u0660-\u0669]+/.test(v.replace(/[^\d,.\u0660-\u0669]/g, '')) && /[\d\u0660-\u0669]/.test(v);
+              return '<td' + (isNum ? ' class="num"' : '') + '>' + esc(v) + '</td>';
+            }).join('') + '</tr>';
+          }).join('') : '<tr><td colspan="' + cols.length + '">لا بيانات في هذه الفترة</td></tr>') +
+          '</tbody></table>';
+      }
+      if (sec.list) body += '<ul style="font-size:11.5px;line-height:1.9;padding-inline-start:18px">' +
+        sec.list.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      return (sec.heading ? '<h3>' + esc(sec.heading) + '</h3>' : '') + body;
+    }).join('');
+    var signs = (o.signatures || []).map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('');
+    return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><base href="' + base + '">' +
+      '<title>' + esc(o.title || 'تقرير') + '</title>' +
+      '<link rel="stylesheet" href="assets/fonts/fonts.css"><style>' + PLATFORM_CSS + '</style></head><body>' +
+      '<div class="pd">' +
+        '<div class="pd-head">' +
+          '<div class="pd-brand"><img src="assets/img/logo-mark.png" alt="تابعني">' +
+            '<div><div class="bn">تابعني للخدمات التعليمية</div>' +
+            '<div class="bs">منصة الخدمات التعليمية للمدارس · tabaani.sa</div></div></div>' +
+          '<div class="pd-tag"><div class="big">' + esc(o.title || 'تقرير') + '</div>' +
+            '<div>التاريخ: <strong>' + dateLabel(d) + '</strong></div>' +
+            '<div>الوقت: <strong>' + fmtTime(d) + '</strong></div>' +
+            (o.code ? '<div>الرقم: <strong>' + esc(o.code) + '</strong></div>' : '') +
+          '</div>' +
+        '</div>' +
+        (o.subtitle ? '<div class="pd-sub">' + esc(o.subtitle) + '</div>' : '') +
+        (meta ? '<div class="pd-meta">' + meta + '</div>' : '') +
+        sections +
+        '<div class="pd-foot">' +
+          '<div class="note">صدرت هذه الوثيقة إلكترونيًا من منصة تابعني' +
+            (o.by ? ' — أعدّها: <strong>' + esc(o.by) + '</strong>' : '') + '</div>' +
+          (o.qr ? '<div class="pd-qr">' + qrSvg(o.qr, 3, 1) + '<div>' + esc(o.qrNote || '') + '</div></div>' : '') +
+          (o.stamp === false ? '' : '<div class="pd-stamp">' + stampSvg({ size: 130 }) + '<div class="cap">ختم «تابعني للخدمات التعليمية»</div></div>') +
+        '</div>' +
+        (signs ? '<div class="pd-sign">' + signs + '</div>' : '') +
+      '</div>' +
+      '<div class="pd-print" style="text-align:center;margin-top:14px"><button onclick="window.print()" ' +
+        'style="font:inherit;font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid #1E7A5A;background:#1E7A5A;color:#fff;cursor:pointer">طباعة / حفظ PDF</button></div>' +
+      '</body></html>';
+  }
+  function printPlatformDoc(o) { printDoc(platformDoc(o)); return true; }
+
+  /** يضغط صورة من ملف إلى dataURL (بلا خادم) — يرجّع {dataUrl,w,h,kb,type} */
+  function compressImage(file, opts) {
+    opts = opts || {};
+    var max = opts.max || 1000, q = opts.quality || 0.62;
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          var w = img.width, h = img.height, sc = Math.min(1, max / Math.max(w, h) || 1);
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * sc));
+          c.height = Math.max(1, Math.round(h * sc));
+          var g = c.getContext('2d');
+          g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+          g.drawImage(img, 0, 0, c.width, c.height);
+          var url = c.toDataURL('image/jpeg', q);
+          resolve({ dataUrl: url, w: c.width, h: c.height, kb: Math.round(url.length * 0.75 / 1024), type: 'JPEG' });
+        };
+        img.onerror = function () { reject(new Error('صورة غير صالحة')); };
+        img.src = fr.result;
+      };
+      fr.onerror = function () { reject(new Error('تعذّر قراءة الملف')); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /** أبعاد صورة dataURL (للفرز الأوّلي في الدعم) */
+  function imageMeta(dataUrl) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        resolve({ w: img.width, h: img.height, kb: Math.round(String(dataUrl).length * 0.75 / 1024), type: 'JPEG' });
+      };
+      img.onerror = function () { resolve({ w: 0, h: 0, kb: Math.round(String(dataUrl).length * 0.75 / 1024), type: '' }); };
+      img.src = dataUrl;
+    });
+  }
+
   /* ------------------------------------------------------------- الإشعارات */
   function setupTelegram() {
     if (!document.getElementById('tg-dock')) {
@@ -694,6 +1023,8 @@
 
   var UI = {
     h: h, clear: clear, toast: toast, modal: modal, confirm: confirm,
+    stampSvg: stampSvg, printInvoice: printInvoice, invoiceHtml: invoiceHtml,
+    platformDoc: platformDoc, printPlatformDoc: printPlatformDoc, printDoc: printDoc, compressImage: compressImage, imageMeta: imageMeta, fmtMoney: fmtMoney,
     field: field, formModal: formModal, table: table,
     badge: badge, statCard: statCard, sectionHead: sectionHead, panel: panel, empty: empty,
     timeline: timeline, tabs: tabs,

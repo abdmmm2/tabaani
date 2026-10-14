@@ -47,6 +47,8 @@
       }
       /* الرسائل الخاصة: عدد غير المقروء */
       if (id === 'messages') n = S.unreadMessages(S.session.userId);
+      /* الدعم الفني: التذاكر الجديدة التي لم تُعالج */
+      if (id === 'support') n = S.ticketStats().open;
       return n;
     },
     refreshBadges: function () {
@@ -290,6 +292,12 @@
       return h('section', { class: 'panel', style: { marginTop: '14px' } }, body);
     },
 
+    /** إزالة زر الدعم العائم (عند الخروج أو العودة لشاشة الدخول) */
+    _removeSupportFab: function () {
+      var f = document.getElementById('support-fab');
+      if (f) f.remove();
+    },
+
     /* ------------------------------------------------------------- القشرة */
     shell: function () {
       var root = document.getElementById('app');
@@ -359,6 +367,21 @@
         h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'تغيير كلمة المرور', onClick: App.openChangePassword },
           [h('span', { html: '&#128273;' })]),
         h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'خروج', onClick: App.logout })
+      ]));
+
+      /* زر الدعم الفني العائم (كل الأدوار): بوت بلهجة سعودية + فتح تذكرة */
+      App._removeSupportFab();
+      var agentNow = S.agentNow();
+      document.body.appendChild(h('button', {
+        class: 'support-fab', type: 'button', id: 'support-fab',
+        title: 'الدعم الفني — ' + agentNow.name + ' (' + agentNow.shift + ')',
+        onClick: function () { App.openSupport({ greet: true }); }
+      }, [
+        h('img', { src: agentNow.img, alt: '', width: '40', height: '40' }),
+        h('span', {}, [
+          h('span', { style: { display: 'block', fontWeight: '800' }, text: 'الدعم الفني' }),
+          h('span', { style: { display: 'block', fontSize: '10.5px', color: 'var(--text-muted)' }, text: agentNow.name + ' · متصل' })
+        ])
       ]));
 
       /* لافتة المناوبة: تظهر فور دخول صاحب المناوبة في يومه */
@@ -455,6 +478,7 @@
     },
 
     logout: function () {
+      App._removeSupportFab();
       S.logout();
       location.hash = '';
       location.reload();
@@ -498,6 +522,7 @@
 
     /** شاشة الدخول */
     login: function () {
+      App._removeSupportFab();
       var user = UI.field({ name: 'username', label: 'اسم المستخدم أو البريد', required: true, placeholder: 'principal', autocomplete: 'username' });
       var pass = UI.field({ name: 'password', label: 'كلمة المرور', type: 'password', required: true, placeholder: '••••••••', autocomplete: 'current-password' });
       var err = h('p', { class: 'hint hint-error', hidden: true });
@@ -905,6 +930,7 @@
 
     /* ============ التهيئة الأولى: إنشاء حساب المشرف العام بطريقة آمنة ============ */
     setupScreen: function () {
+      App._removeSupportFab();
       var root = document.getElementById('app');
       clear(root);
       var panel = h('div', { class: 'login-panel' });

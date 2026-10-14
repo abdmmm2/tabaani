@@ -21,9 +21,12 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 7, principal: 14, deputy: 16, guidance: 9, teacher: 9,
-  teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6
+  super: 9, principal: 15, deputy: 16, guidance: 9, teacher: 9,
+  teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
+  accountant: 3, support: 3
 };
+
+const ROLE_NAME_EXTRA = { accountant: 'المحاسب المالي', support: 'الدعم الفني' };
 
 const ROLE_NAME = {
   super: 'مشرف المنصة', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
@@ -176,6 +179,11 @@ async function main() {
     const tfRes = await twoFactorSuite(page, site.url);
     tfRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
+
+    /* ------------------ المالية والدعم الفني ------------------ */
+    const fsRes = await financeSupportSuite(page, site.url);
+    fsRes.forEach((r) => check(r.ok, r.m, r.d));
+    report.push({ role: 'finance', modules: String(fsRes.filter((r) => r.ok).length) + '/' + fsRes.length, note: fsRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'المالية والدعم الفني' });
 
     /* ------------------ الباقات والاشتراكات: كلاسيك · برو · الإيقاف ------------------ */
     const licRes = await licenseSuite(page, site.url);
@@ -422,6 +430,127 @@ async function licenseSuite(page, base) {
   await B.goto(page, base + '/index.html', '!!window.Store');
   await page.eval('return Store.setPlan(' + JSON.stringify(sch.id) + ', "pro").ok;');
   await page.eval('return Store.activateSchool(' + JSON.stringify(sch.id) + ').ok;');
+  return res;
+}
+
+/** فحص المالية (السداد · الفاتورة الإلكترونية · المصروفات · التقارير) وبوت الدعم وتذاكره */
+async function financeSupportSuite(page, base) {
+  const res = [];
+  const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
+  const clickLast = (txt) => 'var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; if(!m) return "no-modal";' +
+    'var b=Array.prototype.filter.call(m.querySelectorAll("button"),function(x){return (x.textContent||"").trim()===' + JSON.stringify(txt) + ';})[0];' +
+    'if(!b) return "no-button"; b.click(); return "ok";';
+  const clickText = (sel, txt) => 'var b=Array.prototype.filter.call(document.querySelectorAll(' + JSON.stringify(sel) +
+    '),function(x){return (x.textContent||"").trim()===' + JSON.stringify(txt) + ';})[0]; if(!b) return false; b.click(); return true;';
+  const sup = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="super"&&x.username;})[0]; return {u:u.username,p:u.password};');
+  const fin = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="accountant"&&x.username;})[0]; return u?{u:u.username,p:u.password}:null;');
+  const supAg = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="support"&&x.username;})[0]; return u?{u:u.username,p:u.password}:null;');
+  const prin = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="principal"&&x.username;})[0]; return {u:u.username,p:u.password};');
+
+  /* حسابا المنصة موجودان في بيانات العرض */
+  ok(fin && supAg, 'بيانات العرض: حساب المحاسب المالي وحساب الدعم الفني', JSON.stringify({ accountant: !!fin, support: !!supAg }));
+
+  /* المحاسب المالي: وحدة المالية وحدها (عزل) */
+  if (fin) {
+    await loginAsRaw(page, base, fin.u, fin.p);
+    const nav = await page.eval('return Array.prototype.map.call(document.querySelectorAll(".side-nav a[data-mod]"),function(a){return a.getAttribute("data-mod");});');
+    ok(nav.indexOf('finance') > -1 && nav.indexOf('schools') === -1, 'المحاسب المالي: يرى المالية ولا يرى إدارة المدارس', nav.join(','));
+    await page.eval('App.go("finance"); return true;');
+    await B.sleep(700);
+    const ui = await page.eval('var t=document.querySelector("#view").innerText; return { inv:t.indexOf("الفواتير")>-1, exp:t.indexOf("المصروفات")>-1, rep:t.indexOf("التقارير المالية")>-1, bank:t.indexOf("بيانات التحويل")>-1 };');
+    ok(ui.inv && ui.exp && ui.rep && ui.bank, 'لوحة المالية: الفواتير والمصروفات والتقارير وبيانات التحويل', JSON.stringify(ui));
+  }
+
+  /* الفاتورة الإلكترونية: الرقم والختم والشعار والوقت والمبلغ */
+  const inv = await page.eval('var inv=Store.invoices()[0]; if(!inv) return null; var h=UI.invoiceHtml(inv);' +
+    'return { no:inv.no, len:h.length, num:h.indexOf(inv.no)>-1, stamp:h.indexOf("textPath")>-1, logo:h.indexOf("logo-mark")>-1,' +
+    ' time:h.indexOf("الوقت")>-1, total:h.indexOf(UI.fmtMoney(inv.amount))>-1, title:h.indexOf("تابعني للخدمات التعليمية")>-1 };');
+  ok(inv && inv.num && inv.stamp && inv.logo && inv.time && inv.total && inv.title,
+    'الفاتورة الإلكترونية: رقم + ختم تابعني + الشعار + الترويسة + التاريخ/الوقت + المبلغ',
+    inv ? JSON.stringify({ no: inv.no, ok: [inv.num, inv.stamp, inv.logo, inv.time, inv.total] }) : 'لا فاتورة');
+
+  /* تقرير مالي بست فترات */
+  const periods = await page.eval('return Store.financeAllPeriods().map(function(p){return p.period.name;});');
+  ok(periods.length === 6, 'التقارير المالية: يومي · أسبوعي · شهري · ربع سنوي · نصف سنوي · سنوي', periods.join(' · '));
+  const doc = await page.eval('var h=UI.platformDoc({title:"تقرير",sections:[{heading:"م",table:{cols:["أ","ب"],rows:[["1","2"]]}}],signatures:["المحاسب المالي للمنصة","المشرف العام"]});' +
+    'return { len:h.length, stamp:h.indexOf("textPath")>-1, sig:h.indexOf("المشرف العام")>-1, logo:h.indexOf("logo-mark")>-1 };');
+  ok(doc.len > 2000 && doc.stamp && doc.sig && doc.logo, 'وثيقة التقرير المالي بترويسة المنصة والختم والتوقيعات', JSON.stringify(doc));
+
+  /* مصروف */
+  const e0 = await page.eval('return Store.expenses().length;');
+  const e1 = await page.eval('return Store.addExpense({title:"صيانة اختبار",category:"maintenance",amount:150}).ok;');
+  const e2 = await page.eval('return Store.expenses().length;');
+  ok(e1 && e2 === e0 + 1, 'تسجيل مصروف (صيانة/سيرفرات/تشغيل/دومين)', e0 + ' → ' + e2);
+
+  /* دورة كاملة: سند تحويل ← اعتماد ← تفعيل آلي + فاتورة */
+  const sch = await page.eval('var s=Store.list("schools")[0]; return { id:s.id, name:s.name };');
+  const jpeg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwcJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDc0NDH/wAALCAABAAEBAREA/8QAFAABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJQA/9k=';
+  const req = await page.eval('return Store.createPaymentRequest({ schoolId:' + JSON.stringify(sch.id) + ', kind:"annual", plan:"pro", years:1, transferRef:"TR-9090", receipt:' + JSON.stringify(jpeg) + ' }).ok;');
+  ok(req, 'المدرسة ترفع سند التحويل وطلب التفعيل');
+  const pend = await page.eval('return Store.paymentRequests({status:"pending"}).length;');
+  ok(pend === 1, 'الطلب يظهر بانتظار الاعتماد', String(pend));
+  await loginAsRaw(page, base, sup.u, sup.p);
+  await page.eval('App.go("finance"); return true;');
+  await B.sleep(700);
+  ok(await page.eval(clickText('#view button', 'اعتماد وتفعيل')), 'المشرف العام: زر «اعتماد وتفعيل» لواجهة السند');
+  await B.sleep(500);
+  await page.eval(clickLast('اعتماد وتفعيل'));
+  await B.sleep(1300);
+  const done = await page.eval('var inv=Store.invoices()[0]; var lic=Store.licenseState(' + JSON.stringify(sch.id) + '); var r=Store.paymentRequests()[0];' +
+    'return { invNo:inv.no, amount:inv.amount, plan:inv.plan, status:r.status, linked:!!r.invoiceId, receipt:!!inv.receipt, days:lic.daysLeft, blocked:lic.blocked, audit:(Store.db.audit||[])[0].action };');
+  ok(done.amount === 1500 && done.plan === 'pro', 'الاعتماد أصدر فاتورة اشتراك برو 1500 ر.س', JSON.stringify({ no: done.invNo, amount: done.amount }));
+  ok(done.days > 300, 'تفعيل الباقة آليًا بعد الاعتماد', done.days + ' يومًا');
+  ok(done.status === 'approved' && done.linked && done.receipt, 'الطلب مُعتمد والفاتورة مرتبطة به ومعها صورة السند');
+  ok(done.audit === 'payment_approved', 'الاعتماد مُقيَّد في سجل التدقيق', done.audit);
+
+  /* بوت الدعم: شفت + لهجة سعودية + صورة + تذكرة */
+  const agent = await page.eval('return { name:Store.agentNow().name, shift:Store.agentNow().shift, agents:Store.AGENTS.length };');
+  ok(agent.agents === 2 && agent.shift.indexOf('الشفت') > -1, 'شفتان: فارس الحربي (٨ص–٨م) وهند المطيري (٨م–٨ص)', agent.name + ' · ' + agent.shift);
+  const bot = await page.eval('var r=Store.botReply("ما أقدر أسكّر التحضير"); return { agent:r.agent.name, cat:r.category, saudi:r.text.indexOf("أبشر")>-1 || r.text.indexOf("هلا")>-1 || r.text.indexOf("يمديك")>-1, subj:r.subject };');
+  ok(bot.cat === 'attendance' && bot.saudi, 'البوت يفهم الاستفسار ويرد بلهجة سعودية', bot.agent + ' · ' + bot.cat);
+  const botImg = await page.eval('var r=Store.botReply("", { image:true, imageMeta:{w:800,h:600,kb:90,type:"JPEG"} }); return { offer:r.offerTicket, text:r.text.indexOf("الصورة")>-1 };');
+  ok(botImg.offer && botImg.text, 'البوت يستقبل صورة المشكلة ويفرزها ويفتح تذكرة');
+  const tkt = await page.eval('var r=Store.openTicket({subject:"اختبار فحص",category:"attendance",byName:"مراجع آلي",byRole:"principal"});' +
+    'return { no:r.ticket.no, status:r.ticket.status, assignee:r.ticket.assignee, notif:(Store.db.notif||[]).filter(function(n){return n.kind==="support";}).length };');
+  ok(tkt.no && tkt.assignee === 'support' && tkt.notif > 0, 'التذكرة تُفتح وتوصل «قسم الدعم» و«المشرف العام»', JSON.stringify(tkt));
+  if (supAg) {
+    await loginAsRaw(page, base, supAg.u, supAg.p);
+    const sNav = await page.eval('return Array.prototype.map.call(document.querySelectorAll(".side-nav a[data-mod]"),function(a){return a.getAttribute("data-mod");});');
+    ok(sNav.indexOf('support') > -1, 'موظف الدعم الفني يرى وحدة التذاكر', sNav.join(','));
+    await page.eval('App.go("support"); return true;');
+    await B.sleep(800);
+    const queue = await page.eval('var t=document.querySelector("#view").innerText; return { stats:t.indexOf("تذاكر جديدة")>-1, queue:t.indexOf("تذاكر الدعم")>-1 };');
+    ok(queue.stats && queue.queue, 'وحدة الدعم: إحصاء التذاكر وقائمة المتابعة', JSON.stringify(queue));
+    await page.eval(clickText('#view button', 'فتح'));
+    await B.sleep(700);
+    await page.eval('var ta=document.querySelector("#view textarea"); if(ta) ta.value="تم، شفنا المشكلة وبنتابعها معاك."; return true;');
+    await page.eval(clickText('#view button', 'إرسال الرد'));
+    await B.sleep(900);
+    const rep2 = await page.eval('var t=Store.tickets()[0]; return { last:t.messages[t.messages.length-1].from, status:t.status };');
+    ok(rep2.last === 'agent' && rep2.status === 'progress', 'ردّ الدعم يُسجَّل والتذكرة تصير قيد المعالجة', JSON.stringify(rep2));
+  }
+
+  /* واجهة زر الدعم العائم: الصورة يسار الاسم */
+  await loginAsRaw(page, base, prin.u, prin.p);
+  ok(await page.eval('return !!document.getElementById("support-fab");'), 'زر «الدعم الفني» العائم يظهر لكل الأدوار');
+  await page.eval('App.openSupport(); return true;');
+  await B.sleep(700);
+  const wid = await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1];' +
+    'var img=m.querySelector("img"); var nm=Array.prototype.filter.call(m.querySelectorAll("div"),function(d){return d.textContent.trim()===Store.agentNow().name;})[0];' +
+    'if(!img||!nm) return null; var a=img.getBoundingClientRect(), b=nm.getBoundingClientRect();' +
+    'return { greet:m.innerText.indexOf("هلا والله")>-1, shift:m.innerText.indexOf("الشفت")>-1, avatarLeft:a.left<b.left };');
+  ok(wid && wid.greet && wid.shift, 'نافذة الدعم: ترحيب بلهجة سعودية وبيان الشفت', JSON.stringify(wid));
+  ok(wid && wid.avatarLeft, 'صورة الموظف على يسار اسمه', wid ? String(wid.avatarLeft) : '—');
+  await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; m.querySelector("textarea").value="وش نظام الاشتراك والفاتورة؟"; return true;');
+  await page.eval(clickLast('إرسال'));
+  await B.sleep(1500);
+  const chat = await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; return m.innerText.indexOf("تحويل بنكي")>-1 || m.innerText.indexOf("فاتورة إلكترونية")>-1;');
+  ok(chat, 'البوت يشرح نظام السداد والفاتورة بلهجة سعودية');
+  await page.eval('Array.prototype.forEach.call(document.querySelectorAll(".modal-backdrop"),function(b){b.remove();}); return true;');
+
+  /* لقطة مالية أخيرة: التحصيل المتوقّع والمصروفات في الملخّص */
+  const sum = await page.eval('var s=Store.financeSummary("annual"); return { rev:s.revenue, exp:s.expensesTotal, net:s.net, expected:s.annualExpected };');
+  ok(sum.expected >= 1500 && sum.exp > 0, 'الملخّص المالي: إيرادات ومصروفات وصافي والتحصيل المتوقّع', JSON.stringify(sum));
   return res;
 }
 

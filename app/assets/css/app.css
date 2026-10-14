@@ -462,3 +462,16 @@
 .plan-card ul { margin: 10px 0 0; padding-inline-start: 18px; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.9; }
 .plan-hint { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--text-muted);
              background: var(--amber-50); border: 1px solid #EBD3A8; border-radius: var(--r-md); padding: 8px 11px; }
+
+/* زر الدعم الفني العائم (شفتان: فارس الحربي · هند المطيري) */
+.support-fab {
+  position: fixed; left: 18px; bottom: 18px; z-index: 70;
+  display: flex; align-items: center; gap: 9px; direction: rtl;
+  background: var(--card); border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 6px 14px 6px 8px; cursor: pointer; font: inherit; text-align: right;
+  box-shadow: 0 10px 26px rgba(20, 16, 10, .18);
+}
+.support-fab:hover { border-color: var(--brand-500); transform: translateY(-1px); }
+.support-fab img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--amber-500); background: var(--bg-soft); flex: 0 0 auto; }
+@media (max-width: 620px) { .support-fab span span:last-child { display: none; } }
