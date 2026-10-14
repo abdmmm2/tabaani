@@ -28,7 +28,7 @@ export default {
     const json = (o, status = 200) =>
       new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } });
 
-    if (request.method === 'GET') return json({ ok: true, app: 'tabaani-telegram-relay' });
+    if (request.method === 'GET') return json({ ok: true, app: 'tabaani-telegram-relay', ready: !!env.TELEGRAM_TOKEN });
     if (request.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
 
     let body = {};

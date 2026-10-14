@@ -101,12 +101,25 @@
         var keyF = UI.field({ name: 'relayKey', label: 'المفتاح السري للوسيط', dir: 'ltr', value: cfg.relayKey, half: true,
           help: 'نفس المفتاح المكتوب داخل الوسيط — يمنع أي شخص آخر من استخدامه.' });
         slot.appendChild(h('div', { class: 'form-grid' }, [urlF.wrap, keyF.wrap]));
+        var relayOut = h('div');
         slot.appendChild(h('div', { class: 'panel-actions' }, [
           h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'حفظ بيانات الوسيط', onClick: function () {
             save({ relayUrl: urlF.input.value.trim(), relayKey: keyF.input.value.trim() }, 'حُفظت بيانات الوسيط');
             draw();
+          } }),
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'افحص الوسيط', onClick: function () {
+            S.saveTelegramConfig({ relayUrl: urlF.input.value.trim(), relayKey: keyF.input.value.trim() });
+            clear(relayOut);
+            relayOut.appendChild(h('p', { class: 'muted', text: 'يُفحص…' }));
+            S.telegramRelayCheck().then(function (r) {
+              clear(relayOut);
+              relayOut.appendChild(h('p', { class: 'muted', html: r.ok
+                ? '✅ الوسيط يعمل' + (r.ready ? ' والرمز مضبوط داخله ✓' : ' — <strong>لكن لم يُضبط رمز البوت داخله</strong>') + ' — الآن اضغط «إرسال رسالة تجريبية».'
+                : '⚠️ لا يعمل بعد: ' + (r.error || '') }));
+            });
           } })
         ]));
+        slot.appendChild(relayOut);
       } else if (cfg.mode === 'direct') {
         var tkF = UI.field({ name: 'botToken', label: 'رمز البوت (Bot Token)', type: 'password', dir: 'ltr', value: cfg.botToken, half: true,
           placeholder: '1234567890:AA…', help: 'من @BotFather — يُخزَّن في متصفح هذا الجهاز فقط (الوضع المباشر للتجربة).' });

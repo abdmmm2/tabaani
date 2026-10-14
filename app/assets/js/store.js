@@ -1131,6 +1131,20 @@
         })
         .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
     },
+    /** فحص وسيط: يقرأ ردّ الوسيط للتأكد أنه منشور ويعمل */
+    telegramRelayCheck: function (url) {
+      var c = store.telegramConfig();
+      var target = (url || c.relayUrl || '').trim();
+      if (!target) return Promise.resolve({ ok: false, error: 'لا يوجد رابط وسيط' });
+      return fetch(target + (target.indexOf('?') > -1 ? '&' : '?') + 'key=' + encodeURIComponent(c.relayKey || '') + '&action=ping', { method: 'GET' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          var j = null; try { j = JSON.parse(t); } catch (e) {}
+          if (!j) return { ok: false, error: 'الرد ليس JSON — تأكد أنك نشرت كـ Web app بصلاحية «Anyone»', raw: t.slice(0, 80) };
+          return { ok: !!j.ok, app: j.app || '', ready: !!j.ready, error: j.error || '' };
+        })
+        .catch(function (e) { return { ok: false, error: 'تعذّر الوصول للوسيط: ' + String((e && e.message) || e) }; });
+    },
     telegramTest: function (text) {
       return store.telegramSend(text || 'رسالة تجريبية من منصة تابعني — الإرسال يعمل ✓', null).then(function (r) {
         store.saveTelegramConfig({ lastTest: now(), lastTestOk: r.ok, lastTestMsg: r.detail || '' });
