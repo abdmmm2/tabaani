@@ -94,9 +94,15 @@
                 found.appendChild(h('p', { class: 'muted', html: 'لم يصل البوت لأي محادثة بعد — أضِف البوت إلى مجموعة المدرسة واكتب فيها أي رسالة (مثال: «تجربة») ثم اضغط الزر مرة أخرى.' }));
                 return;
               }
+              var groups = r.chats.filter(function (x) { return x.type === 'group' || x.type === 'supergroup'; });
+              found.appendChild(h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
+                html: groups.length
+                  ? 'اختر <strong>مجموعة المدرسة</strong> لتصلك إشعاراتها في مجموعة القيادة.'
+                  : 'لا توجد مجموعات بعد — الظاهر الآن محادثة فردية (حسابك الشخصي). <strong>للمدرسة: أنشئ مجموعة في تلقرام، أضف @Tabaani_bot فيها واجعله مشرفًا</strong>، ثم اضغط «اجلب المجموعات تلقائيًا» مرة أخرى وستظهر المجموعة هنا.' }));
               r.chats.forEach(function (ch) {
+                var isGroup = ch.type === 'group' || ch.type === 'supergroup';
                 found.appendChild(h('div', { class: 'cluster', style: { marginTop: '6px' } }, [
-                  h('span', { text: (ch.type === 'group' || ch.type === 'supergroup' ? 'مجموعة' : (ch.type === 'channel' ? 'قناة' : 'محادثة فردية')) + ': ' + ch.title }),
+                  h('span', { text: (isGroup ? '👥 مجموعة' : (ch.type === 'channel' ? '📢 قناة' : '👤 محادثة فردية')) + ': ' + ch.title }),
                   h('code', { dir: 'ltr', text: String(ch.id) }),
                   h('button', { class: 'mini-btn is-primary', type: 'button', text: 'استخدم هذا', onClick: function () {
                     chF.input.value = String(ch.id);
