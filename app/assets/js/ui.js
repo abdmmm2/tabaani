@@ -249,8 +249,18 @@
   function greg(d) { try { return GREG.format(toDate(d)); } catch (e) { return ''; } }
   function fmtDate(d) { if (!d) return '—'; return String(d).slice(0, 10); }
   function fmtTime(d) { if (!d) return '—'; var x = new Date(d); return isNaN(x) ? '—' : x.toTimeString().slice(0, 5); }
-  function fmtDateTime(d) { if (!d) return ''; var x = new Date(d); if (isNaN(x)) return String(d); return fmtDate(x) + ' · ' + fmtTime(x); }
-  function dateLabel(d) { return greg(d) + ' — ' + hijri(d) + ' هـ'; }
+  function fmtDateTime(d) {
+    if (!d) return '';
+    var x = (d instanceof Date) ? d : new Date(d);
+    if (isNaN(x)) return String(d);
+    var p2 = function (n) { return String(n).padStart(2, '0'); };
+    return x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate()) + ' · ' + p2(x.getHours()) + ':' + p2(x.getMinutes());
+  }
+  /** تاريخ ميلادي + هجري — بلا تكرار «هـ» (صيغة التقويم الهجري تُضمّنها أصلًا) */
+  function dateLabel(d) {
+    var hj = String(hijri(d) || '').trim().replace(/\s*هـ\s*$/, '');
+    return hj ? (greg(d) + ' — ' + hj + ' هـ') : greg(d);
+  }
   function today() { return new Date().toISOString().slice(0, 10); }
 
   /* ---------------------------------------------------------------- الباركود */

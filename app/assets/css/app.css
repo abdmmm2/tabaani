@@ -308,6 +308,8 @@
 .promo-steps { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; font-size: var(--fs-sm); }
 .promo-steps code { background: var(--brand-50); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; direction: ltr; display: inline-block; }
 .callout { margin-top: 12px; padding: 10px 12px; border-inline-start: 4px solid var(--brand-500); background: var(--brand-50); border-radius: var(--r-sm); font-size: var(--fs-sm); }
+/* جديد/غير مقروء: رسالة خاصة أو إذن دخول لم يُفتح بعد */
+.callout.is-new { border-inline-start-color: var(--amber-500); background: var(--amber-50); box-shadow: inset 0 0 0 1px rgba(201,127,44,.18); }
 .promo-code { margin-top: 12px; }
 .promo-code summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); }
 .promo-code pre { max-height: 280px; overflow: auto; background: #14100A; color: #EBCB74; padding: 12px; border-radius: var(--r-sm); font-size: 11px; direction: ltr; text-align: left; }

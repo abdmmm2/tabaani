@@ -110,6 +110,7 @@
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
       reports: [], telegram: [], audit: [], notif: [], exits: [],
+      entryPermits: [], messages: [],
       educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
@@ -491,6 +492,7 @@
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
       faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
+      entryPermits: [], messages: [],
       letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
         mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
     };
@@ -500,7 +502,7 @@
   var COLLECTIONS = ['users', 'schools', 'classes', 'students', 'assignments', 'transfers', 'periods',
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
-    'audit', 'notif', 'subjects', 'exits'];
+    'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -557,7 +559,8 @@
     ['schools', 'classes', 'students', 'assignments', 'transfers', 'periods', 'sessions',
      'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
      'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans',
-     'reports', 'telegram', 'audit', 'notif', 'subjects', 'exits'].forEach(function (k) { d[k] = []; });
+     'reports', 'telegram', 'audit', 'notif', 'subjects', 'exits', 'entryPermits',
+     'messages'].forEach(function (k) { d[k] = []; });
     d.users = supers;
     d.letterhead = null;
     d.settings = Object.assign({}, d.settings, { deprivationBySubject: {}, activeTermId: null });
@@ -1074,12 +1077,66 @@
       if (!db.notif) db.notif = [];
       db.notif.push(n); save(); return n;
     },
+    /** صندوق الإشعارات: إشعارات الأدوار + الإشعارات الموجَّهة إليّ بالاسم (الرسائل الخاصة) */
     inbox: function (roles) {
       var rs = [].concat(roles || [store.session.role]);
-      return (store.db.notif || []).filter(function (n) { return !n.to || n.to.some(function (r) { return rs.indexOf(r) > -1; }); })
-        .sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
+      var me = store.session.userId;
+      return (store.db.notif || []).filter(function (n) {
+        /* إشعار موجَّه لمستخدم بعينه: لا يراه غيره أبدًا */
+        if (n.toUsers && n.toUsers.length) return n.toUsers.indexOf(me) > -1;
+        return !n.to || n.to.some(function (r) { return rs.indexOf(r) > -1; });
+      }).sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
     },
-    markRead: function () { (store.db.notif || []).forEach(function (n) { n.read = true; }); save(); },
+    /** يعلّم المقروء ما يخصّني فقط (لا يمسّ إشعارات الآخرين) */
+    markRead: function () {
+      var me = store.session.userId, role = store.session.role;
+      (store.db.notif || []).forEach(function (n) {
+        if (n.toUsers && n.toUsers.length) { if (n.toUsers.indexOf(me) > -1) n.read = true; return; }
+        if (!n.to || n.to.indexOf(role) > -1) n.read = true;
+      });
+      save();
+    },
+
+    /* ------------------------------------- الرسائل الخاصة (من مستخدم إلى مستخدم) */
+    sendMessage: function (data) {
+      var d = data || {};
+      var to = store.user(d.toUserId);
+      if (!to) return null;
+      var m = store.insert('messages', {
+        id: uid('ms'), schoolId: store.session.schoolId,
+        toUserId: to.id, toName: to.name, toRole: to.role,
+        fromUserId: store.session.userId, fromName: store.session.name, fromRole: store.session.role,
+        subject: d.subject || '', body: d.body || '', kind: d.kind || 'note',
+        refType: d.refType || '', refId: d.refId || '', at: now(), read: false
+      });
+      store.notify({
+        kind: d.kind || 'message', ref: m.refId || m.id,
+        title: d.subject || 'رسالة خاصة جديدة',
+        body: (d.body || '').slice(0, 140),
+        toUsers: [to.id]
+      });
+      return m;
+    },
+    messagesFor: function (userId) {
+      var id = userId || store.session.userId;
+      return store.list('messages', { toUserId: id }).sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
+    },
+    sentMessages: function (userId) {
+      var id = userId || store.session.userId;
+      return store.list('messages', { fromUserId: id }).sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
+    },
+    unreadMessages: function (userId) {
+      return store.messagesFor(userId).filter(function (m) { return !m.read; }).length;
+    },
+    readMessage: function (messageId) {
+      var m = store.find('messages', messageId);
+      if (m && !m.read) { m.read = true; m.readAt = now(); save(); }
+      return m;
+    },
+    readAllMessages: function (userId) {
+      store.messagesFor(userId).forEach(function (m) { if (!m.read) { m.read = true; m.readAt = now(); } });
+      save();
+    },
 
     /* -------------------------------- تلقرام: الإعدادات والإرسال الفعلي ---------------- */
     /* أوضاع الإرسال: sim (محاكاة) · relay (وسيط يخفي التوكن — موصى به) · direct (توكن في المتصفح — تجريبي) */
@@ -1196,10 +1253,12 @@
       var ready = store.telegramReady();
       function cfgMode() { return store.telegramConfig().mode; }
       [].concat(messages).forEach(function (m) {
-        var chat = store.usersByRole(m.to)[0] || store.usersByRole(m.to, null)[0];
+        /* موجَّه لمستخدم بعينه (معلم محدد) وإلا فأول صاحب الدور */
+        var chat = m.toUserId ? store.user(m.toUserId) : null;
+        if (!chat) chat = store.usersByRole(m.to)[0] || store.usersByRole(m.to, null)[0];
         if (!chat) chat = store.list('users').find(function (u) { return u.role === m.to; });
         var rec = {
-          id: uid('tg'), to: m.to, toName: chat ? chat.name : m.to, chat: chat ? chat.telegram : '',
+          id: uid('tg'), to: (chat && chat.role) || m.to, toName: chat ? chat.name : m.to, chat: chat ? chat.telegram : '',
           schoolId: (chat && chat.schoolId) || store.session.schoolId,
           text: m.text, at: now(), status: ready ? 'sending' : 'queued', via: ready ? store.telegramConfig().mode : 'queued'
         };
@@ -1288,6 +1347,122 @@
       ]);
       store.notify({ kind: 'permission', ref: p.id, title: 'مُنح الاستئذان ' + p.number, body: 'تصريح خروج: ' + p.exitNo, to: ['guidance', 'teacher'] });
       return p;
+    },
+
+    /* =======================================================================
+       إذن دخول الفصل (الطالب المتأخر)
+       يصدره وكيل شؤون الطلاب أو التوجيه والإرشاد لمعلم الحصة، ويصل بثلاث طرق:
+       ورقي (مطبوع بترويسة المدرسة وباركود) · رسالة تلقرام · رسالة خاصة في المنصة.
+       الحقل الإلزامي فيه: سبب تأخّر الطالب.
+       ======================================================================= */
+    entryPermitNumber: function () {
+      var seq = store.list('entryPermits').length + 1;
+      return 'EN-' + new Date().getFullYear() + '-' + String(seq).padStart(4, '0');
+    },
+    entryPermits: function (f) {
+      f = f || {};
+      return store.list('entryPermits').filter(function (x) {
+        if (f.schoolId && x.schoolId !== f.schoolId) return false;
+        if (f.teacherId && x.teacherId !== f.teacherId) return false;
+        if (f.studentId && x.studentId !== f.studentId) return false;
+        if (f.date && x.date !== f.date) return false;
+        if (f.issuedBy && x.issuedBy !== f.issuedBy) return false;
+        return true;
+      }).sort(function (a, b) { return (b.issuedAt || '').localeCompare(a.issuedAt || ''); });
+    },
+    findEntryPermit: function (id) { return store.find('entryPermits', id); },
+    entryPermitsToday: function () { return store.entryPermits({ date: new Date().toISOString().slice(0, 10) }); },
+    /** حالة الإذن: أُصدر · اطّلع عليه المعلم · أقرّ باستلامه */
+    entryPermitState: function (x) {
+      if (!x) return { id: 'unknown', label: '—', tone: 'plain' };
+      if (x.ack) return { id: 'ack', label: 'أقرّ المعلم بالاستلام', tone: 'mint', at: x.ack.at, by: x.ack.by };
+      if (x.seen) return { id: 'seen', label: 'اطّلع عليه المعلم', tone: 'gold', at: x.seen.at };
+      return { id: 'issued', label: 'لم يطّلع عليه بعد', tone: 'amber' };
+    },
+    /** يُصدر الإذن ويسلّمه للمعلم (رسالة خاصة + إشعار + تلقرام) */
+    createEntryPermit: function (data) {
+      var d = data || {};
+      var st = store.student(d.studentId);
+      var teacher = store.user(d.teacherId);
+      if (!st) return { ok: false, error: 'اختر الطالب أولًا' };
+      if (!teacher) return { ok: false, error: 'اختر المعلم المستلم للإذن' };
+      if (!String(d.reason || '').trim()) return { ok: false, error: 'سبب تأخّر الطالب إلزامي' };
+      var cls = store.klass(d.classId || st.classId) || {};
+      var prd = store.period(d.periodId) || null;
+      var at = new Date();
+      var x = store.insert('entryPermits', {
+        id: uid('en'), schoolId: store.session.schoolId, kind: 'class_entry',
+        number: store.entryPermitNumber(), status: 'issued',
+        studentId: st.id, studentName: st.name, classId: cls.id || '', className: cls.name || '',
+        subject: String(d.subject || '').trim(),
+        periodId: prd ? prd.id : '', periodLabel: prd ? prd.label : '',
+        teacherId: teacher.id, teacherName: teacher.name,
+        date: d.date || at.toISOString().slice(0, 10),
+        arrivalTime: d.arrivalTime || at.toTimeString().slice(0, 5),
+        lateMinutes: d.lateMinutes == null || d.lateMinutes === '' ? null : Number(d.lateMinutes),
+        reason: String(d.reason).trim(),
+        note: String(d.note || '').trim(),
+        issuedBy: store.session.userId, issuedByName: store.session.name, issuedByRole: store.session.role,
+        issuedAt: at.toISOString(), seen: null, ack: null, printed: null
+      });
+
+      /* ١) رسالة خاصة في المنصة للمعلم (+ إشعار باسمه) */
+      var lines = [
+        'الطالب: ' + st.name + (cls.name ? ' — ' + cls.name : ''),
+        x.subject ? 'المادة: ' + x.subject : '',
+        x.periodLabel ? 'الحصة: ' + x.periodLabel : '',
+        'وقت الوصول: ' + x.arrivalTime + (x.lateMinutes ? ' (تأخّر ' + x.lateMinutes + ' دقيقة)' : ''),
+        'سبب التأخّر: ' + x.reason,
+        x.note ? 'ملاحظة: ' + x.note : '',
+        'رقم الإذن: ' + x.number + ' · صادر من ' + x.issuedByName + ' (' + store.roleLabel(x.issuedByRole) + ')'
+      ].filter(Boolean);
+      store.sendMessage({
+        toUserId: teacher.id, kind: 'entry-permit', refType: 'entryPermit', refId: x.id,
+        subject: 'إذن دخول فصل — ' + st.name + ' · ' + x.number,
+        body: lines.join('\n')
+      });
+
+      /* ٢) تلقرام */
+      store.tg({
+        to: 'teacher', toUserId: teacher.id,
+        text: '\uD83D\uDD13 إذن دخول فصل ' + store.safe(x.number) +
+          '\nالطالب: ' + store.safe(st.name) + (cls.name ? ' (' + store.safe(cls.name) + ')' : '') +
+          '\nالمعلم: ' + store.safe(teacher.name) +
+          (x.periodLabel ? '\nالحصة: ' + store.safe(x.periodLabel) : '') +
+          '\nوقت الوصول: ' + store.safe(x.arrivalTime) +
+          '\nسبب التأخّر: ' + store.safe(x.reason) +
+          '\nصادر من: ' + store.safe(x.issuedByName) + ' (' + store.roleLabel(x.issuedByRole) + ')'
+      });
+
+      /* ٣) أثر في سجل التدقيق */
+      (db.audit = db.audit || []).unshift({
+        id: uid('au'), at: x.issuedAt, action: 'entry_permit_issued', by: x.issuedByName,
+        text: 'إذن دخول ' + x.number + ' — ' + x.studentName + ' ← ' + x.teacherName + ' · السبب: ' + x.reason
+      });
+      save();
+      return { ok: true, permit: x };
+    },
+    /** يُسجّل اطّلاع المعلم على الإذن (يُستدعى عند فتح الوحدة) */
+    seenEntryPermit: function (id) {
+      var x = store.find('entryPermits', id); if (!x || x.seen) return x;
+      x.seen = { at: now(), by: store.session.name }; save(); return x;
+    },
+    /** إقرار المعلم باستلام الطالب في الحصة */
+    ackEntryPermit: function (id) {
+      var x = store.find('entryPermits', id); if (!x) return null;
+      x.ack = { at: now(), by: store.session.name, userId: store.session.userId };
+      if (!x.seen) x.seen = { at: x.ack.at, by: store.session.name };
+      save();
+      store.notify({
+        kind: 'entry-permit', ref: x.id, toUsers: [x.issuedBy],
+        title: 'إقرار استلام: ' + x.studentName,
+        body: 'أقرّ ' + store.session.name + ' باستلام الطالب في الحصة — ' + x.number
+      });
+      store.tg({
+        to: x.issuedByRole,
+        text: '\u2705 إقرار استلام — ' + store.safe(x.studentName) + '\nأقرّ ' + store.safe(store.session.name) + ' بدخوله الحصة (' + store.safe(x.number) + ')'
+      });
+      return x;
     },
 
     /* ------------------------------------------------- الطلاب: الإسكان والنقل */

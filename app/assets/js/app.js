@@ -36,6 +36,12 @@
       if (id === 'volunteer' && role === 'volunteer') {
         n = S.list('programRegs').filter(function (r) { return r.status === 'pending'; }).length;
       }
+      /* إذن دخول الفصل: للمعلم عدد الأذون التي لم يُقرّ باستلامها */
+      if (id === 'entry-permit' && role === 'teacher') {
+        n = S.entryPermits({ teacherId: S.session.userId }).filter(function (x) { return !x.ack; }).length;
+      }
+      /* الرسائل الخاصة: عدد غير المقروء */
+      if (id === 'messages') n = S.unreadMessages(S.session.userId);
       return n;
     },
     refreshBadges: function () {
