@@ -330,14 +330,9 @@
         '<div class="lh-row">' +
           /* المنتصف: شعار وزارة التعليم */
           '<div class="lh-center">' + (ministryLogo ? '<img class="lh-logo-m" src="' + ministryLogo + '" alt="شعار وزارة التعليم">' : '') + '</div>' +
-          /* يسار الصفحة: شعار المدرسة (إن وُجد) وتحته تاريخ الإصدار والباركود */
+          /* يسار الصفحة: شعار المدرسة فقط (التاريخ والباركود في أسفل التقرير) */
           '<div class="lh-side">' +
             (schoolLogo ? '<img class="lh-logo-s" src="' + schoolLogo + '" alt="شعار المدرسة">' : '') +
-            '<div class="lh-issue">' +
-              '<span>تاريخ الإصدار: <strong>' + dateLabel(d) + '</strong></span>' +
-              (report.code ? '<span class="lh-code">رقم التقرير: <code>' + report.code + '</code></span>' : '') +
-              (report.code ? '<div class="lh-qr">' + qrSvg(report.code, 2, 0) + '</div>' : '') +
-            '</div>' +
           '</div>' +
         '</div>' +
         (report.title ? '<h1 class="lh-title">' + report.title + '</h1>' : '') +
@@ -352,6 +347,55 @@
       '</tr></thead><tbody>' + (rows.length ? rows.map(function (r) {
         return '<tr>' + r.map(function (c) { return '<td>' + (c == null ? '—' : String(c)) + '</td>'; }).join('') + '</tr>';
       }).join('') : '<tr><td colspan="' + cols.length + '" class="rp-empty">لا توجد بيانات</td></tr>') + '</tbody></table>';
+  }
+
+
+  /* ==========================================================================
+     باركود خطي Code 39 (قابل للمسح بأي قارئ باركود) — يرسم كخطوط عمودية SVG
+     ========================================================================== */
+  var CODE39 = {
+    '0':'000110100','1':'100100001','2':'001100001','3':'101100000','4':'000110001',
+    '5':'100110000','6':'001110000','7':'000100101','8':'100100100','9':'001100100',
+    'A':'100001001','B':'001001001','C':'101001000','D':'000011001','E':'100011000',
+    'F':'001011000','G':'000001101','H':'100001100','I':'001001100','J':'000011100',
+    'K':'100000011','L':'001000011','M':'101000010','N':'000010011','O':'100010010',
+    'P':'001010010','Q':'000000111','R':'100000110','S':'001000110','T':'000010110',
+    'U':'110000001','V':'011000001','W':'111000000','X':'010010001','Y':'110010000',
+    'Z':'011010000','-':'010000101','.':'110000100',' ':'011000100',
+    '$':'010101000','/':'010100010','+':'010001010','%':'000101010','*':'010010100'
+  };
+
+  /** يبني SVG لباركود Code 39 — الخيارات: {height, module, showText, color} */
+  function barcodeSvg(code, opts) {
+    opts = opts || {};
+    var txt = String(code || '').toUpperCase().replace(/[^0-9A-Z\-. $/+%]/g, '-');
+    if (!txt) txt = 'TABANI';
+    var data = '*' + txt + '*';
+    var module = opts.module || 2;
+    var height = opts.height || 46;
+    var narrow = module, wide = module * 3;   /* نسبة 3:1 = أوضح للمسح */
+    var quiet = module * 10;                  /* هامش صامت إلزامي */
+    var x = quiet, rects = '';
+    for (var i = 0; i < data.length; i++) {
+      var pat = CODE39[data.charAt(i)] || CODE39['-'];
+      for (var k = 0; k < 9; k++) {
+        var w = (pat.charAt(k) === '1') ? wide : narrow;
+        if (k % 2 === 0) rects += '<rect x="' + x + '" y="0" width="' + w + '" height="' + height + '" fill="' + (opts.color || '#14100A') + '"/>';
+        x += w;
+      }
+      x += narrow;                             /* مسافة بين الحروف */
+    }
+    var total = x + quiet;
+    var textH = opts.showText === false ? 0 : 14;
+    var text = textH ? '<text x="' + (total / 2) + '" y="' + (height + 12) + '" text-anchor="middle" ' +
+      'font-family="ui-monospace,monospace" font-size="11" fill="#4A4032" letter-spacing="1">' + txt + '</text>' : '';
+    return '<svg class="barcode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + (height + textH) + '" ' +
+      'preserveAspectRatio="xMidYMid meet" role="img" aria-label="باركود التقرير ' + txt + '">' + rects + text + '</svg>';
+  }
+
+  /** إطار باركود للعرض داخل الصفحة */
+  function barcodeBox(code, opts) {
+    return h('div', { class: 'barcode-box', html: barcodeSvg(code, opts) });
   }
 
   var PRINT_CSS = '' +
@@ -396,6 +440,11 @@
     '.rp-foot-line span strong{color:#8A5A1E}' +
     '.signs{display:flex;gap:34px;font-size:10.5px;justify-content:flex-start;margin-top:6px}' +
     '.signs div{border-top:1px solid #B4A996;padding-top:4px;min-width:140px;text-align:center}' +
+    '.barcode{display:block;height:54px;width:auto}' +
+    '.barcode-box{background:#fff;border:1px solid #D9D1C2;border-radius:6px;padding:6px 8px;display:inline-block}' +
+    '.rp-foot-top{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}' +
+    '.rp-foot-bc{text-align:left}' +
+    '.rp-foot-bc .barcode{height:52px}' +
     '.rp-note{font-size:9px;color:#5A5044;margin-top:10px;line-height:1.6;border-top:1px dashed #D9D1C2;padding-top:6px}' +
     '.rp-page{font-size:9px;color:#6B6152;text-align:center;margin-top:6px}' +
     '@media print{.no-print{display:none}}';
@@ -427,16 +476,21 @@
       (meta ? '<div class="rp-meta">' + meta + '</div>' : '') +
       sections +
       '<div class="rp-foot">' +
-        '<div class="rp-foot-line">' +
-          '<span>معد التقرير: <strong>' + (report.by || (global.Store && global.Store.session.name) || '') + '</strong></span>' +
-          '<span>التاريخ: <strong>' + dateLabel(new Date()) + '</strong></span>' +
-          '<span>الوقت: <strong>' + fmtTime(new Date()) + '</strong></span>' +
+        '<div class="rp-foot-top">' +
+          '<div class="rp-foot-line">' +
+            '<span>معد التقرير: <strong>' + (report.by || (global.Store && global.Store.session.name) || '') + '</strong></span>' +
+            '<span>التاريخ: <strong>' + dateLabel(new Date()) + '</strong></span>' +
+            '<span>الوقت: <strong>' + fmtTime(new Date()) + '</strong></span>' +
+          '</div>' +
+          /* الباركود الخطي: أسفل يسار الصفحة */
+          (report.code ? '<div class="rp-foot-bc">' + barcodeSvg(report.code, { height: 44, module: 2 }) +
+            '<div class="lh-code" style="margin-top:3px">رقم التقرير: <code>' + report.code + '</code></div></div>' : '') +
         '</div>' +
         '<div class="signs">' + signs + '</div>' +
-        (lh.footerNote || report.qrNote
-          ? '<div class="rp-note">' + (report.qrNote || lh.footerNote) + '</div>' : '') +
+        '<div class="rp-note">هذا التقرير مُعدّ من منصة تابعني' + (lh.footerNote ? ' — ' + lh.footerNote : '') +
+          (report.qrNote && report.qrNote !== lh.footerNote ? ' — ' + report.qrNote : '') + '</div>' +
       '</div>' +
-      '<div class="rp-page">منصة تابعني للخدمات التعليمية — ' + (report.code || '') + ' — طُبع: ' + dateLabel(new Date()) + ' ' + fmtTime(new Date()) + '</div>' +
+      '<div class="rp-page">منصة تابعني للخدمات التعليمية' + (report.code ? ' — ' + report.code : '') + '</div>' +
       '</body></html>';
 
     var frame = document.getElementById('print-frame');
@@ -618,7 +672,7 @@
     chart: chart, chartSvg: chartSvg, legend: legend, progressBar: progressBar, palette: PALETTE,
     hijri: hijri, greg: greg, fmtDate: fmtDate, fmtTime: fmtTime, fmtDateTime: fmtDateTime,
     dateLabel: dateLabel, today: today,
-    qrSvg: qrSvg, qrBox: qrBox,
+    qrSvg: qrSvg, qrBox: qrBox, barcodeSvg: barcodeSvg, barcodeBox: barcodeBox,
     readExcel: readExcel, downloadCsv: downloadCsv, downloadText: downloadText,
     printReport: printReport, reportButton: reportButton,
     setupTelegram: setupTelegram, renderTelegram: renderTelegram

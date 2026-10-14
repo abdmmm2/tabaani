@@ -109,7 +109,7 @@
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
       reports: [], telegram: [], audit: [], notif: [],
-      educationDepts: [], letterhead: null,
+      educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
         ads: [{ id: 'ad-1', title: 'مجانًا ولفترة محدودة', image: 'assets/img/promo-offer.jpg', webp: 'assets/img/promo-offer.webp', link: '', active: true }]
@@ -578,7 +578,49 @@
     regions: REGIONS, stages: STAGES, roles: ROLES, grades: GRADES,
     citiesOf: function (regionId) { var r = REGIONS.find(function (x) { return x.id === regionId; }); return r ? r.cities : []; },
     subjectsFor: function (stages) {
-      return (stages || []).reduce(function (acc, s) { return acc.concat(SUBJECTS[s] || []); }, []);
+      var base = (stages || []).reduce(function (acc, s) { return acc.concat(SUBJECTS[s] || []); }, []);
+      var custom = (stages || []).reduce(function (acc, s) {
+        return acc.concat((store.db.subjects || []).filter(function (x) { return x.stage === s; }).map(function (x) { return x.name; }));
+      }, []);
+      var out = [];
+      base.concat(custom).forEach(function (n) { if (n && out.indexOf(n) < 0) out.push(n); });
+      return out;
+    },
+    /* ------------------------- المواد الدراسية (يضيفها مدير المدرسة) ------------------------- */
+    stageNames: { kg: 'رياض الأطفال', primary: 'المرحلة الابتدائية', middle: 'المرحلة المتوسطة', secondary: 'المرحلة الثانوية' },
+    stageName: function (st) { return store.stageNames[st] || st || ''; },
+    defaultSubjects: function (stage) { return (SUBJECTS[stage] || []).slice(); },
+    customSubjects: function (stage) {
+      return (store.db.subjects || []).filter(function (x) { return !stage || x.stage === stage; });
+    },
+    addSubject: function (data) {
+      var d = data || {};
+      var name = String(d.name || '').trim();
+      var stages = [].concat(d.stages || d.stage || []).filter(Boolean);
+      if (!name) return { ok: false, error: 'اكتب اسم المادة' };
+      if (!stages.length) return { ok: false, error: 'اختر المرحلة' };
+      var school = store.school();
+      var had = [];
+      stages.forEach(function (st) {
+        var exists = store.defaultSubjects(st).indexOf(name) >= 0 ||
+          (store.db.subjects || []).some(function (x) { return x.stage === st && x.name === name; });
+        if (exists) { had.push(store.stageName(st)); return; }
+        store.db.subjects.push({
+          id: 'sub-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4),
+          schoolId: school ? school.id : null, stage: st, name: name, custom: true, createdAt: now()
+        });
+      });
+      if (had.length === stages.length) return { ok: false, error: 'المادة موجودة مسبقًا في: ' + had.join('، ') };
+      save();
+      store.notify({ kind: 'subjects', title: 'إضافة مادة دراسية', body: name, to: ['deputy', 'principal'] });
+      return { ok: true, added: stages.length - had.length, skipped: had };
+    },
+    removeSubject: function (id) {
+      var before = (store.db.subjects || []).length;
+      store.db.subjects = (store.db.subjects || []).filter(function (x) { return x.id !== id; });
+      if (store.db.subjects.length === before) return { ok: false, error: 'المادة غير موجودة' };
+      save();
+      return { ok: true };
     },
     stagesOf: function (schoolId) { var s = store.school(schoolId); return (s && s.stages) || []; },
     stageName: function (id) { var s = STAGES.find(function (x) { return x.id === id; }); return s ? s.name : id; },
