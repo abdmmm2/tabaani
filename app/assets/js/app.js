@@ -299,6 +299,8 @@
       var name = 'تابعني-نسخة-' + d.toISOString().slice(0, 10) + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
       UI.downloadText(S.backupJson(), name, 'application/json');
       S.markBackup();
+      var banner = document.querySelector('.backup-banner');
+      if (banner) banner.remove();          /* الشريط خارج #view فلا يكفي App.route() */
       if (!silent) UI.toast('نُزّلت النسخة ✓ — احفظها في درايف أو بريدك', 'ok');
       App.route();
     },
