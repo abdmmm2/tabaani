@@ -1073,21 +1073,14 @@
       sc.telegramBotToken = String(token || '').trim();
       save(); return sc.telegramBotToken;
     },
-    /** إرسال رسالة فعلية حسب الوضع المُعدّ */
+    /** إرسال رسالة فعلية حسب الوضع المُعدّ — مع رجوع تلقائي للإرسال المباشر إن فشل الوسيط */
     telegramSend: function (text, schoolId) {
       var c = store.telegramConfig();
       var dest = store.telegramFor(schoolId);
       var chat = dest.chatId;
-      var token = (c.mode === 'direct' && dest.botToken) ? dest.botToken : c.botToken;
-      if (c.mode === 'relay' && c.relayUrl) {
-        return fetch(c.relayUrl, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: JSON.stringify({ key: c.relayKey, chat_id: chat, text: text })
-        }).then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
-          .then(function (j) { return { ok: !!j.ok, detail: j.description || j.error || '' }; })
-          .catch(function (e) { return { ok: false, detail: String((e && e.message) || e) }; });
-      }
-      if (c.mode === 'direct' && token && chat) {
+      var token = dest.botToken || c.botToken;
+      function direct() {
+        if (!token || !chat) return Promise.resolve({ ok: false, detail: 'لا يوجد رمز بوت أو معرّف محادثة' });
         return fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chat, text: text })
@@ -1095,41 +1088,22 @@
           .then(function (j) { return { ok: !!j.ok, detail: j.description || '' }; })
           .catch(function (e) { return { ok: false, detail: String((e && e.message) || e) }; });
       }
-      return Promise.resolve({ ok: false, detail: 'لم يُضبط الإرسال بعد (الوضع: محاكاة)' });
-    },
-    /** جلب المحادثات التي وصلها البوت (مجموعات/أفراد) لاختيار معرّف المجموعة بلا أدوات خارجية */
-    telegramFindChats: function () {
-      var c = store.telegramConfig();
-      var token = c.botToken;
-      if (!token) return Promise.resolve({ ok: false, error: 'أدخل رمز البوت أولًا' });
-      return fetch('https://api.telegram.org/bot' + token + '/getUpdates?limit=100&allowed_updates=' +
-        encodeURIComponent(JSON.stringify(['message', 'channel_post', 'my_chat_member', 'edited_message'])))
-        .then(function (r) { return r.json(); })
-        .then(function (j) {
-          if (!j.ok) return { ok: false, error: j.description || 'تعذّر القراءة' };
-          var map = {};
-          (j.result || []).forEach(function (u) {
-            ['message', 'channel_post', 'my_chat_member', 'edited_message'].forEach(function (k) {
-              var m = u[k]; if (!m || !m.chat) return;
-              var ch = m.chat;
-              map[ch.id] = { id: ch.id, type: ch.type, title: ch.title || ch.first_name || ch.username || String(ch.id) };
-            });
-          });
-          var list = Object.keys(map).map(function (k) { return map[k]; });
-          return { ok: true, chats: list };
-        })
-        .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
-    },
-    telegramBotInfo: function () {
-      var c = store.telegramConfig();
-      if (!c.botToken) return Promise.resolve({ ok: false, error: 'لا يوجد رمز' });
-      return fetch('https://api.telegram.org/bot' + c.botToken + '/getMe')
-        .then(function (r) { return r.json(); })
-        .then(function (j) {
-          if (j.ok && j.result) store.saveTelegramConfig({ botUsername: j.result.username || '', botName: j.result.first_name || '' });
-          return j.ok ? { ok: true, bot: j.result } : { ok: false, error: j.description };
-        })
-        .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
+      function fallback(reason) {
+        if (!token || !chat) return Promise.resolve(reason);
+        return direct().then(function (d) { d.viaFallback = true; d.detail = d.detail || ''; return d; });
+      }
+      if (c.mode === 'relay' && c.relayUrl) {
+        return fetch(c.relayUrl, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ key: c.relayKey, chat_id: chat, text: text })
+        }).then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+          .then(function (j) {
+            var res = { ok: !!j.ok, detail: j.description || j.error || '' };
+            return res.ok ? res : fallback(res);          /* الوسيط لم يُرسل ⇒ جرّب المباشر */
+          })
+          .catch(function (e) { return fallback({ ok: false, detail: String((e && e.message) || e) }); });
+      }
+      return direct();
     },
     /** فحص وسيط: يقرأ ردّ الوسيط للتأكد أنه منشور ويعمل */
     telegramRelayCheck: function (url) {
@@ -1155,6 +1129,7 @@
     /* ------------------------------------- تلقرام: السجل (يُرسل فعليًا إن كان مُعدًّا) */
     tg: function (messages) {
       var ready = store.telegramReady();
+      function cfgMode() { return store.telegramConfig().mode; }
       [].concat(messages).forEach(function (m) {
         var chat = store.usersByRole(m.to)[0] || store.usersByRole(m.to, null)[0];
         if (!chat) chat = store.list('users').find(function (u) { return u.role === m.to; });
@@ -1167,6 +1142,7 @@
         if (ready) {
           store.telegramSend(m.text, rec.schoolId).then(function (r) {
             rec.status = r.ok ? 'sent' : 'failed';
+            rec.via = r.viaFallback ? 'fallback' : (cfgMode());
             rec.error = r.ok ? '' : (r.detail || '');
             rec.sentAt = now();
             save();

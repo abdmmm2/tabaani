@@ -96,6 +96,8 @@
 
       /* بيانات الإرسال */
       if (cfg.mode === 'relay') {
+        slot.appendChild(h('div', { class: 'callout tip', style: { marginBottom: '10px' },
+          text: 'إن تعطّل الوسيط لأي سبب، ترجع المنصة تلقائيًا للإرسال المباشر برمز البوت المحفوظ — فلا تتوقف التنبيهات.' }));
         var urlF = UI.field({ name: 'relayUrl', label: 'رابط الوسيط (Web App URL)', dir: 'ltr', value: cfg.relayUrl, half: true,
           placeholder: 'https://script.google.com/macros/s/…/exec', help: 'رابط خدمة Apps Script أو Cloudflare Worker الذي يحمل التوكن.' });
         var keyF = UI.field({ name: 'relayKey', label: 'المفتاح السري للوسيط', dir: 'ltr', value: cfg.relayKey, half: true,
