@@ -986,6 +986,7 @@
       return {
         mode: t.mode || 'sim', relayUrl: t.relayUrl || '', relayKey: t.relayKey || '',
         botToken: t.botToken || '', chatId: t.chatId || '', perSchool: !!t.perSchool,
+        botUsername: t.botUsername || '', botName: t.botName || '',
         lastTest: t.lastTest || null, lastTestOk: !!t.lastTestOk, lastTestMsg: t.lastTestMsg || ''
       };
     },
@@ -1080,7 +1081,10 @@
       if (!c.botToken) return Promise.resolve({ ok: false, error: 'لا يوجد رمز' });
       return fetch('https://api.telegram.org/bot' + c.botToken + '/getMe')
         .then(function (r) { return r.json(); })
-        .then(function (j) { return j.ok ? { ok: true, bot: j.result } : { ok: false, error: j.description }; })
+        .then(function (j) {
+          if (j.ok && j.result) store.saveTelegramConfig({ botUsername: j.result.username || '', botName: j.result.first_name || '' });
+          return j.ok ? { ok: true, bot: j.result } : { ok: false, error: j.description };
+        })
         .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
     },
     telegramTest: function (text) {

@@ -31,6 +31,19 @@
       var ready = S.telegramReady();
       var dest = S.telegramFor(S.session.schoolId);
 
+      /* قائمة التحقق */
+      var stepsDone = [
+        { ok: !!cfg.botToken || !!cfg.relayUrl, label: '١) بيانات الإرسال (رمز البوت أو رابط الوسيط)' },
+        { ok: !!(dest.chatId), label: '٢) معرّف محادثة المدرسة (مجموعة أو حساب)' },
+        { ok: !!cfg.lastTestOk, label: '٣) رسالة تجريبية وصلت بنجاح' }
+      ];
+      slot.appendChild(h('div', { class: 'tg-check' }, stepsDone.map(function (st) {
+        return h('span', { class: 'tg-check-item ' + (st.ok ? 'is-ok' : '') }, [
+          h('span', { class: 'tg-check-box', text: st.ok ? '✓' : '' }),
+          h('span', { text: st.label })
+        ]);
+      })));
+
       /* حالة الربط */
       slot.appendChild(h('div', { class: 'tg-status ' + (ready ? 'is-on' : 'is-off') }, [
         h('span', { class: 'tg-status-dot', text: '' }),
@@ -44,6 +57,29 @@
         ]),
         cfg.lastTest ? UI.badge(cfg.lastTestOk ? 'آخر تجربة: نجحت' : 'آخر تجربة: فشلت', cfg.lastTestOk ? 'mint' : 'terra') : null
       ]));
+
+      /* هوية البوت + إضافة لمجموعة */
+      if (cfg.botUsername) {
+        slot.appendChild(h('div', { class: 'tg-bot-id' }, [
+          h('span', { html: '&#129302;' }),
+          h('strong', { text: cfg.botName || '' }),
+          h('code', { dir: 'ltr', text: '@' + cfg.botUsername }),
+          h('a', { class: 'btn btn-soft btn-sm', href: 'https://t.me/' + cfg.botUsername + '?startgroup=true',
+            target: '_blank', rel: 'noopener', text: 'أضف البوت إلى مجموعة المدرسة' }),
+          h('a', { class: 'btn btn-outline btn-sm', href: 'https://t.me/' + cfg.botUsername, target: '_blank',
+            rel: 'noopener', text: 'محادثة البوت' })
+        ]));
+      } else if (cfg.botToken) {
+        slot.appendChild(h('div', { class: 'panel-actions' }, [
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تحقّق من الرمز واقرأ هوية البوت', onClick: function () {
+            S.saveTelegramConfig({ botToken: cfg.botToken });
+            S.telegramBotInfo().then(function (r) {
+              UI.toast(r.ok ? ('البوت: @' + r.bot.username + ' — ' + r.bot.first_name) : ('تعذّر: ' + r.error), r.ok ? 'ok' : 'bad');
+              draw();
+            });
+          } })
+        ]));
+      }
 
       /* الوضع */
       var modeF = UI.field({ name: 'tgMode', label: 'وضع الإرسال', type: 'select', value: cfg.mode, options: MODES, half: true,
@@ -158,6 +194,16 @@
           });
         } }),
         cfg.lastTestMsg ? h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'آخر نتيجة: ' + cfg.lastTestMsg }) : null
+      ]));
+
+      /* ملفات الوسيط */
+      slot.appendChild(h('div', { class: 'tg-files' }, [
+        h('strong', { text: 'ملفات الوسيط الجاهزة (لإخفاء الرمز عن المتصفح + ردود آلية):' }),
+        h('div', { class: 'cluster', style: { marginTop: '6px' } }, [
+          h('a', { class: 'btn btn-outline btn-sm', href: '../docs/telegram-relay/apps-script.gs', target: '_blank', rel: 'noopener', text: 'Apps Script (رد آلي + إخفاء الرمز)' }),
+          h('a', { class: 'btn btn-outline btn-sm', href: '../docs/telegram-relay/worker.js', target: '_blank', rel: 'noopener', text: 'Cloudflare Worker' }),
+          h('a', { class: 'btn btn-soft btn-sm', href: '../docs/telegram-relay/README.md', target: '_blank', rel: 'noopener', text: 'الدليل الكامل' })
+        ])
       ]));
 
       /* الخطوات */
