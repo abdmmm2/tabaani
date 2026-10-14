@@ -58,7 +58,9 @@
       var p = S.findPermitByCode(code);
       if (!p) { beep(false); UI.toast('باركود غير معروف: ' + code, 'bad'); return; }
       if (!p.granted) { beep(false); UI.toast('هذا الطلب لم يُمنح بعد (بانتظار الوكيل)', 'warn'); return; }
-      if (p.exited) { beep(false); UI.toast('سبق تسجيل خروج هذا الطالب — ' + (p.exited.at || '').slice(11, 16), 'warn'); return; }
+      if (p.exited) { beep(false); UI.toast('سبق استخدام هذا التصريح — خرج ' + (p.exited.at || '').slice(11, 16) + ' (مرة واحدة فقط)', 'warn'); return; }
+      var pst = S.permitState(p);
+      if (pst.state === 'expired') { beep(false); UI.toast('انتهت صلاحية التصريح — مدته ' + pst.minutes + ' دقيقة من وقت المنح', 'bad'); return; }
       beep(true);
       state.found = p;
       state.reason = p.reason || '';
@@ -146,7 +148,9 @@
             h('div', {}, [reasonF.wrap, gateF.wrap]),
             h('div', { class: 'gate-card' }, [
               h('div', { class: 'barcode-wrap', html: UI.barcodeSvg(p.exitNo || p.number, { height: 40, module: 2 }) }),
-              h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' }, text: 'التصريح: ' + (p.exitNo || p.number) + ' · مُنح بواسطة: ' + ((p.granted && p.granted.by) || '—') })
+              h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' }, text: 'التصريح: ' + (p.exitNo || p.number) + ' · مُنح بواسطة: ' + ((p.granted && p.granted.by) || '—') }),
+              h('div', { class: 'callout tip', style: { marginTop: '8px' },
+                text: 'الصلاحية: ' + S.permitExpiryLabel(p) + ' · يُستخدم مرة واحدة فقط ثم يُلغى تلقائيًا.' })
             ])
           ]),
           h('div', { class: 'panel-actions' }, [
@@ -245,10 +249,12 @@
         host.appendChild(UI.panel('تصاريح ممنوحة لم يُسجَّل خروجها (' + pending.length + ')', 'سارية — يُنتظر أن يمرّ الطالب من البوابة.', null, [
           UI.table({
             cols: [{ key: 'student', label: 'الطالب' }, { key: 'cls', label: 'الفصل' }, { key: 'code', label: 'التصريح' },
-                   { key: 'reason', label: 'السبب' }, { key: 'date', label: 'تاريخ المنح' }],
+                   { key: 'reason', label: 'السبب' }, { key: 'state', label: 'الصلاحية' }, { key: 'date', label: 'تاريخ المنح' }],
             rows: pending.map(function (p) {
               var st = S.student(p.studentId) || {}, cls = S.klass(p.classId) || {};
-              return { student: st.name || '—', cls: cls.name || '—', code: p.exitNo || p.number, reason: p.reason || '', date: (p.granted && p.granted.at ? p.granted.at.slice(0, 10) : p.date) };
+              var ps = S.permitState(p);
+              var badge = ps.state === 'valid' ? UI.badge('صالح ' + ps.remainingMin + ' دقيقة', 'mint') : UI.badge('انتهت الصلاحية', 'terra');
+              return { student: st.name || '—', cls: cls.name || '—', code: p.exitNo || p.number, reason: p.reason || '', state: badge, date: (p.granted && p.granted.at ? p.granted.at.slice(0, 10) : p.date) };
             })
           })
         ]));

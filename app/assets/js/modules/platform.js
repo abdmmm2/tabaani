@@ -84,6 +84,23 @@
           h('div', { class: 'callout warn', text: 'لا تستخدم هذا الخيار قبل أخذ نسخة احتياطية إن كانت لديك بيانات تريدها.' })
         ]));
 
+        /* ---------------- إعدادات: مدة صلاحية تصريح الخروج ---------------- */
+        var minsF = UI.field({ name: 'permitMinutes', label: 'مدة صلاحية تصريح الخروج (دقيقة)', type: 'number', dir: 'ltr', value: String(S.permitMinutes()), half: true,
+          help: 'الافتراضي ٢٠ دقيقة — التصريح يُستخدم مرة واحدة ثم يُلغى.' });
+        host.appendChild(UI.panel('مدة صلاحية تصريح الخروج', 'تسري على كل التصاريح الجديدة من لحظة المنح.', null, [
+          h('div', { class: 'form-grid' }, [minsF.wrap]),
+          h('div', { class: 'panel-actions' }, [
+            h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ المدة', onClick: function () {
+              var v = parseInt(minsF.input.value, 10);
+              if (!v || v < 1) { UI.toast('اكتب مدة صحيحة بالدقائق', 'warn'); return; }
+              S.saveSettings({ permitMinutes: v });
+              UI.toast('مدة صلاحية التصريح: ' + v + ' دقيقة', 'ok');
+              redraw();
+            } })
+          ]),
+          h('div', { class: 'callout info', text: 'التصريح يُستخدم مرة واحدة فقط: بمجرد مسحه عند البوابة يُلغى ولا يُقبل مرة أخرى — وبعد انتهاء المدة يُرفض تلقائيًا.' })
+        ]));
+
         /* ---------------- نسخة احتياطية ---------------- */
         var fileIn = h('input', {
           type: 'file', accept: '.json,application/json', class: 'input',

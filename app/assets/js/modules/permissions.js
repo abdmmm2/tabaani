@@ -79,6 +79,8 @@
       ['وقت الخروج', p.granted ? UI.fmtTime(p.granted.at) : '—'],
       ['التاريخ الميلادي والهجري', UI.dateLabel(dayDate(p.date))],
       ['طريقة المنح', via],
+      ['صلاحية التصريح', S.permitMinutes() + ' دقيقة من وقت المنح — ' + S.permitExpiryLabel(p)],
+      ['الاستخدام', 'مرة واحدة فقط — يُلغى التصريح بعد مسحه عند البوابة'],
       ['الجهة المُصدِرة', 'وكيل شؤون الطلاب']
     ];
   }
@@ -96,9 +98,9 @@
       ],
       sections: [
         { heading: 'بيانات التصريح', table: { cols: ['البند', 'التفصيل'], rows: permitRowData(p) } },
-        { heading: 'إقرار', text: 'هذا التصريح صادر من وكيل شؤون الطلاب، ويجب إبرازه عند بوابة الخروج. صلاحيته محصورة في التاريخ والحصة الموضحين، ولا يُسمح للطالب بالخروج دون هذا التصريح.' }
+        { heading: 'إقرار', text: 'هذا التصريح صادر من وكيل شؤون الطلاب، ويجب إبرازه عند بوابة الخروج. صلاحيته ' + S.permitMinutes() + ' دقيقة فقط من وقت المنح، ويُستخدم مرة واحدة ثم يُلغى تلقائيًا. لا يُسمح للطالب بالخروج بعد انتهاء الصلاحية أو بعد استخدام التصريح.' }
       ],
-      qrNote: 'امسح الباركود للتحقق من تصريح الخروج رقم ' + p.exitNo + '. التصريح صادر من وكيل شؤون الطلاب ويُبرز عند بوابة الخروج.',
+      qrNote: 'امسح الباركود عند بوابة الخروج — صالح ' + S.permitMinutes() + ' دقيقة من وقت المنح (' + S.permitExpiryLabel(p) + ') · يُستخدم مرة واحدة فقط.',
       signatures: ['وكيل شؤون الطلاب', 'حارس البوابة']
     };
   }
@@ -247,6 +249,8 @@
         printButton(function () { return permitReport(p); }, { label: 'طباعة تصريح الخروج', class: 'btn-primary' }, drawAll)
       ], [
         UI.qrBox(p.exitNo, 'رمز تصريح الخروج', 110),
+        h('div', { class: 'callout ' + (S.permitState(p).state === 'valid' ? 'tip' : 'warn'), style: { marginTop: '10px' },
+          text: 'الصلاحية: ' + S.permitMinutes() + ' دقيقة من وقت المنح · ' + S.permitExpiryLabel(p) + ' · يُستخدم مرة واحدة فقط ثم يُلغى.' }),
         h('div', { style: { marginTop: '12px' } }, [kvRows(permitRowData(p))]),
         flow(p),
         h('div', { class: 'muted-block', style: { marginTop: '10px' },
@@ -266,6 +270,13 @@
             { label: 'الحصة', render: function (p) { return periodText(p.periodId); } },
             { label: 'التاريخ', render: function (p) { return UI.fmtDate(p.date); } },
             { label: 'طريقة المنح', render: function (p) { return (p.granted && p.granted.via) ? (VIA_LABEL[p.granted.via] || p.granted.via) : '—'; } },
+            { label: 'الصلاحية', render: function (p) {
+              var st = S.permitState(p);
+              if (st.state === 'valid') return UI.badge('صالح ' + st.remainingMin + ' دقيقة', 'mint');
+              if (st.state === 'expired') return UI.badge('انتهت الصلاحية', 'terra');
+              if (st.state === 'used') return UI.badge('مُستخدم', 'soft');
+              return UI.badge('لم يُمنح', 'plain');
+            } },
             { label: 'الطباعة', render: function (p) { return printedReport(p) ? UI.badge('طُبع', 'mint') : UI.badge('لم يُطبع', 'plain'); } },
             { label: '', render: function (p) {
               return h('button', { class: 'mini-btn', type: 'button', text: 'عرض وإعادة طباعة', onClick: function () {

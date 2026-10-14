@@ -516,6 +516,10 @@
     } catch (e) {}
   }
 
+  function timeOf(d) {
+    try { return new Date(d).toTimeString().slice(0, 5); } catch (e) { return ''; }
+  }
+
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
     (global.dispatchEvent) && global.dispatchEvent(new CustomEvent('store:changed'));
@@ -1411,6 +1415,39 @@
     /* ------------------------------- تنبيهات الجوال ------------------------------- */
     canNotify: function () { return typeof Notification !== 'undefined'; },
     /* ===================== إذن الخروج (حارس البوابة) ===================== */
+    /* مدة صلاحية تصريح الخروج: ٢٠ دقيقة افتراضيًا (قابلة للتغيير من إعدادات المنصة) */
+    permitMinutes: function () {
+      var m = parseInt((store.db.settings || {}).permitMinutes, 10);
+      return (m && m > 0) ? m : 20;
+    },
+    /* حالة التصريح: صالح · منتهي · مُستخدم */
+    permitState: function (p) {
+      if (!p) return { state: 'unknown' };
+      var mins = store.permitMinutes();
+      var grantedAt = (p.granted && p.granted.at) ? new Date(p.granted.at) : null;
+      var expiresAt = grantedAt ? new Date(grantedAt.getTime() + mins * 60000) : null;
+      var nowMs = Date.now();
+      var remainingMs = expiresAt ? (expiresAt.getTime() - nowMs) : 0;
+      var used = !!p.exited;
+      var expired = !!expiresAt && remainingMs <= 0;
+      return {
+        state: !p.granted ? 'not_granted' : (used ? 'used' : (expired ? 'expired' : 'valid')),
+        minutes: mins, expiresAt: expiresAt, remainingMs: Math.max(0, remainingMs),
+        remainingMin: Math.max(0, Math.ceil(remainingMs / 60000)),
+        usedAt: p.exited && p.exited.at, usedBy: p.exited && p.exited.by,
+        grantedAt: p.granted && p.granted.at
+      };
+    },
+    permitExpiryLabel: function (p) {
+      var st = store.permitState(p);
+      if (st.state === 'valid') return 'صالح ' + st.remainingMin + ' دقيقة (حتى ' + timeOf(st.expiresAt) + ')';
+      if (st.state === 'expired') return 'انتهت صلاحية التصريح';
+      if (st.state === 'used') return 'مُستخدم — خرج في ' + String(st.usedAt || '').slice(11, 16);
+      return 'لم يُمنح بعد';
+    },
+    validPermits: function () {
+      return store.list('permissions').filter(function (p) { return store.permitState(p).state === 'valid'; });
+    },
     /* يبحث عن التصريح برقمه: EX-20260001 أو P-2026-0001 أو رقم التقرير */
     findPermitByCode: function (code) {
       var c = String(code || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -1432,7 +1469,11 @@
       var p = d.permissionId ? store.list('permissions').filter(function (x) { return x.id === d.permissionId; })[0] : store.findPermitByCode(d.code);
       if (!p) return { ok: false, error: 'تصريح غير معروف — تأكد من الرقم أو امسح الباركود مرة أخرى' };
       if (!p.granted) return { ok: false, error: 'هذا الطلب لم يُمنح بعد — لا يمكن تسجيل الخروج' };
-      if (p.exited) return { ok: false, error: 'سبق تسجيل خروج هذا التصريح (' + (p.exited.at || '').slice(11, 16) + ')' };
+      if (p.exited) return { ok: false, error: 'سبق استخدام هذا التصريح (' + (p.exited.at || '').slice(11, 16) + ') — التصريح يُستخدم مرة واحدة' };
+      var pst = store.permitState(p);
+      if (pst.state === 'expired') {
+        return { ok: false, error: 'انتهت صلاحية التصريح — مدته ' + pst.minutes + ' دقيقة فقط (' + (pst.grantedAt || '').slice(11, 16) + '). اطلب تصريحًا جديدًا' };
+      }
       var st = store.student(p.studentId) || {};
       var cls = store.klass(p.classId) || {};
       var guard = store.user(d.guardId || store.session.userId) || { name: store.session.name, id: store.session.userId };
@@ -1877,6 +1918,10 @@
       if (subject && by[subject] != null) return Number(by[subject]);
       var base = store.db.settings.deprivationPct;
       return base == null ? 25 : Number(base);
+    },
+    saveSettings: function (patch) {
+      db.settings = Object.assign({}, db.settings || {}, patch || {});
+      save(); return db.settings;
     },
     setDeprivation: function (subject, pct) {
       if (!db.settings.deprivationBySubject) db.settings.deprivationBySubject = {};
