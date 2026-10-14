@@ -1,5 +1,5 @@
 'use strict';
-/* فحص حيّ: تهيئة «مدرسة حقيقية» على المنصة الحيّة وتجربة المميزات */
+/* فحص حيّ (يدوي): تهيئة «مدرسة حقيقية» على المنصة الحيّة — تشغيله: node tools/live-setup-check.js */
 const B = require('/home/user/.workspace/projects/tabaani/tools/browser');
 const LIVE = 'https://abdmmm2.github.io/tabaani/app/';
 const U = 'abdullah.a', P = 'Tabaani#2026';
