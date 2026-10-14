@@ -677,3 +677,11 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
   .lp-hero-txt { padding: 34px 16px 42px; }
   .lp-promo { margin: 16px 12px 0; }
 }
+
+/* شريط تذكير النسخة الاحتياطية */
+.backup-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px;
+  background: var(--amber-50); border: 1px solid #EBD3A8; border-radius: var(--r-md); padding: 10px 14px; }
+.backup-banner .bb-ic { font-size: 20px; }
+.backup-banner .bb-txt { flex: 1 1 260px; font-size: var(--fs-sm); line-height: 1.7; }
+.backup-banner .bb-txt strong { color: #8A5A1E; }
+.backup-banner .btn { margin: 0; }

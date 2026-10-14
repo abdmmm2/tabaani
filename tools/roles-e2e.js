@@ -303,6 +303,17 @@ async function backupSuite(page, base) {
   const r3 = await page.eval('var b = Store.list("users").length; Store.restoreJson(Store.backupJson());' +
     'return b === Store.list("users").length;');
   ok(r3, 'لا يتغيّر عدد الحسابات بعد الاسترجاع');
+
+  /* الموعد الأسبوعي: الخميس ٤ مساءً افتراضيًا */
+  const sch = await page.eval('var x = Store.backupSchedule(); return { day:x.weekday, hour:x.hour, on:x.enabled, label:Store.scheduleLabel() };');
+  ok(sch.day === 4 && sch.hour === 16 && sch.on, 'الموعد الافتراضي: الخميس ٤ مساءً', sch.label);
+  const due1 = await page.eval('return Store.backupDue(new Date("2026-10-15T16:30:00"));');   /* الخميس ٤:٣٠ م */
+  ok(due1.slot || due1.due, 'يُعتبر الموعد حانًا يوم الخميس بعد الرابعة', JSON.stringify({ slot: due1.slot, due: due1.due }));
+  const due2 = await page.eval('Store.saveBackupSchedule({ snoozeUntil: new Date(Date.now()+7*864e5).toISOString() });' +
+    'var d = Store.backupDue(); Store.saveBackupSchedule({ snoozeUntil: "" }); return d.due;');
+  ok(due2 === false, '«تأجيل أسبوعًا» يُخفي التذكير');
+  const r4 = await page.eval('Store.markBackup(); var d = Store.backupDue(); return { due:d.due, since:d.daysSince, last:Store.lastBackupAt() ? true : false };');
+  ok(r4.due === false && r4.since === 0 && r4.last, 'بعد تنزيل نسخة: لا تذكير حتى الموعد القادم', JSON.stringify({ due: r4.due, since: r4.since }));
   return res;
 }
 

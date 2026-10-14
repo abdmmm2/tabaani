@@ -183,6 +183,35 @@
           h('div', { class: 'callout tip', text: 'النسخة تحتوي كل شيء (المدارس · الطلاب · الحضور · المخالفات · الاستئذان · الحسابات · الإعدادات). خذها قبل أي تصفير أو قبل تغيير الجهاز.' })
         ]));
 
+        /* ---------------- موعد النسخة الأسبوعية ---------------- */
+        var bs = S.backupSchedule();
+        function hourLabel(h) { return h < 12 ? (h + ' صباحًا') : (h === 12 ? '١٢ ظهرًا' : ((h - 12) + ' مساءً')); }
+        var bkDay = UI.field({ name: 'bkDay', label: 'يوم النسخة', type: 'select', half: true,
+          options: S.WEEKDAYS.map(function (n, i) { return { value: String(i), label: n }; }), value: String(bs.weekday) });
+        var bkHour = UI.field({ name: 'bkHour', label: 'الساعة', type: 'select', half: true,
+          options: (function () { var o = []; for (var x = 0; x < 24; x++) o.push({ value: String(x), label: hourLabel(x) }); return o; })(), value: String(bs.hour) });
+        var bkOn = h('input', { type: 'checkbox', checked: bs.enabled });
+        var dueNow = S.backupDue();
+        host.appendChild(UI.panel('موعد النسخة الاحتياطية',
+          'تذكير أسبوعي يظهر داخل تابعني عند أول فتح بعد الموعد — وبضغطة واحدة تُنزَّل النسخة. (المتصفح لا يشغّل المنصة وهي مغلقة.)',
+          [
+            h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'حفظ الموعد', onClick: function () {
+              S.saveBackupSchedule({ weekday: bkDay.input.value, hour: bkHour.input.value, enabled: bkOn.checked, snoozeUntil: '' });
+              UI.toast('حُفظ الموعد: ' + S.scheduleLabel(), 'ok');
+              draw();
+            } }),
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تنزيل نسخة الآن', onClick: function () { App.backupNow(); } })
+          ], [
+            h('div', { class: 'form-grid' }, [bkDay.wrap, bkHour.wrap]),
+            h('label', { class: 'checkline', style: { marginTop: '10px' } }, [bkOn, h('span', { text: 'فعّل تذكير النسخة الأسبوعية' })]),
+            h('div', { class: 'stat-row', style: { marginTop: '12px' } }, [
+              UI.statCard('الموعد الحالي', S.scheduleLabel(), bs.enabled ? 'التذكير مفعّل' : 'التذكير مُعطَّل'),
+              UI.statCard('آخر نسخة', S.lastBackupAt() ? UI.fmtDate(S.lastBackupAt()) + ' · ' + UI.fmtTime(S.lastBackupAt()) : 'لم تُؤخذ بعد',
+                dueNow.label, dueNow.due ? 'gold' : null)
+            ]),
+            h('div', { class: 'callout tip', text: 'نصيحة: اجعل الموعد في يوم هادئ (الخميس ٤ مساءً افتراضيًا) واحفظ ملف النسخة في درايف أو بريدك — فيمكنك استرجاع كل شيء على أي جهاز من «استرجاع من ملف».' })
+          ]));
+
         host.appendChild(UI.panel('ملاحظات مهمة', null, null, [
           h('ul', { class: 'promo-steps' }, [
             h('li', { text: 'البيانات محفوظة في متصفح هذا الجهاز فقط (لا خادم بعد) — ولهذا النسخة الاحتياطية مهمة.' }),

@@ -292,6 +292,37 @@
       return h('section', { class: 'panel', style: { marginTop: '14px' } }, body);
     },
 
+    /* ---------------------- النسخة الاحتياطية المجدولة ---------------------- */
+    /** تنزيل نسخة احتياطية للجهاز الآن + تسجيل الوقت */
+    backupNow: function (silent) {
+      var d = new Date();
+      var name = 'تابعني-نسخة-' + d.toISOString().slice(0, 10) + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
+      UI.downloadText(S.backupJson(), name, 'application/json');
+      S.markBackup();
+      if (!silent) UI.toast('نُزّلت النسخة ✓ — احفظها في درايف أو بريدك', 'ok');
+      App.route();
+    },
+    /** شريط تذكير النسخة الأسبوعية */
+    backupBanner: function (due) {
+      var banner = h('div', { class: 'backup-banner' }, [
+        h('span', { class: 'bb-ic', html: '&#128190;' }),
+        h('div', { class: 'bb-txt' }, [
+          h('strong', { text: 'حان موعد النسخة الاحتياطية' }),
+          h('span', { text: ' — ' + (due.never ? 'لم تُؤخذ نسخة على هذا الجهاز بعد.'
+            : due.slot ? 'موعدك الأسبوعي (' + S.scheduleLabel() + ').'
+            : 'آخر نسخة قبل ' + due.daysSince + ' يومًا.') + ' نزّل الملف واحفظه في درايف أو بريدك.' })
+        ]),
+        h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تنزيل النسخة الآن',
+          onClick: function () { App.backupNow(); } }),
+        h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تأجيل أسبوعًا', onClick: function () {
+          S.saveBackupSchedule({ snoozeUntil: new Date(Date.now() + 7 * 864e5).toISOString() });
+          UI.toast('أُجّل التذكير أسبوعًا', 'ok'); App.route();
+        } }),
+        h('button', { class: 'icon-btn', type: 'button', title: 'إخفاء', html: '&times;', onClick: function () { banner.remove(); } })
+      ]);
+      return banner;
+    },
+
     /** إزالة زر الدعم العائم (عند الخروج أو العودة لشاشة الدخول) */
     _removeSupportFab: function () {
       var f = document.getElementById('support-fab');
@@ -387,6 +418,17 @@
       /* لافتة المناوبة: تظهر فور دخول صاحب المناوبة في يومه */
       var duty = S.todayDutyFor(S.session.userId);
       if (duty) main.insertBefore(App.dutyBanner(duty), content);
+
+      /* تذكير النسخة الاحتياطية: للمشرف العام وقائد المدرسة */
+      var due = S.backupDue();
+      if (due.due && (S.session.role === 'super' || S.session.role === 'principal')) {
+        main.insertBefore(App.backupBanner(due), content);
+        try {
+          if (S.canNotify && S.canNotify() && Notification.permission === 'granted') {
+            new Notification('تابعني — نسخة احتياطية', { body: 'حان موعد النسخة (' + S.scheduleLabel() + ') — افتح تابعني ونزّلها بضغطة.' });
+          }
+        } catch (e) {}
+      }
 
       App.route();
       global.addEventListener('hashchange', App.route);

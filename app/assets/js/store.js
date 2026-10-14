@@ -1866,6 +1866,61 @@
       };
     },
 
+    /* =====================================================================
+       النسخة الاحتياطية المجدولة — تذكير أسبوعي (افتراضيًا: الخميس ٤ مساءً)
+       ---------------------------------------------------------------------
+       المتصفح لا يشغّل المنصة وهي مغلقة (بلا خادم)، لذلك التذكير يظهر
+       **عند أول فتح بعد الموعد** — وتحته زر واحد ينزّل النسخة ويسجّل الوقت.
+       ===================================================================== */
+    WEEKDAYS: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+    backupSchedule: function () {
+      var b = (db.settings && db.settings.backup) || {};
+      var n = function (v, d) { var x = parseInt(v, 10); return (x >= 0 && !isNaN(x)) ? x : d; };
+      return {
+        enabled: b.enabled !== false,
+        weekday: n(b.weekday, 4),        /* 4 = الخميس */
+        hour: n(b.hour, 16),             /* ٤ مساءً */
+        everyDays: n(b.everyDays, 7),
+        snoozeUntil: b.snoozeUntil || ''
+      };
+    },
+    saveBackupSchedule: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.backup = Object.assign({}, store.backupSchedule(), patch || {});
+      save(); return store.backupSchedule();
+    },
+    scheduleLabel: function () {
+      var s = store.backupSchedule();
+      return store.WEEKDAYS[s.weekday] + ' · ' + (s.hour < 12 ? s.hour + ' صباحًا' : (s.hour === 12 ? '١٢ ظهرًا' : (s.hour - 12) + ' مساءً'));
+    },
+    lastBackupAt: function () { return (db.meta && db.meta.lastBackupAt) || ''; },
+    markBackup: function () {
+      if (!db.meta) db.meta = {};
+      db.meta.lastBackupAt = now(); save();
+      return db.meta.lastBackupAt;
+    },
+    /** هل حان موعد النسخة؟ */
+    backupDue: function (d) {
+      d = d || new Date();
+      var s = store.backupSchedule();
+      if (!s.enabled) return { due: false, reason: 'التذكير مُعطَّل', schedule: s };
+      if (s.snoozeUntil && s.snoozeUntil > d.toISOString()) return { due: false, reason: 'مؤجَّل', schedule: s };
+      var last = store.lastBackupAt();
+      var days = last ? Math.floor((d.getTime() - new Date(last).getTime()) / 864e5) : null;
+      var takenToday = days === 0;
+      var isSlot = (d.getDay() === s.weekday && d.getHours() >= s.hour);
+      var overdue = days !== null && days >= s.everyDays;
+      var never = days === null;
+      return {
+        due: never || (!takenToday && (isSlot || overdue)),
+        never: never, slot: isSlot, overdue: overdue, takenToday: takenToday,
+        daysSince: days, schedule: s,
+        label: never ? 'لم تُؤخذ نسخة على هذا الجهاز بعد' :
+               (takenToday ? 'أُخذت نسخة اليوم' : 'آخر نسخة قبل ' + days + ' يومًا'),
+        next: store.scheduleLabel()
+      };
+    },
+
     /** تغيير كلمة المرور من داخل الحساب */
     changePassword: function (userId, current, next, confirm) {
       var u = store.user(userId); if (!u) return { ok: false, error: 'الحساب غير موجود' };
