@@ -2826,9 +2826,12 @@
         var o = JSON.parse(text);
         if (!o || !o.users || !o.schools) return { ok: false, error: 'الملف ليس نسخة صالحة لتابعني' };
         db = o;
-        if (!db.exits) db.exits = [];
-        if (!db.subjects) db.subjects = [];
-        save(); ensureOwner(db);
+        /* استكمال المجموعات الناقصة حتى لا تنكسر أي شاشة بعد الاسترجاع */
+        COLLECTIONS.forEach(function (k) { if (!Array.isArray(db[k])) db[k] = []; });
+        if (!db.meta) db.meta = { version: 1, createdAt: now() };
+        save();
+        ensureSuper(db);            /* كان يستدعي دالة غير موجودة فكان الاسترجاع يفشل دائمًا */
+        save();
         return { ok: true, stats: store.dataStats() };
       } catch (e) { return { ok: false, error: 'تعذّر قراءة الملف: ' + e.message }; }
     },

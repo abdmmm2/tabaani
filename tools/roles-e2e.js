@@ -181,6 +181,11 @@ async function main() {
     tfRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
 
+    /* ------------------ بقاء البيانات والنسخة الاحتياطية ------------------ */
+    const bkRes = await backupSuite(page, site.url);
+    bkRes.forEach((r) => check(r.ok, r.m, r.d));
+    report.push({ role: 'backup', modules: String(bkRes.filter((r) => r.ok).length) + '/' + bkRes.length, note: bkRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'البيانات والنسخ الاحتياطي' });
+
     /* ------------------ المالية والدعم الفني ------------------ */
     const fsRes = await financeSupportSuite(page, site.url);
     fsRes.forEach((r) => check(r.ok, r.m, r.d));
@@ -278,6 +283,26 @@ async function studentCtlSuite(page, base) {
   ok(r2.ok && r2.changed === before.total, 'حسابات الطلاب: «تفعيل كل الطلاب» يُعيدهم', r2.changed + '/' + r2.total);
   await loginAsRaw(page, base, stu.uname, stu.pw);
   ok(await shellOn(), 'حسابات الطلاب: الطالب يعود للدخول بعد التفعيل');
+  return res;
+}
+
+/** فحص بقاء البيانات والنسخة الاحتياطية (تنزيل/استرجاع) */
+async function backupSuite(page, base) {
+  const res = [];
+  const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
+  await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
+  await B.goto(page, base + '/index.html', '!!window.Store');
+  await B.sleep(700);
+  const r1 = await page.eval('var json = Store.backupJson(); var r = Store.restoreJson(json);' +
+    'return { len: json.length, ok: r.ok, err: r.error || "", schools: (r.stats || {}).schools };');
+  ok(r1.len > 500, 'النسخة الاحتياطية تُنتج ملفًا كاملًا', (r1.len / 1024).toFixed(1) + ' ك.ب');
+  ok(r1.ok, 'الاسترجاع من ملف النسخة يعمل', r1.err);
+  ok(r1.schools >= 1, 'البيانات عادت كاملة بعد الاسترجاع', String(r1.schools) + ' مدرسة');
+  const r2 = await page.eval('return Store.restoreJson("نص ليس نسخة").ok === false;');
+  ok(r2, 'الاسترجاع يرفض ملفًا غير صالح دون المساس بالبيانات');
+  const r3 = await page.eval('var b = Store.list("users").length; Store.restoreJson(Store.backupJson());' +
+    'return b === Store.list("users").length;');
+  ok(r3, 'لا يتغيّر عدد الحسابات بعد الاسترجاع');
   return res;
 }
 
