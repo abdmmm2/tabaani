@@ -413,3 +413,9 @@
 .tg-switch.is-on { background: var(--mint-100); border-color: var(--mint-500); }
 .tg-switch.is-off { background: #F0F0F0; border-color: #C9C9C9; }
 .tg-switch > div { flex: 1 1 240px; font-size: var(--fs-sm); }
+
+/* بطاقة الإعادة أسفل اللوحة (يمين) + لوحة خطرة */
+.dash-corner { display: flex; justify-content: flex-start; }
+.dash-corner .panel { max-width: 460px; width: 100%; }
+.danger-panel { border: 1.5px dashed #C4562F; background: #FFF9F6; }
+.danger-panel .panel-title { color: #8B3A1E; }

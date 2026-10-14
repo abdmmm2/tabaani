@@ -57,7 +57,7 @@
                 if (!ok) return;
                 UI.confirm('تأكيد أخير: لا يمكن التراجع عن هذه العملية.', { ok: 'نعم، أعِد بيانات العرض', danger: true }).then(function (ok2) {
                   if (!ok2) return;
-                  S.reset();
+                  App.resetFlow({ kind: 'demo' });
                   UI.toast('أُعيدت بيانات العرض التجريبية — سيُحدَّث النظام', 'ok');
                   setTimeout(function () { location.reload(); }, 900);
                 });
@@ -74,7 +74,7 @@
               if (!ok) return;
               UI.confirm('تأكيد أخير: سيفقد النظام كل المدارس والحسابات والبيانات.', { ok: 'نعم، ابدأ من الصفر', danger: true }).then(function (ok2) {
                 if (!ok2) return;
-                S.resetEmptyAll();
+                App.resetFlow({ kind: 'empty' });
                 UI.toast('صار النظام فارغًا — ابدأ بتأسيس مدرستك', 'ok');
                 setTimeout(function () { location.reload(); }, 900);
               });

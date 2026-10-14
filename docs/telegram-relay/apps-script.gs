@@ -19,6 +19,7 @@
  *
  *  ملاحظات:
  *   • بعد تشغيل الرد الآلي، المعرّف يُجلب من داخل المجموعة بأمر /id (لأن الوسيط يقرأ التحديثات).
+ *   • يدعم أيضًا إرسال البريد: {"type":"email","to":"…","subject":"…","text":"…"} عبر MailApp.
  *   • لا تشارك الرابط ولا المفتاح السري خارج المدرسة.
  * ============================================================================
  */
@@ -58,6 +59,13 @@ function doPost(e) {
     var token = token_(), key = key_();
     if (!token) return out({ ok: false, error: 'لم يُضبط رمز البوت' });
     if (key && String(body.key || '') !== key) return out({ ok: false, error: 'مفتاح الوسيط غير صحيح' });
+    /* إرسال بريد (يُستخدم لرمز التحقق OTP مثلًا) */
+    if (body.type === 'email') {
+      if (!body.to) return out({ ok: false, error: 'لا يوجد بريد مرسل إليه' });
+      MailApp.sendEmail({ to: String(body.to), subject: String(body.subject || 'منصة تابعني'),
+        body: String(body.text || '') });
+      return out({ ok: true, description: 'أُرسل البريد' });
+    }
     if (!body.chat_id) return out({ ok: false, error: 'لا يوجد معرّف مجموعة (chat id)' });
     var r = tg(token, 'sendMessage', {
       chat_id: String(body.chat_id), text: String(body.text || ''),

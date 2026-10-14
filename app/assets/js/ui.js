@@ -126,7 +126,7 @@
     var error = h('p', { class: 'hint hint-error', hidden: true });
     var m = modal({
       title: opts.title, wide: opts.wide,
-      body: [opts.intro ? h('p', { class: 'muted', style: { marginBottom: '14px' }, text: opts.intro }) : null, grid, error],
+      body: [opts.intro ? h('p', { class: 'muted', style: { marginBottom: '14px' }, text: opts.intro }) : null, grid, opts.extra || null, error],
       actions: [
         { label: 'إلغاء', class: 'btn-outline', onClick: function (close) { close(); } },
         {

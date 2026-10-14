@@ -539,7 +539,15 @@
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
     (global.dispatchEvent) && global.dispatchEvent(new CustomEvent('store:changed'));
   }
-  function reset() { db = seed(); save(); }
+  function reset() {
+    /* إعادة بيانات العرض: تُبقي حساب المشرف العام الحالي ولا تُنشئ أي حساب أدمن معروف */
+    var supers = ((db && db.users) || []).filter(function (u) { return u.role === 'super'; });
+    db = seed();
+    if (supers.length) {
+      db.users = supers.concat(db.users.filter(function (u) { return u.role !== 'super'; }));
+      db.meta = Object.assign({}, db.meta, { needsSetup: false, setupAt: (db.meta && db.meta.setupAt) || now() });
+    }
+    save(); }
 
   /* يبدأ منصة فارغة تمامًا: بلا مدرسة ولا طالب ولا معلم —
      تبقى فقط حسابات المشرف العام (وحسابات المالك) ليدخل ويؤسّس مدرسته بنفسه. */
@@ -565,6 +573,51 @@
     resetDem: function () { return reset(); },
     reset: reset,
     uid: uid, now: now,
+    /* ------------------------------ رمز التحقق (OTP) للإجراءات الخطرة ------------------------------ */
+    otpCurrent: function () { return (db.settings && db.settings.otp) || null; },
+    /** يرسل رمزًا من ٦ أرقام على تلقرام (أو البريد عبر الوسيط) — صالح ١٠ دقائق */
+    otpSend: function (purpose, label, channel) {
+      var code = String(Math.floor(100000 + Math.random() * 900000));
+      var rec = { code: code, purpose: purpose || 'reset', at: now(),
+        expires: new Date(Date.now() + 10 * 60000).toISOString(), attempts: 0, channel: channel || 'telegram', delivered: false, sentTo: '', error: '' };
+      if (!db.settings) db.settings = {};
+      db.settings.otp = rec;
+      var text = '🔐 رمز تأكيد لمنصة تابعني\nالرمز: ' + code + '\nصالح ١٠ دقائق — لا تشاركه مع أحد.\n' + (label || '');
+      var c = store.telegramConfig();
+      if (channel === 'email') {
+        var em = store.ownerEmail();
+        if (!em) { save(); return Promise.resolve({ ok: false, error: 'لا يوجد بريد للمشرف العام' }); }
+        if (!(c.mode === 'relay' && c.relayUrl)) { save(); return Promise.resolve({ ok: false, error: 'البريد يحتاج وسيطًا مُفعّلًا (Apps Script) — استخدم تلقرام الآن' }); }
+        return fetch(c.relayUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ key: c.relayKey, type: 'email', to: em, subject: 'رمز تأكيد — منصة تابعني', text: text.replace('<br>', '\n') }) })
+          .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+          .then(function (j) { rec.delivered = !!j.ok; rec.sentTo = em; rec.error = j.description || j.error || ''; save(); return { ok: !!j.ok, channel: 'email', error: rec.error }; })
+          .catch(function (e) { rec.error = String((e && e.message) || e); save(); return { ok: false, channel: 'email', error: rec.error }; });
+      }
+      if (!store.telegramReady()) { save(); return Promise.resolve({ ok: false, error: 'تلقرام غير مُفعّل — فعّل الإرسال أو استخدم البديل' }); }
+      return store.telegramSend(text, store.session.schoolId).then(function (r) {
+        rec.delivered = !!r.ok; rec.sentTo = store.telegramFor(store.session.schoolId).chatId || ''; rec.error = r.ok ? '' : (r.detail || '');
+        save();
+        return { ok: !!r.ok, channel: 'telegram', error: rec.error };
+      });
+    },
+    ownerEmail: function () {
+      var o = store.list('users').filter(function (u) { return u.role === 'super' && u.email; })[0];
+      return o ? o.email : '';
+    },
+    /** يتحقق من الرمز: مرة واحدة · ٥ محاولات كحد أقصى · ١٠ دقائق */
+    otpVerify: function (code) {
+      var rec = (db.settings && db.settings.otp) || null;
+      if (!rec) return { ok: false, error: 'لا يوجد رمز مُرسل — اطلب رمزًا جديدًا' };
+      if (new Date(rec.expires).getTime() < Date.now()) return { ok: false, error: 'انتهت صلاحية الرمز — اطلب رمزًا جديدًا' };
+      rec.attempts = (rec.attempts || 0) + 1;
+      if (rec.attempts > 5) return { ok: false, error: 'محاولات كثيرة — اطلب رمزًا جديدًا' };
+      if (String(code || '').trim() !== String(rec.code)) { save(); return { ok: false, error: 'الرمز غير صحيح (' + rec.attempts + '/5)' }; }
+      delete db.settings.otp; save();
+      return { ok: true };
+    },
+    otpClear: function () { if (db.settings) delete db.settings.otp; save(); },
+
     /** قيمة آمنة للعرض في الرسائل: لا تُظهر undefined أبدًا */
     safe: function (x, dflt) {
       if (x === undefined || x === null || x === '' || (typeof x === 'number' && isNaN(x))) return dflt === undefined ? '—' : dflt;

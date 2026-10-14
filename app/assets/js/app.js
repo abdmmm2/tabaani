@@ -507,6 +507,61 @@
       UI.toast('مرحباً ' + u.name, 'ok');
     },
 
+    /** تدفّق إعادة المنصة: يطلب رمز OTP على تلقرام/البريد ثم يُنفّذ الإعادة */
+    resetFlow: function (opts) {
+      opts = opts || {};
+      var kind = opts.kind || 'demo';           /* demo = بيانات العرض · empty = من الصفر */
+      var title = kind === 'demo' ? 'إعادة بيانات العرض التجريبية' : 'البدء من الصفر (حذف كل البيانات)';
+      var warn = kind === 'demo'
+        ? 'سيُستبدل ما في المنصة ببيانات العرض التجريبية، ويبقى حساب المشرف العام كما هو.'
+        : 'سيُحذف كل شيء: المدارس والفصول والطلاب والموظفون والتحاضير والمخالفات — ولا يبقى إلا حساب المشرف العام.';
+      var otp = UI.field({ name: 'otpCode', label: 'رمز التحقق (٦ أرقام)', dir: 'ltr', placeholder: '______', half: true });
+      var pass = UI.field({ name: 'otpWord', label: 'اكتب كلمة: إعادة', half: true, help: 'بديل الرمز عند تعذّر الإرسال.' });
+      var status = h('p', { class: 'muted', text: 'اضغط «إرسال رمز التحقق» ليصلك الرمز على تلقرام (أو البريد إن كان الوسيط مُفعّلًا).' });
+      var modal = UI.formModal({
+        title: title,
+        intro: warn,
+        submitLabel: 'تنفيذ الإعادة',
+        fields: [otp, pass],
+        extra: h('div', {}, [
+          status,
+          h('div', { class: 'panel-actions' }, [
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إرسال رمز التحقق (تلقرام)', onClick: function () {
+              status.textContent = 'يُرسل…';
+              S.otpSend(kind, 'طلب: ' + title, 'telegram').then(function (r) {
+                status.innerHTML = r.ok
+                  ? '✅ أُرسل الرمز إلى تلقرام' + (S.telegramFor(S.session.schoolId).chatId ? ' (المحادثة ' + S.telegramFor(S.session.schoolId).chatId + ')' : '') + ' — صالح ١٠ دقائق.'
+                  : '⚠️ لم يُرسل: ' + (r.error || '') + ' — يمكنك استخدام كلمة التأكيد «إعادة» بدلًا منه.';
+              });
+            } }),
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إرسال على البريد', onClick: function () {
+              status.textContent = 'يُرسل…';
+              S.otpSend(kind, 'طلب: ' + title, 'email').then(function (r) {
+                status.textContent = r.ok ? ('✅ أُرسل الرمز إلى بريد المشرف العام') : ('⚠️ ' + (r.error || ''));
+              });
+            } })
+          ])
+        ]),
+        onSubmit: function (d) {
+          var code = String(d.otpCode || '').trim();
+          if (code) {
+            var v = S.otpVerify(code);
+            if (!v.ok) { UI.toast(v.error, 'bad'); return; }        /* لا يُنفّذ الإعادة */
+          } else if (String(d.otpWord || '').trim() === 'إعادة' && !S.otpCurrent()) {
+            /* بديل عند تعذّر الإرسال: لا يوجد رمز مُرسل + كلمة التأكيد صحيحة */
+          } else {
+            UI.toast('أدخل رمز التحقق المُرسل إليك، أو اطلب رمزًا ثم أدخله', 'warn');
+            return;
+          }
+          var r = kind === 'demo' ? S.reset() : S.resetEmptyAll();
+          S.otpClear();
+          UI.toast('تمت إعادة المنصة (' + (kind === 'demo' ? 'بيانات العرض' : 'من الصفر') + ') ✓', 'ok');
+          S.logout();
+        }
+      });
+      return modal;
+    },
+
     boot: function () {
       UI.setupTelegram();
       App._stamp = App._stamp || function () {
@@ -605,6 +660,18 @@
       var action = function (label, mod, cls) { actions.push(h('button', { class: 'btn ' + (cls || 'btn-outline'), type: 'button', text: label, onClick: function () { App.go(mod); } })); };
 
       if (role === 'super') {
+        /* أسفل اللوحة — على اليمين: إعادة المنصة للوضع الافتراضي (برمز تحقق) */
+        view.appendChild(h('div', { class: 'dash-corner' }, [
+          h('div', { class: 'panel danger-panel' }, [
+            h('h3', { class: 'panel-title', text: 'إعادة المنصة للوضع الافتراضي' }),
+            h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
+              text: 'يُطلب رمز تحقق (OTP) يُرسل إلى تلقرام أو البريد قبل التنفيذ — حماية من الإعادة بالخطأ.' }),
+            h('div', { class: 'cluster' }, [
+              h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إعادة بيانات العرض', onClick: function () { App.resetFlow({ kind: 'demo' }); } }),
+              h('button', { class: 'btn btn-danger btn-sm', type: 'button', text: 'حذف كل البيانات (من الصفر)', onClick: function () { App.resetFlow({ kind: 'empty' }); } })
+            ])
+          ])
+        ]));
         stats('المدارس المسجّلة', S.list('schools').length);
         stats('المناطق التعليمية', S.regions.length);
         stats('المدن المتاحة', S.regions.reduce(function (a, r) { return a + r.cities.length; }, 0));
