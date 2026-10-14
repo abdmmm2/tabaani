@@ -47,20 +47,57 @@
 
     function stopCam() {
       state.scanning = false;
+      releaseWake();
+      if (state.idleTimer) { clearTimeout(state.idleTimer); state.idleTimer = null; }
       try { if (state.stream) state.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-      state.stream = null;
+      state.stream = null; state.torch = false; state.canTorch = false;
     }
 
-    function beep(ok) {
+    /* صوت: سياق واحد يُفتح بلمسة الحارس (شرط iOS/iPadOS لتشغيل الصوت) */
+    var audio = { ctx: null };
+    function unlockAudio() {
       try {
         var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-        var ac = new AC(), o = ac.createOscillator(), g = ac.createGain();
+        if (!audio.ctx) audio.ctx = new AC();
+        if (audio.ctx.state === 'suspended') audio.ctx.resume();
+      } catch (e) {}
+    }
+    function beep(ok) {
+      try {
+        var ac = audio.ctx; if (!ac) return;
+        if (ac.state === 'suspended') ac.resume();
+        var o = ac.createOscillator(), g = ac.createGain();
         o.connect(g); g.connect(ac.destination);
         o.frequency.value = ok ? 880 : 220; o.type = 'sine';
         g.gain.setValueAtTime(.18, ac.currentTime);
         o.start(); o.stop(ac.currentTime + (ok ? .16 : .3));
       } catch (e) {}
       if (navigator.vibrate) { try { navigator.vibrate(ok ? 90 : [60, 60, 60]); } catch (e) {} }
+    }
+
+    /* إبقاء شاشة الجوال مضاءة أثناء المسح (Wake Lock) */
+    var wake = null;
+    function lockScreen() {
+      try {
+        if (navigator.wakeLock && !wake) {
+          navigator.wakeLock.request('screen').then(function (w) {
+            wake = w; w.addEventListener('release', function () { wake = null; });
+          }).catch(function () {});
+        }
+      } catch (e) {}
+    }
+    function releaseWake() { try { if (wake) { wake.release(); wake = null; } } catch (e) {} }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && state.scanning) lockScreen(); });
+
+    /* إطفاء الكاميرا تلقائيًا بعد ٤ دقائق بلا مسح (بطارية الجوال) */
+    function idleReset() {
+      if (state.idleTimer) clearTimeout(state.idleTimer);
+      state.idleTimer = setTimeout(function () {
+        if (!state.scanning) return;
+        stopCam();
+        UI.toast('أُوقفت الكاميرا تلقائيًا لتوفير البطارية — اضغط «مسح إذن خروج» للمتابعة', 'warn');
+        redraw();
+      }, 4 * 60 * 1000);
     }
 
     /* ---------- تلقائي: يُسجَّل فور قراءة الرمز، بلا أي زر أو تأكيد ---------- */
@@ -75,7 +112,7 @@
       if (state.timer) clearTimeout(state.timer);
       redraw();
       state.timer = setTimeout(function () {
-        state.result = null; state.busy = false;
+        state.result = null; state.busy = false; idleReset();
         redraw();
       }, ms);
     }
@@ -130,19 +167,32 @@
       }
 
       function startScan() {
+        unlockAudio();                       /* يفتح الصوت بلمسة الحارس (iOS) */
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           UI.toast('الكاميرا غير متاحة في هذا المتصفح — استخدم الإدخال اليدوي', 'warn'); return;
         }
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } })
           .then(function (stream) {
             state.stream = stream; state.scanning = true;
+            video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', '');
             video.srcObject = stream;
             video.play().catch(function () {});
+            try {
+              var tr = stream.getVideoTracks()[0];
+              var caps = (tr && tr.getCapabilities) ? tr.getCapabilities() : {};
+              state.canTorch = !!caps.torch;   /* الكشاف متاح في أندرويد غالبًا، وغير مدعوم في آيفون */
+            } catch (e) { state.canTorch = false; }
+            lockScreen();
+            idleReset();
             redraw();
             scanLoop();
           })
-          .catch(function () {
-            UI.toast('تعذّر فتح الكاميرا (صلاحية أو اتصال غير آمن) — أدخل رقم التصريح يدويًا', 'bad');
+          .catch(function (err) {
+            var n = (err && err.name) || '';
+            var msg = (n === 'NotAllowedError' || n === 'SecurityError')
+              ? 'لم يُسمح بالكاميرا — افتح إعدادات المتصفح وامنح الإذن للموقع، ثم أعد المحاولة'
+              : 'تعذّر فتح الكاميرا — افتح المنصة في سفاري/كروم مباشرة (متصفحات واتساب وانستقرام تمنع الكاميرا)، وتأكد من اتصال آمن https';
+            UI.toast(msg, 'bad');
           });
       }
 
@@ -173,6 +223,15 @@
         }
       });
 
+      var torchBtn = (state.scanning && state.canTorch) ? h('button', { class: 'btn btn-outline', type: 'button',
+        text: state.torch ? 'إطفاء الكشاف' : 'تشغيل الكشاف', onClick: function () {
+          try {
+            var tr = state.stream && state.stream.getVideoTracks()[0];
+            state.torch = !state.torch;
+            tr.applyConstraints({ advanced: [{ torch: state.torch }] });
+            redraw();
+          } catch (e) { UI.toast('الكشاف غير مدعوم في هذا الجهاز', 'warn'); }
+        } }) : null;
       var scanPanel = UI.panel('مسح إذن خروج',
         state.scanning ? 'وضع المسح التلقائي: وجّه الباركود داخل الإطار — يُسجَّل الخروج فورًا بلا أي زر.' : 'اضغط «مسح إذن خروج» لتفتح الكاميرا، ثم وجّه الباركود — التسجيل تلقائي.',
         [state.scanning
@@ -181,7 +240,8 @@
               if (state.timer) clearTimeout(state.timer);
               state.busy = false; state.result = null;
               startScan();
-            } })],
+            } }),
+          torchBtn],
         [
           h('div', { class: 'gate-stage' }, [
             video,
@@ -197,7 +257,7 @@
           h('div', { class: 'grid-gate' }, [
             gateF.wrap,
             h('div', { class: 'gate-hint' }, [
-              h('div', { class: 'callout tip', text: 'المسح يعمل فقط داخل حساب الحارس — كل تسجيل يُحفظ تلقائيًا باسمك ووقتك والبوابة، ويُرسل إشعار للمدير والوكيل والتوجيه.' })
+              h('div', { class: 'callout tip', html: 'المسح يعمل فقط داخل حساب الحارس — كل تسجيل يُحفظ تلقائيًا باسمك ووقتك والبوابة، ويُرسل إشعار للمدير والوكيل والتوجيه.<br>من جوالك: اسمح بالكاميرا مرة واحدة فقط، ثم يعمل المسح بلا إنترنت — والباركود يُقرأ من الورقة أو من شاشة جوال الطالب.' })
             ])
           ]),
 

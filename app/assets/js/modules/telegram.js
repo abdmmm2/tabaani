@@ -98,6 +98,19 @@
         drawPreview();
       }
 
+      /* ===================================== ٠) ربط البوت (المدير) */
+      if (S.session.role === 'principal' && window.TelegramConnect) {
+        var connectSlot = h('div');
+        function drawConnect() {
+          clear(connectSlot);
+          connectSlot.appendChild(UI.panel('ربط بوت تلقرام',
+            'شغّل الإرسال الفعلي: بوت واحد للمنصة مع مجموعة لكل مدرسة، أو بوت مستقل لكل مدرسة.',
+            null, [window.TelegramConnect.build(function () { drawConnect(); refresh(); })]));
+        }
+        drawConnect();
+        view.appendChild(connectSlot);
+      }
+
       /* ===================================== ١) معاينة آخر 5 رسائل */
       view.appendChild(previewSlot);
 

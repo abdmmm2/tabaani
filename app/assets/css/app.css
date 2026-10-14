@@ -361,3 +361,18 @@
   .gate-res-icon { width: 44px; height: 44px; font-size: 22px; }
   .btn-scan { font-size: var(--fs-md); padding: 14px; }
 }
+
+/* --------------------------- ربط بوت تلقرام */
+.tg-status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--bg-soft); margin-bottom: 12px; }
+.tg-status.is-on { background: var(--mint-100); border-color: var(--mint-500); }
+.tg-status.is-off { background: #FCF6E8; border-color: #E3C88A; }
+.tg-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #C0A56A; }
+.tg-status.is-on .tg-status-dot { background: var(--mint-500); box-shadow: 0 0 0 4px rgba(47,163,122,.18); }
+.tg-status > div { flex: 1 1 240px; min-width: 0; font-size: var(--fs-sm); }
+.chk { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: #fff; cursor: pointer; }
+.chk input { width: 18px; height: 18px; accent-color: var(--brand-600); }
+.tg-help { margin-top: 14px; border: 1px dashed var(--border); border-radius: var(--r-md); padding: 10px 14px; background: #fff; }
+.tg-help summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); color: var(--brand-700); }
+.tg-help ol, .tg-help ul { margin: 10px 18px 6px 0; padding: 0; font-size: var(--fs-sm); line-height: 1.9; color: var(--ink-700); }

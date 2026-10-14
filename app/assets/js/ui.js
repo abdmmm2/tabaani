@@ -423,6 +423,14 @@
     '.lh-sub{text-align:center;font-size:11px;color:#5A5044;margin-bottom:6px}' +
     /* جسم التقرير */
     '.rp-meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0;font-size:11px;border-top:1px dashed #D9D1C2;border-bottom:1px dashed #D9D1C2;padding:8px 0}' +
+    /* رمز QR للتحقق (يُقرأ بكاميرا الحارس) */
+    '.rp-qr{display:flex;align-items:center;gap:12px;border:1.5px solid #CE9433;border-radius:8px;padding:10px 12px;margin:10px 0;background:#FCF8F0;break-inside:avoid}' +
+    '.rp-qr-img{width:38mm;height:38mm;flex:none;background:#fff;padding:2mm;border-radius:5px}' +
+    '.rp-qr-img svg{width:100%;height:100%;display:block}' +
+    '.rp-qr-txt{font-size:11px;line-height:1.7}' +
+    '.rp-qr-title{font-size:13px;font-weight:800;color:#8A5A1E;margin-bottom:2px}' +
+    '.rp-qr-code{font-family:ui-monospace,monospace;font-size:14px;font-weight:800;letter-spacing:1px;direction:ltr;text-align:left}' +
+    '.rp-qr-note{color:#4A4033;font-size:10.5px}' +
     '.rp-meta span strong{color:#8A5A1E}' +
     '.rp-section{margin:12px 0}' +
     '.rp-section h4{font-size:12.5px;margin:0 0 6px;border-inline-start:4px solid #CE9433;padding-inline-start:8px}' +
@@ -474,6 +482,14 @@
       '<title>' + (report.title || 'تقرير') + '</title><style>' + PRINT_CSS + '</style></head><body>' +
       letterhead(school, report) +
       (meta ? '<div class="rp-meta">' + meta + '</div>' : '') +
+      (report.qr ? '<div class="rp-qr">' +
+        '<div class="rp-qr-img">' + qrSvg(report.qr, 4, 1) + '</div>' +
+        '<div class="rp-qr-txt">' +
+          '<div class="rp-qr-title">' + (report.qrTitle || 'رمز التحقق') + '</div>' +
+          '<div class="rp-qr-code">' + report.qr + '</div>' +
+          '<div class="rp-qr-note">' + (report.qrHint || 'يُقرأ بكاميرا حارس البوابة عند الخروج — لا يحتاج إنترنت.') + '</div>' +
+        '</div>' +
+      '</div>' : '') +
       sections +
       '<div class="rp-foot">' +
         '<div class="rp-foot-top">' +
@@ -550,7 +566,8 @@
         ]),
         h('pre', { class: 'tg-text', text: m.text }),
         h('footer', { class: 'tg-foot' }, [
-          badge(m.status === 'queued' ? 'بانتظار البوت' : 'مُرسلة', m.status === 'queued' ? 'amber' : 'mint'),
+          badge(m.status === 'sent' ? 'أُرسلت إلى تلقرام' : (m.status === 'failed' ? 'فشل الإرسال' : (m.status === 'sending' ? 'يُرسل…' : 'بانتظار البوت')),
+            m.status === 'sent' ? 'mint' : (m.status === 'failed' ? 'terra' : 'amber')),
           h('button', {
             class: 'btn-link', type: 'button', text: 'نسخ النص', onClick: function () {
               navigator.clipboard && navigator.clipboard.writeText(m.text);

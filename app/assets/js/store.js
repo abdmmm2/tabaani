@@ -979,15 +979,106 @@
     },
     markRead: function () { (store.db.notif || []).forEach(function (n) { n.read = true; }); save(); },
 
-    /* ------------------------------------------------------ تلقرام (محاكاة) */
+    /* -------------------------------- تلقرام: الإعدادات والإرسال الفعلي ---------------- */
+    /* أوضاع الإرسال: sim (محاكاة) · relay (وسيط يخفي التوكن — موصى به) · direct (توكن في المتصفح — تجريبي) */
+    telegramConfig: function () {
+      var t = (db.settings && db.settings.telegram) || {};
+      return {
+        mode: t.mode || 'sim', relayUrl: t.relayUrl || '', relayKey: t.relayKey || '',
+        botToken: t.botToken || '', chatId: t.chatId || '', perSchool: !!t.perSchool,
+        lastTest: t.lastTest || null, lastTestOk: !!t.lastTestOk, lastTestMsg: t.lastTestMsg || ''
+      };
+    },
+    saveTelegramConfig: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.telegram = Object.assign({}, store.telegramConfig(), patch || {});
+      save(); return store.telegramConfig();
+    },
+    /** هل الإرسال الحقيقي جاهز؟ */
+    telegramReady: function () {
+      var c = store.telegramConfig();
+      var dest = store.telegramFor(store.session.schoolId);
+      if (c.mode === 'relay') return !!c.relayUrl && !!dest.chatId;
+      if (c.mode === 'direct') return !!c.botToken && !!dest.chatId;
+      return false;
+    },
+    /** مجموعة/قناة المدرسة: لكل مدرسة معرّفها، ويُسقط على المعرّف العام عند غيابه */
+    schoolChatId: function (schoolId) {
+      return store.telegramFor(schoolId).chatId;
+    },
+    /** وجهة الإرسال الفعلية للمدرسة: مجموعة خاصة إن وُجدت، وبوت خاص إن وُجد، وإلا إعدادات المنصة */
+    telegramFor: function (schoolId) {
+      var id = schoolId || store.session.schoolId;
+      var sc = (db.schools || []).filter(function (x) { return x.id === id; })[0];
+      var c = store.telegramConfig();
+      var out = { chatId: c.chatId, botToken: c.botToken, school: sc || null, own: false };
+      if (sc && sc.telegramChatId) { out.chatId = sc.telegramChatId; out.own = true; }
+      if (sc && sc.telegramBotToken) { out.botToken = sc.telegramBotToken; out.own = true; }
+      return out;
+    },
+    setSchoolChatId: function (schoolId, chatId) {
+      var sc = (db.schools || []).filter(function (x) { return x.id === schoolId; })[0];
+      if (!sc) return null;
+      sc.telegramChatId = String(chatId || '').trim();
+      save(); return sc.telegramChatId;
+    },
+    setSchoolBotToken: function (schoolId, token) {
+      var sc = (db.schools || []).filter(function (x) { return x.id === schoolId; })[0];
+      if (!sc) return null;
+      sc.telegramBotToken = String(token || '').trim();
+      save(); return sc.telegramBotToken;
+    },
+    /** إرسال رسالة فعلية حسب الوضع المُعدّ */
+    telegramSend: function (text, schoolId) {
+      var c = store.telegramConfig();
+      var dest = store.telegramFor(schoolId);
+      var chat = dest.chatId;
+      var token = (c.mode === 'direct' && dest.botToken) ? dest.botToken : c.botToken;
+      if (c.mode === 'relay' && c.relayUrl) {
+        return fetch(c.relayUrl, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ key: c.relayKey, chat_id: chat, text: text })
+        }).then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+          .then(function (j) { return { ok: !!j.ok, detail: j.description || j.error || '' }; })
+          .catch(function (e) { return { ok: false, detail: String((e && e.message) || e) }; });
+      }
+      if (c.mode === 'direct' && token && chat) {
+        return fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chat, text: text })
+        }).then(function (r) { return r.json(); })
+          .then(function (j) { return { ok: !!j.ok, detail: j.description || '' }; })
+          .catch(function (e) { return { ok: false, detail: String((e && e.message) || e) }; });
+      }
+      return Promise.resolve({ ok: false, detail: 'لم يُضبط الإرسال بعد (الوضع: محاكاة)' });
+    },
+    telegramTest: function (text) {
+      return store.telegramSend(text || 'رسالة تجريبية من منصة تابعني — الإرسال يعمل ✓', null).then(function (r) {
+        store.saveTelegramConfig({ lastTest: now(), lastTestOk: r.ok, lastTestMsg: r.detail || '' });
+        return r;
+      });
+    },
+
+    /* ------------------------------------- تلقرام: السجل (يُرسل فعليًا إن كان مُعدًّا) */
     tg: function (messages) {
+      var ready = store.telegramReady();
       [].concat(messages).forEach(function (m) {
         var chat = store.usersByRole(m.to)[0] || store.usersByRole(m.to, null)[0];
         if (!chat) chat = store.list('users').find(function (u) { return u.role === m.to; });
-        db.telegram.unshift({
+        var rec = {
           id: uid('tg'), to: m.to, toName: chat ? chat.name : m.to, chat: chat ? chat.telegram : '',
-          text: m.text, at: now(), status: 'queued'
-        });
+          schoolId: (chat && chat.schoolId) || store.session.schoolId,
+          text: m.text, at: now(), status: ready ? 'sending' : 'queued'
+        };
+        db.telegram.unshift(rec);
+        if (ready) {
+          store.telegramSend(m.text, rec.schoolId).then(function (r) {
+            rec.status = r.ok ? 'sent' : 'failed';
+            rec.error = r.ok ? '' : (r.detail || '');
+            rec.sentAt = now();
+            save();
+          });
+        }
       });
       if (db.telegram.length > 200) db.telegram.length = 200;
       save();
