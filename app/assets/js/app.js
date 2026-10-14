@@ -283,24 +283,7 @@
           h('code', { text: 'Tabaani@2026' }),
           h('span', { text: ' — ثم أنشئ بقية الحسابات أو دع الموظفين يسجّلون من «إنشاء حساب جديد».' })
         ]),
-        h('div', { class: 'cluster', style: { marginTop: '4px' } }, [
-          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إعادة بيانات العرض التجريبية', onClick: function () {
-            UI.confirm('سيُمسح كل ما أدخلته، وتُستعاد بيانات العرض التجريبية (المدرسة والطلاب والمعلمون). متابعة؟', { ok: 'استعادة العرض', danger: true }).then(function (ok) {
-              if (ok) { S.reset(); UI.toast('أُعيدت بيانات العرض التجريبية', 'ok'); App.login(); }
-            });
-          } }),
-          h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'البدء من الصفر (منصة فارغة)', onClick: function () {
-            UI.confirm('سيبدأ النظام فارغًا تمامًا: بلا مدرسة ولا طلاب ولا معلمين — وأنت من يؤسّس مدرسته ويُنشئ حساباتها. حسابك (مشرف المنصة) يبقى كما هو. متابعة؟', { ok: 'ابدأ من الصفر' }).then(function (ok) {
-              if (!ok) return;
-              UI.confirm('تأكيد أخير: سيُمسح كل شيء محليًا في هذا المتصفح (لا يمكن التراجع).', { ok: 'نعم، امسح وابدأ', danger: true }).then(function (ok2) {
-                if (!ok2) return;
-                S.resetEmptyAll();
-                UI.toast('صار النظام فارغًا — سجّل دخولك وأسّس مدرستك من «المدارس»', 'ok');
-                App.login();
-              });
-            });
-          } })
-        ])
+        h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'أدوات البيانات (إعادة بيانات العرض · البدء من الصفر · النسخة الاحتياطية) صارت داخل المنصة: حساب المشرف العام ← «بيانات المنصة».' })
       ]);
       App.authShell('الدخول إلى المنصة', 'سجّل دخولك لمتابعة خدماتك بحسب دورك.', box);
     },

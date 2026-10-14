@@ -1478,6 +1478,30 @@
     pendingExits: function () {   /* تصاريح ممنوحة ولم يُسجَّل خروجها بعد */
       return store.list('permissions').filter(function (p) { return p.granted && !p.exited; });
     },
+    /* ===================== بيانات المنصة: إحصاء · نسخة احتياطية · استرجاع ===================== */
+    dataStats: function () {
+      var d = store.db;
+      return {
+        schools: (d.schools || []).length, students: (d.students || []).length,
+        users: (d.users || []).length, classes: (d.classes || []).length,
+        sessions: (d.sessions || []).length, violations: (d.violations || []).length,
+        permissions: (d.permissions || []).length, exits: (d.exits || []).length,
+        subjects: (d.subjects || []).length, empty: !!(d.meta && d.meta.empty),
+        createdAt: (d.meta && d.meta.createdAt) || ''
+      };
+    },
+    backupJson: function () { return JSON.stringify(store.db); },
+    restoreJson: function (text) {
+      try {
+        var o = JSON.parse(text);
+        if (!o || !o.users || !o.schools) return { ok: false, error: 'الملف ليس نسخة صالحة لمنصة تابعني' };
+        db = o;
+        if (!db.exits) db.exits = [];
+        if (!db.subjects) db.subjects = [];
+        save(); ensureOwner(db);
+        return { ok: true, stats: store.dataStats() };
+      } catch (e) { return { ok: false, error: 'تعذّر قراءة الملف: ' + e.message }; }
+    },
     notifyPermission: function () { return store.canNotify() ? Notification.permission : 'unsupported'; },
     requestNotifyPermission: function () {
       if (!store.canNotify()) return Promise.resolve('unsupported');

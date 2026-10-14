@@ -3,7 +3,7 @@
    يخزّن كل ملفات المنصة محليًا عند أول فتح، ثم يشتغل بلا إنترنت.
    لتحديث النسخة بعد أي تعديل: غيّر رقم CACHE.
    ========================================================================== */
-var CACHE = 'tabaani-app-v6';
+var CACHE = 'tabaani-app-v7';
 var FILES = [
   "./index.html",
   "./manifest.webmanifest",
@@ -47,6 +47,7 @@ var FILES = [
   "./assets/js/modules/monitor.js",
   "./assets/js/modules/my-reports.js",
   "./assets/js/modules/permissions.js",
+  "./assets/js/modules/platform.js",
   "./assets/js/modules/promo.js",
   "./assets/js/modules/reports.js",
   "./assets/js/modules/schedule.js",
