@@ -104,15 +104,38 @@
         App.route();
       });
     },
+    /** إيقاف مباشر بضغطة واحدة — السبب يُستنتج: رسوم إن كان متأخّرًا، وإلا مشكلة تشغيلية */
+    suspendFlow: function (schoolId, onDone) {
+      var sc = S.school(schoolId) || {}, st = S.licenseState(schoolId);
+      if (!st) return;
+      var reason = (st.overdue || !st.paidUntil) ? 'fees' : 'issue';
+      var why = reason === 'fees' ? 'عدم سداد الرسوم السنوية' : 'مشكلة تشغيلية';
+      var done = function () { if (onDone) onDone(); else App.route(); };
+      UI.confirm('إيقاف دخول مدرسة ' + sc.name + '؟\n' +
+        '• سيتوقف دخول كل حسابات المدرسة فورًا: المدير والوكلاء والمعلمون والطلاب.\n' +
+        '• السبب المسجَّل: ' + why + ' — ويمكن تحديد سبب آخر وملاحظة من «تحديد السبب».\n' +
+        '• حسابك كمشرف عام لا يتأثّر.',
+        { ok: 'إيقاف دخول المدرسة', danger: true }).then(function (yes) {
+        if (!yes) return;
+        var r = S.suspendSchool(schoolId, reason, '');
+        if (!r.ok) { UI.toast(r.error, 'warn'); return; }
+        UI.toast('أُوقف دخول ' + sc.name + ' — لا يستطيع أي حساب من المدرسة الدخول', 'warn');
+        done();
+      });
+    },
     /** رفع الإيقاف */
-    activateFlow: function (schoolId) {
-      var sc = S.school(schoolId) || {};
-      UI.confirm('رفع الإيقاف عن ' + sc.name + ' وعودة الدخول لكل حساباتها؟', { ok: 'رفع الإيقاف' }).then(function (yes) {
+    activateFlow: function (schoolId, onDone) {
+      var sc = S.school(schoolId) || {}, st = S.licenseState(schoolId) || {};
+      var done = function () { if (onDone) onDone(); else App.route(); };
+      UI.confirm('تفعيل دخول مدرسة ' + sc.name + '؟\n' +
+        'سيعود كل حساباتها (المدير والوكلاء والمعلمون والطلاب) للدخول فورًا.' +
+        (st.blocked && st.reason === 'fees' && st.overdue ? '\nملاحظة: الاشتراك متأخّر السداد — الإيقاف سيعود عند تجاوز مدة السماح إن لم يُسدَّد.' : ''),
+        { ok: 'تفعيل دخول المدرسة' }).then(function (yes) {
         if (!yes) return;
         var r = S.activateSchool(schoolId);
         if (!r.ok) { UI.toast(r.error, 'warn'); return; }
-        UI.toast('رُفع الإيقاف عن ' + sc.name + ' ✓', 'ok');
-        App.route();
+        UI.toast('فُعّل دخول ' + sc.name + ' ✓', 'ok');
+        done();
       });
     },
     /** نافذة الإيقاف: السبب + ملاحظة (قرار المشرف العام) */
@@ -213,8 +236,9 @@
               var r = S.recordPayment(schoolId, { kind: 'setup' });
               UI.toast('سُجّل رسم التأسيس ' + r.amount + ' ر.س', 'ok'); close(); App.route();
             } },
-          st.blocked ? { label: 'رفع الإيقاف', class: 'btn-outline', onClick: function (close) { close(); App.activateFlow(schoolId); } }
-                     : { label: 'إيقاف الدخول', class: 'btn-danger', onClick: function (close) { close(); App.suspendDialog(schoolId, onDone); } },
+          st.blocked ? { label: 'تفعيل دخول المدرسة', class: 'btn-primary', onClick: function (close) { close(); App.activateFlow(schoolId, onDone); } }
+                     : { label: 'إيقاف دخول المدرسة', class: 'btn-danger', onClick: function (close) { close(); App.suspendFlow(schoolId, onDone); } },
+          st.blocked ? null : { label: 'إيقاف بسبب محدّد', class: 'btn-outline', onClick: function (close) { close(); App.suspendDialog(schoolId, onDone); } },
           { label: 'إغلاق' }
         ].filter(Boolean)
       });
@@ -1097,13 +1121,16 @@
               return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' } }, [
                 h('div', { class: 'lic-banner is-' + App._licTone(st) }, [App.licenseBadge(App._dashSchool), App._licLine(st)]),
                 h('div', { class: 'cluster' }, [
-                  h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تسجيل السداد (+سنة)',
-                    onClick: function () { App.payFlow(App._dashSchool); } }),
+                  /* زر واحد مباشر: إيقاف ⇄ تفعيل دخول المدرسة */
                   st.blocked
-                    ? h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'رفع الإيقاف',
+                    ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تفعيل دخول المدرسة',
                         onClick: function () { App.activateFlow(App._dashSchool); } })
-                    : h('button', { class: 'btn btn-danger btn-sm', type: 'button', text: 'إيقاف المدرسة (رسوم / مشكلة)',
-                        onClick: function () { App.suspendDialog(App._dashSchool); } }),
+                    : h('button', { class: 'btn btn-danger btn-sm', type: 'button', text: 'إيقاف دخول المدرسة',
+                        onClick: function () { App.suspendFlow(App._dashSchool); } }),
+                  h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تسجيل السداد (+سنة)',
+                    onClick: function () { App.payFlow(App._dashSchool); } }),
+                  st.blocked ? null : h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحديد السبب والملاحظة',
+                    onClick: function () { App.suspendDialog(App._dashSchool); } }),
                   h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'الباقة والتفاصيل',
                     onClick: function () { App.licenseDialog(App._dashSchool); } })
                 ])
@@ -1124,7 +1151,7 @@
                 h('strong', { text: r.name }),
                 h('span', { class: 'muted', text: ' — ' + r.label + ' · ' + r.planName + ' · ' + r.annual + ' ر.س سنويًا' }),
                 ' ',
-                h('button', { class: 'btn-link', type: 'button', text: 'رفع الإيقاف',
+                h('button', { class: 'btn-link', type: 'button', text: 'تفعيل',
                   onClick: function () { App.activateFlow(r.schoolId); } }),
                 ' ',
                 h('button', { class: 'btn-link', type: 'button', text: 'التفاصيل',

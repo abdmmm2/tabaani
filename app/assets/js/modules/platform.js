@@ -92,8 +92,8 @@
                     var btns = [h('button', { class: 'mini-btn is-primary', type: 'button', text: 'سداد سنة',
                       onClick: function () { App.payFlow(r.schoolId); } })];
                     btns.push(r.suspended
-                      ? h('button', { class: 'mini-btn', type: 'button', text: 'رفع الإيقاف', onClick: function () { App.activateFlow(r.schoolId); } })
-                      : h('button', { class: 'mini-btn', type: 'button', text: 'إيقاف', onClick: function () { App.suspendDialog(r.schoolId, draw); } }));
+                      ? h('button', { class: 'mini-btn is-primary', type: 'button', text: 'تفعيل', onClick: function () { App.activateFlow(r.schoolId, draw); } })
+                      : h('button', { class: 'mini-btn', type: 'button', text: 'إيقاف', onClick: function () { App.suspendFlow(r.schoolId, draw); } }));
                     btns.push(h('button', { class: 'mini-btn', type: 'button', text: 'تفاصيل', onClick: function () { App.licenseDialog(r.schoolId, draw); } }));
                     return h('div', { class: 'cluster', style: { gap: '6px' } }, btns);
                   } }

@@ -400,14 +400,14 @@
                 var st = S.licenseState(s.id);
                 var btn = h('button', { class: 'mini-btn is-primary', type: 'button', text: 'إدارة',
                   onClick: function () { App.licenseDialog(s.id, draw); } });
-                if (st && st.blocked) {
-                  return h('div', { class: 'cluster', style: { gap: '6px' } }, [
-                    btn, h('button', { class: 'mini-btn', type: 'button', text: 'رفع الإيقاف',
-                      onClick: function () { App.activateFlow(s.id); } })
-                  ]);
-                }
                 return h('div', { class: 'cluster', style: { gap: '6px' } }, [
-                  btn, h('button', { class: 'mini-btn', type: 'button', text: 'سداد', onClick: function () { App.payFlow(s.id); } })
+                  btn,
+                  (st && st.blocked)
+                    ? h('button', { class: 'mini-btn is-primary', type: 'button', text: 'تفعيل',
+                        onClick: function () { App.activateFlow(s.id, draw); } })
+                    : h('button', { class: 'mini-btn', type: 'button', text: 'إيقاف',
+                        onClick: function () { App.suspendFlow(s.id, draw); } }),
+                  h('button', { class: 'mini-btn', type: 'button', text: 'سداد', onClick: function () { App.payFlow(s.id); } })
                 ]);
               }
             },

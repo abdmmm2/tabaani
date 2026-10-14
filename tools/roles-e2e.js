@@ -303,12 +303,38 @@ async function licenseSuite(page, base) {
   ok(await shellOn(), 'باقات: المشرف العام يدخل');
   const dash = await page.eval('var t=document.querySelector("#view").innerText;' +
     'return { lic:t.indexOf("الباقة والاشتراك — هذه المدرسة")>-1, pay:t.indexOf("تسجيل السداد")>-1,' +
-    ' off:t.indexOf("إيقاف المدرسة")>-1, stat:t.indexOf("اشتراكات موقوفة")>-1 };');
+    ' off:t.indexOf("إيقاف دخول المدرسة")>-1, stat:t.indexOf("اشتراكات موقوفة")>-1 };');
   ok(dash.lic && dash.pay && dash.off, 'اللوحة: بطاقة الباقة والاشتراك مع أزرار السداد والإيقاف', JSON.stringify(dash));
   ok(dash.stat, 'اللوحة: إحصاء الاشتراكات الموقوفة/المتأخّرة');
 
-  /* الإيقاف بسبب عدم سداد الرسوم — من الواجهة نفسها */
-  await page.eval(clickText('#view button', 'إيقاف المدرسة (رسوم / مشكلة)'));
+  /* إيقاف وتفعيل بضغطة واحدة من لوحة المشرف */
+  ok(await page.eval(clickText('#view button', 'إيقاف دخول المدرسة')), 'اللوحة: زر «إيقاف دخول المدرسة» مباشر');
+  await B.sleep(400);
+  const c1 = await page.eval('var m=document.querySelector(".modal"); return m ? m.innerText : "";');
+  ok(/سيتوقف دخول كل حسابات المدرسة/.test(c1) && /لا يتأثّر/.test(c1),
+    'تأكيد الإيقاف يشرح الأثر واستثناء المشرف العام', c1.slice(0, 70));
+  await page.eval(clickText('.modal button', 'إيقاف دخول المدرسة'));
+  await B.sleep(700);
+  const Ld = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  ok(Ld.blocked, 'الإيقاف المباشر أوقف دخول المدرسة', JSON.stringify({ blocked: Ld.blocked, reason: Ld.reason }));
+  const aud0 = await page.eval('return (Store.db.audit || [])[0] || {};');
+  ok(aud0.action === 'school_suspended', 'الإيقاف المباشر مقيّد في سجل التدقيق', aud0.action || '—');
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  ok(!(await shellOn()), 'الإيقاف المباشر: قائد المدرسة لا يدخل');
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  ok(await shellOn(), 'الإيقاف المباشر: المشرف العام لا يُحجب');
+  ok(await page.eval(clickText('#view button', 'تفعيل دخول المدرسة')), 'اللوحة: الزر يتحوّل إلى «تفعيل دخول المدرسة»');
+  await B.sleep(400);
+  await page.eval(clickText('.modal button', 'تفعيل دخول المدرسة'));
+  await B.sleep(700);
+  const Le = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  ok(!Le.blocked, 'التفعيل المباشر أعاد الدخول للمدرسة');
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  ok(await shellOn(), 'بعد التفعيل المباشر: قائد المدرسة يدخل');
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+
+  /* الإيقاف بسبب موثَّق (عدم سداد الرسوم) — من «تحديد السبب والملاحظة» */
+  ok(await page.eval(clickText('#view button', 'تحديد السبب والملاحظة')), 'اللوحة: زر «تحديد السبب والملاحظة»');
   await B.sleep(400);
   const dlg = await page.eval('var m=document.querySelector(".modal"); if(!m) return null;' +
     'return { t:m.innerText.indexOf("عدم سداد الرسوم السنوية")>-1, warn:m.innerText.indexOf("سيتوقف دخول كل حسابات المدرسة")>-1 };');
@@ -317,13 +343,13 @@ async function licenseSuite(page, base) {
   await page.eval(clickText('.modal button', 'إيقاف الدخول'));
   await B.sleep(700);
   const L1 = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
-  ok(L1.blocked && L1.reason === 'fees' && /رسوم/.test(L1.label), 'الإيقاف سُجّل بسبب الرسوم',
+  ok(L1.blocked && L1.reason === 'fees' && /رسوم/.test(L1.label), 'الإيقاف بسبب موثَّق: عدم سداد الرسوم',
     JSON.stringify({ blocked: L1.blocked, reason: L1.reason }));
   const aud1 = await page.eval('return (Store.db.audit || [])[0] || {};');
   ok(aud1.action === 'school_suspended', 'الإيقاف مقيّد في سجل التدقيق', aud1.action || 'لا قيد');
   const banner = await page.eval('var t=document.querySelector("#view").innerText;' +
-    'return { bad:t.indexOf("مدارس موقوفة")>-1, act:t.indexOf("رفع الإيقاف")>-1 };');
-  ok(banner.bad && banner.act, 'اللوحة تُظهر تنبيه المدارس الموقوفة مع رفع الإيقاف', JSON.stringify(banner));
+    'return { bad:t.indexOf("مدارس موقوفة")>-1, act:t.indexOf("تفعيل")>-1 };');
+  ok(banner.bad && banner.act, 'اللوحة تُظهر تنبيه المدارس الموقوفة مع زر التفعيل', JSON.stringify(banner));
 
   /* الأثر: لا يدخل أحد من المدرسة — والمشرف العام يدخل دائمًا */
   await loginAsRaw(page, base, prin.uname, prin.pw);
