@@ -226,7 +226,8 @@
       'u-volunteer-4': 'volunteer', 'u-activity-5': 'activity'
     };
     db.users.forEach(function (u, i) {
-      u.username = USERNAMES[u.id] || (u.role === 'teacher' ? 'teacher' + (i % 100) : u.role + (i + 1));
+      /* الاسم المحدَّد صراحةً (حسابات المنصة) يُحترَم — وإلا يُولَّد بحسب الدور */
+      u.username = u.username || USERNAMES[u.id] || (u.role === 'teacher' ? 'teacher' + (i % 100) : u.role + (i + 1));
       u.password = DEFAULT_PASS;
     });
 
