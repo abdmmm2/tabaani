@@ -513,10 +513,29 @@
   }
   function reset() { db = seed(); save(); }
 
+  /* يبدأ منصة فارغة تمامًا: بلا مدرسة ولا طالب ولا معلم —
+     تبقى فقط حسابات المشرف العام (وحسابات المالك) ليدخل ويؤسّس مدرسته بنفسه. */
+  function resetEmpty() {
+    var d = seed();
+    var supers = (d.users || []).filter(function (u) { return u.role === 'super'; });
+    ['schools', 'classes', 'students', 'assignments', 'transfers', 'periods', 'sessions',
+     'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
+     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans',
+     'reports', 'telegram', 'audit', 'notif', 'subjects'].forEach(function (k) { d[k] = []; });
+    d.users = supers;
+    d.letterhead = null;
+    d.settings = Object.assign({}, d.settings, { deprivationBySubject: {}, activeTermId: null });
+    d.meta = { version: 1, createdAt: now(), empty: true };
+    db = d; save();
+    return db;
+  }
+
   /* -------------------------------------------------------------- المساعدات */
   var store = {
     get db() { return db || load(); },
-    load: load, save: save, reset: reset,
+    load: load, save: save, resetEmptyAll: function () { return resetEmpty(); },
+    resetDem: function () { return reset(); },
+    reset: reset,
     uid: uid, now: now,
 
     /* ------------------------------ جنس المدرسة والتأنيث ------------------------------ */
