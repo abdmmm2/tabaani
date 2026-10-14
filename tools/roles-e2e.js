@@ -80,6 +80,7 @@ async function main() {
       const acc = byRole[role];
       B.resetErrors(page);
       await ensureLoggedOut(page);
+      await openLogin(page);
       await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
 
       /* ------------------------------ الدخول ------------------------------ */
@@ -555,9 +556,19 @@ async function financeSupportSuite(page, base) {
 }
 
 /** دخول مباشر (بلا خطوات إضافية) */
+/** يفتح نافذة بيانات الدخول إن كانت الصفحة الرئيسية هي المعروضة */
+async function openLogin(page) {
+  const has = await page.eval('return !!document.querySelector("form [name=username]");').catch(() => false);
+  if (has) return true;
+  await page.eval('var b = document.querySelector("[data-login]"); if (b) b.click(); return true;').catch(() => {});
+  await B.sleep(400);
+  return true;
+}
+
 async function loginAsRaw(page, base, u, pw) {
   await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
   await B.goto(page, base + '/index.html', '!!window.Store');
+  await openLogin(page);
   await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
   await page.eval(
     'document.querySelector("[name=username]").value=' + JSON.stringify(u) + ';' +
@@ -578,6 +589,7 @@ async function twoFactorSuite(page, base) {
     /* تنقّل جديد دائمًا: يضمن الوصول لشاشة الدخول سواء كنّا في المنصة أو على شاشة التحقق */
     await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
     await B.goto(page, base + '/index.html', '!!window.Store');
+    await openLogin(page);
     await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
     await page.eval(
       'document.querySelector("[name=username]").value=' + JSON.stringify(u) + ';' +

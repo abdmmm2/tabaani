@@ -520,8 +520,13 @@
       return h('button', { class: 'btn-link', type: 'button', text: label, style: { alignSelf: 'flex-start' }, onClick: fn });
     },
 
-    /** شاشة الدخول */
+    /** الدخول: يفتح الصفحة الرئيسية مع نافذة بيانات الدخول */
     login: function () {
+      return App.landing({ login: true });
+    },
+
+    /** شاشة الدخول المفردة (احتياط — تُستخدم عند الحاجة لإظهار النموذج وحده) */
+    loginScreen: function () {
       App._removeSupportFab();
       var user = UI.field({ name: 'username', label: 'اسم المستخدم أو البريد', required: true, placeholder: 'principal', autocomplete: 'username' });
       var pass = UI.field({ name: 'password', label: 'كلمة المرور', type: 'password', required: true, placeholder: '••••••••', autocomplete: 'current-password' });
@@ -923,9 +928,12 @@
         }, 900);
       };
       App._stamp();
-      if (S.needsSetup()) { App.setupScreen(); return; }   /* أول تشغيل: لا كلمات مرور في الكود */
+      /* الصفحة الرئيسية العامة أولًا (شاشة التهيئة تُفتح من أيقونة الدخول) */
       var u = S.restore();
-      if (u) App.shell(); else App.login();
+      if (u) { App.shell(); return; }
+      /* لم يسجّل دخول: الصفحة الرئيسية العامة للموقع */
+      if (App.landing) App.landing({ login: !!location.hash.match(/login/) });
+      else App.login();
     },
 
     /* ============ التهيئة الأولى: إنشاء حساب المشرف العام بطريقة آمنة ============ */

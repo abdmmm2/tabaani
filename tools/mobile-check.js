@@ -34,6 +34,15 @@ function check(cond, label, detail) {
   return false;
 }
 
+/** يفتح نافذة بيانات الدخول إن كانت الصفحة الرئيسية هي المعروضة */
+async function openLogin(page) {
+  const has = await page.eval('return !!document.querySelector("form [name=username]");').catch(() => false);
+  if (has) return true;
+  await page.eval('var b = document.querySelector("[data-login]"); if (b) b.click(); return true;').catch(() => {});
+  await B.sleep(400);
+  return true;
+}
+
 async function main() {
   const site = await B.serve(APP_DIR);
   const chrome = await B.launch();
@@ -55,6 +64,7 @@ async function main() {
 
     /* --------------------- ٤) شاشة الدخول: أهداف اللمس --------------------- */
     await ensureLoggedOut(page);
+    await openLogin(page);
     await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
     const loginMetrics = await page.eval(
       'var rects = ["username", "password"].map(function (n) {' +
@@ -84,6 +94,7 @@ async function main() {
       const acc = byRole[role];
       B.resetErrors(page);
       await ensureLoggedOut(page);
+      await openLogin(page);
       await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
 
       await page.eval(
