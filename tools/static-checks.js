@@ -87,7 +87,26 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
   add(external.length === 0, 'لا مكتبات خارجية في الصفحات (كل شيء محلي)', external.slice(0, 6).join(' · '));
 })();
 
-/* --------------------------- ٥) تطابق رقم الإصدار بين ثلاثة مواضع */
+/* ---------------- ٦) صور الأدلة والمعرض موجودة فعلًا (كشف صورة مفقودة) */
+(function guideImages() {
+  const pages = walk(path.join(ROOT, 'docs', 'guide')).filter((f) => f.endsWith('.html')).map(rel)
+    .concat(['screens/index.html', 'index.html']).filter((p) => fs.existsSync(path.join(ROOT, p)));
+  const missing = [];
+  let total = 0;
+  for (const page of pages) {
+    const html = read(page);
+    const dir = path.dirname(path.join(ROOT, page));
+    const refs = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g)).map((m) => m[1]);
+    for (const u of refs) {
+      if (/^(https?:)?\/\//i.test(u) || u.startsWith('data:')) continue;
+      total++;
+      if (!fs.existsSync(path.resolve(dir, u.split('?')[0].split('#')[0]))) missing.push(page + ' → ' + u);
+    }
+  }
+  add(missing.length === 0, 'كل صور الأدلة والمعرض موجودة (' + total + ' صورة)', missing.slice(0, 6).join(' · '));
+})();
+
+/* --------------------------- ٧) تطابق رقم الإصدار بين ثلاثة مواضع */
 (function version() {
   const sw = read('app/sw.js').match(/CACHE\s*=\s*'tabaani-app-v(\d+)'/);
   const meta = read('app/index.html').match(/name="app-version"\s+content="(\d+)"/);
@@ -101,7 +120,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
   );
 })();
 
-/* ----------------------------------- ٦) الملفات الأساسية للمشروع */
+/* ----------------------------------- ٨) الملفات الأساسية للمشروع */
 (function essentials() {
   const must = [
     'README.md', 'index.html', 'app/index.html', 'app/sw.js', 'app/manifest.webmanifest',

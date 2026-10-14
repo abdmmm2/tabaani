@@ -347,5 +347,21 @@
   "role": "موجّهة التوجيه والإرشاد",
   "mod": "violations",
   "cat": "girls"
+ },
+ {
+  "file": "33-mod-entry-permit",
+  "label": "إذن دخول الفصل",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "entry-permit",
+  "height": 1478,
+  "cat": "mod"
+ },
+ {
+  "file": "34-mod-messages",
+  "label": "الرسائل الخاصة",
+  "role": "معلم",
+  "mod": "messages",
+  "height": 1382,
+  "cat": "mod"
  }
 ]
