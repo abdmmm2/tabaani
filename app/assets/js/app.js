@@ -773,6 +773,13 @@
           stAll.suspended ? 'gold' : null);
         /* زر واحد مباشر: إيقاف/تفعيل كل طلاب المنصّة من اللوحة نفسها */
         var allOff = stAll.total > 0 && stAll.active === 0;
+        /* اختيار مدرسة واحدة للتحكم المستقل من اللوحة */
+        var schools = S.list('schools');
+        if (!App._dashSchool || !schools.some(function (s) { return s.id === App._dashSchool; })) {
+          App._dashSchool = schools.length ? schools[0].id : '';
+        }
+        var one = App._dashSchool ? S.studentAccountStats(App._dashSchool) : null;
+        var oneOff = !!one && one.total > 0 && one.active === 0;
         view.appendChild(h('div', { class: 'panel' }, [
           h('h3', { class: 'panel-title', text: 'حسابات الطلاب — دخول المنصة' }),
           h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
@@ -794,9 +801,47 @@
                 });
               }
             }),
-            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحكم بمدرسة محدّدة', onClick: function () { App.go('users'); } })
-          ])
+            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحكم مفصّل بكل المدارس', onClick: function () { App.go('users'); } })
+          ]),
         ]));
+        /* ── مدرسة واحدة: اختيار المدرسة + إيقاف/تفعيل طلابها وحدها ── */
+        if (schools.length) {
+          var stOne = S.studentAccountStats(App._dashSchool);
+          var oneOff = stOne.total > 0 && stOne.active === 0;
+          var selOptions = schools.map(function (sc) {
+            var st = S.studentAccountStats(sc.id);
+            var off = st.total > 0 && st.active === 0;
+            var note = st.total ? (off ? ' (موقوفة)' : ' (' + st.active + ' نشطة)') : ' (بلا حسابات)';
+            return h('option', { value: sc.id, selected: App._dashSchool === sc.id, text: sc.name + ' — ' + st.total + ' حساب' + note });
+          });
+          var schoolSel = h('select', { class: 'input', onchange: function (e) { App._dashSchool = e.target.value; App.route(); } }, selOptions);
+          view.appendChild(h('div', { class: 'panel', style: { marginTop: '12px' } }, [
+            h('h3', { class: 'panel-title', text: 'مدرسة واحدة' }),
+            h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
+              text: 'اختر مدرسة ثم أوقف أو فعّل دخول طلابها وحدها — بلا أثر على بقية المدارس.' }),
+            h('div', { class: 'cluster', style: { alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap' } }, [
+              h('div', { class: 'field', style: { minWidth: '280px', margin: 0 } }, [h('label', { text: 'المدرسة' }), schoolSel]),
+              h('button', {
+                class: 'btn ' + (oneOff ? 'btn-primary' : 'btn-danger') + ' btn-sm', type: 'button',
+                disabled: !stOne.total,
+                text: oneOff ? 'تفعيل طلاب هذه المدرسة' : 'إيقاف طلاب هذه المدرسة',
+                onClick: function () {
+                  var target = App._dashSchool;
+                  var st = S.studentAccountStats(target);
+                  var off = st.total > 0 && st.active === 0;
+                  var sc = S.school(target) || {};
+                  UI.confirm((off ? 'تفعيل' : 'إيقاف') + ' دخول طلاب ' + (sc.name || '') + '؟',
+                    { ok: off ? 'تفعيل المدرسة' : 'إيقاف المدرسة', danger: !off }).then(function (yes) {
+                    if (!yes) return;
+                    var r = S.setStudentAccounts(off ? 'activate' : 'suspend', { schoolId: target });
+                    UI.toast((off ? 'فُعّل ' : 'أُوقف ') + r.changed + ' من ' + r.total + ' حسابًا', r.changed ? 'ok' : 'warn');
+                    App.route();
+                  });
+                }
+              })
+            ])
+          ]));
+        }
         action('إضافة مدرسة', 'schools', 'btn-primary');
       }
       if (role === 'principal') {
