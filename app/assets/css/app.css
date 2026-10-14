@@ -699,3 +699,6 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .cloud-result.bad { background: #FDEDEA; color: #9B2C1F; }
 .cloud-open { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
 .cloud-open .btn { margin: 0; }
+
+/* القاعدة العامة: أي عنصر عليه hidden يختفي فعلًا (بعض الأصناف تضبط display فتلغي hidden) */
+[hidden] { display: none !important; }
