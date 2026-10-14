@@ -1,7 +1,7 @@
 /* =============================================================================
    tools/build-guides.js — توليد الأدلة الثلاثة (PDF + Word) من صفحات HTML
    ---------------------------------------------------------------------------
-   المصدر هو HTML داخل docs/guide/ — وهذا الملف يولّد منه:
+   المصدر هو HTML داخل d21448/ — وهذا الملف يولّد منه:
      • PDF  : عبر Chrome/Chromium (طباعة الصفحة كما تظهر بالأصل، مع تضمين الخطوط).
      • DOCX : عبر LibreOffice ‏(soffice) — نسخ قابلة للتحرير.
 
@@ -11,7 +11,7 @@
      node tools/build-guides.js --docx     # Word فقط
      CHROME_BIN=/path/to/chrome node tools/build-guides.js
 
-   ملاحظة: يُحوَّل DOCX داخل مجلد docs/guide نفسه حتى تبقى مسارات الصور
+   ملاحظة: يُحوَّل DOCX داخل مجلد d21448 نفسه حتى تبقى مسارات الصور
    (../../screens/…) صحيحة، ثم يُعاد تسمية الملف إلى الاسم العربي المطلوب.
    ========================================================================== */
 'use strict';
@@ -22,7 +22,7 @@ const { execFileSync } = require('child_process');
 const B = require('./browser');
 
 const ROOT = path.join(__dirname, '..');
-const GUIDE = path.join(ROOT, 'docs', 'guide');
+const GUIDE = path.join(ROOT, 'd21448');
 
 /* الاسم الظاهر ⇄ ملف HTML ⇄ اسم المخرج */
 const DOCS = [
@@ -58,7 +58,7 @@ async function buildPdf() {
     for (const d of DOCS) {
       const src = path.join(GUIDE, d.html);
       if (!fs.existsSync(src)) { rows.push([d.out + '.pdf', '✗', 'ملف HTML غير موجود']); continue; }
-      await B.goto(page, site.url + '/docs/guide/' + encodeURIComponent(d.html), 'document.readyState === "complete"');
+      await B.goto(page, site.url + '/d21448/' + encodeURIComponent(d.html), 'document.readyState === "complete"');
       /* انتظر تحميل الصور كلها قبل الطباعة */
       await page.eval(
         'var imgs = Array.prototype.slice.call(document.images);' +
@@ -139,7 +139,7 @@ async function buildDocx() {
       const tmp = path.join(GUIDE, '.__inline-' + d.html);
       try {
         /* ١) تضمين الصور */
-        await B.goto(page, site.url + '/docs/guide/' + encodeURIComponent(d.html), 'document.readyState === "complete"');
+        await B.goto(page, site.url + '/d21448/' + encodeURIComponent(d.html), 'document.readyState === "complete"');
         await page.eval('return Promise.all(Array.prototype.map.call(document.images, function (i) {' +
           'return i.complete ? 1 : new Promise(function (r) { i.onload = i.onerror = r; }); })).then(function () { return true; });').catch(() => {});
         const map = await pageWithInlinedImages(page, GUIDE);
