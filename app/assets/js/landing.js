@@ -253,6 +253,11 @@
     ]));
     var band = promoBand();
     if (band) host.appendChild(band);
+    else probePromo(function (cfg) {
+      var b = cfg ? promoBand(cfg) : null;
+      if (b && host.firstChild) host.insertBefore(b, host.firstChild.nextSibling || null);
+      else if (b) host.appendChild(b);
+    });
     host.appendChild(h('section', { class: 'lp-sec' }, [
       h('div', { class: 'lp-grid lp-grid-3' }, [
         card('&#128200;', 'قرار من بيانات لحظية', 'من غاب؟ من تأخّر؟ أين المخالفة الآن؟ — أمامك مباشرة.'),
@@ -401,9 +406,24 @@
 
   /* ------------------------------------------------------------ شريط الإعلان */
   /** يقرأ إعلان المنصة: يُغلق، ويتلاشى بعد مدة (autoClose)، ويحترم تكرار العرض */
-  function promoBand() {
-    var cfg = null;
-    try { if (S && S.promoConfig) cfg = S.promoConfig(); } catch (e) {}
+  /** يقرأ ملف الإعلان المنشور للموقع (site/assets/data/promo-config.js) — للزوار */
+  function probePromo(cb) {
+    try {
+      fetch('../site/assets/data/promo-config.js', { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('no-file');
+        return r.text();
+      }).then(function (txt) {
+        var fake = {};
+        try { (new Function('window', txt))(fake); } catch (e) { return cb(null); }
+        cb(fake.TABAANI_PROMO || null);
+      }).catch(function () { cb(null); });
+    } catch (e) { cb(null); }
+  }
+
+  function promoBand(given) {
+    var cfg = given || null;
+    /* الإعداد المحلّي يُستخدم فقط إذا لم يُمرَّر إعداد جاهز (ملف الموقع مثلًا) */
+    if (!cfg) { try { if (S && S.promoConfig) cfg = S.promoConfig(); } catch (e) {} }
     if (!cfg || !cfg.ads || !cfg.ads.length) {
       try { var raw = localStorage.getItem('tabaani_promo_config'); if (raw) cfg = JSON.parse(raw); } catch (e) {}
     }
