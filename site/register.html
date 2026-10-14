@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<script>document.documentElement.classList.add('js');</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>إنشاء حساب | تابعني</title>
+<meta name="description" content="أنشئ حسابك المجاني على منصة تابعني التعليمية: اختبار تشخيصي من ١٠ أسئلة وخطة أسبوعية تصلك فوراً.">
+<meta name="theme-color" content="#CE9433">
+<link rel="icon" href="assets/img/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/css/tabaani.css">
+</head>
+<body>
+<a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
+
+<!-- ===================== MINIMAL TOP BAR (auth) ===================== -->
+<div style="border-bottom:1px solid var(--border);background:var(--bg)">
+  <div class="container between" style="min-height:68px">
+    <a class="brand" href="index.html" aria-label="تابعني — الصفحة الرئيسية">
+      <img src="assets/img/logo/tabaani-mark-96.png" alt="" width="46" height="34">
+      <span>
+        <span class="brand-name">تابعني</span>
+        <span class="brand-sub">TABAA'NI</span>
+      </span>
+    </a>
+    <button class="icon-btn" data-theme-toggle type="button" aria-label="التبديل إلى الوضع الداكن"></button>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ===================== AUTH ===================== -->
+  <div class="auth-wrap">
+
+    <!-- عمود النموذج: أول عنصر في DOM ليكون العمود الأول في اتجاه RTL -->
+    <section class="auth-panel" aria-labelledby="register-title">
+      <div class="callout" id="platform-callout" style="margin-bottom:18px;padding:14px 16px;border:1px solid rgba(206,148,51,.45);border-radius:14px;background:rgba(206,148,51,.08)">
+        <strong style="display:block;margin-bottom:6px">هل تريد الدخول إلى منصة المدرسة؟</strong>
+        <span style="display:block;font-size:.85rem;opacity:.85;margin-bottom:10px">هذه الصفحة نموذجية في الموقع التعريفي ولا تسجّل دخولًا حقيقيًا. دخول المدرسة (المدير · الوكيل · المعلم · الطالب) من منصة تابعني.</span>
+        <a class="btn btn-primary btn-block" id="go-platform" href="app/">الدخول إلى منصة المدرسة</a>
+      </div>
+      <div class="stack" style="max-width:560px;margin-inline:auto">
+
+        <div class="stack-sm">
+          <h1 id="register-title">إنشاء حساب جديد</h1>
+          <p class="muted">دقيقة واحدة لإنشاء حسابك، ثم اختبار تشخيصي قصير وخطة أسبوعية تصلك فوراً.</p>
+        </div>
+
+        <form class="stack" data-validate>
+          <div class="form-grid">
+
+            <div class="field">
+              <label for="r-name">الاسم الكامل</label>
+              <input class="input" id="r-name" name="name" type="text" required autocomplete="name" placeholder="مثال: سارة العبدالله">
+              <p class="hint" data-error-for="r-name" hidden>يرجى إدخال الاسم الكامل.</p>
+            </div>
+
+            <div class="field">
+              <label for="r-email">البريد الإلكتروني</label>
+              <input class="input" id="r-email" name="email" type="email" required autocomplete="email" placeholder="name@example.com">
+              <p class="hint" data-error-for="r-email" hidden>يرجى إدخال بريد إلكتروني صحيح.</p>
+            </div>
+
+            <div class="field">
+              <label for="r-phone">رقم الجوال</label>
+              <input class="input" id="r-phone" name="phone" type="tel" autocomplete="tel" placeholder="+966 5X XXX XXXX">
+            </div>
+
+            <div class="field">
+              <label for="r-grade">الصف الدراسي</label>
+              <select class="select" id="r-grade" name="grade">
+                <option value="">اختر الصف</option>
+                <option value="4">الصف الرابع</option>
+                <option value="5">الصف الخامس</option>
+                <option value="6">الصف السادس</option>
+                <option value="7">الصف السابع</option>
+                <option value="8">الصف الثامن</option>
+                <option value="9">الصف التاسع</option>
+                <option value="10">الصف العاشر</option>
+                <option value="11">الصف الحادي عشر</option>
+                <option value="12">الصف الثاني عشر</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <label for="r-subject">المادة المفضّلة</label>
+              <select class="select" id="r-subject" name="subject">
+                <option value="">اختر المادة</option>
+                <option value="math">الرياضيات</option>
+                <option value="physics">الفيزياء</option>
+                <option value="chemistry">الكيمياء</option>
+                <option value="biology">الأحياء</option>
+                <option value="arabic">اللغة العربية</option>
+                <option value="english">اللغة الإنجليزية</option>
+                <option value="coding">البرمجة</option>
+                <option value="social">الدراسات الاجتماعية</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <label for="r-pass">كلمة المرور</label>
+              <input class="input" id="r-pass" name="password" type="password" required minlength="8" autocomplete="new-password">
+              <p class="hint">٨ أحرف على الأقل تتضمن رقماً.</p>
+              <p class="hint" data-error-for="r-pass" hidden>يرجى إدخال كلمة مرور من ٨ أحرف على الأقل تتضمن رقماً.</p>
+            </div>
+
+            <div class="field full">
+              <label for="r-pass2">تأكيد كلمة المرور</label>
+              <input class="input" id="r-pass2" name="password_confirm" type="password" required autocomplete="new-password">
+              <p class="hint" data-error-for="r-pass2" hidden>يرجى تأكيد كلمة المرور.</p>
+            </div>
+
+          </div>
+
+          <div class="stack-sm">
+            <label class="checkbox">
+              <input id="r-terms" name="terms" type="checkbox" required>
+              <span>أوافق على <a href="terms.html" style="color:var(--brand-600);font-weight:600">الشروط والأحكام</a> و<a href="privacy.html" style="color:var(--brand-600);font-weight:600">سياسة الخصوصية</a></span>
+            </label>
+            <p class="hint" data-error-for="r-terms" hidden>يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية للمتابعة.</p>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg" type="submit">أنشئ حسابي مجاناً</button>
+          <div data-form-status hidden></div>
+        </form>
+
+        <div class="stack-sm">
+          <p class="divider-or">أو</p>
+          <button class="btn btn-outline btn-block" type="button">
+            <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true" focusable="false">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            المتابعة عبر جوجل
+          </button>
+        </div>
+
+        <p>لديك حساب بالفعل؟ <a href="login.html" style="color:var(--brand-600);font-weight:600">تسجيل الدخول</a></p>
+
+        <p class="form-note">هذه صفحة نموذجية للعرض — لم يتم ربطها بخادم بعد.</p>
+      </div>
+    </section>
+
+    <!-- عمود السياق: يظهر على الجانب الآخر، ويُخفى تحت 900px -->
+    <section class="auth-aside" aria-labelledby="register-aside-title">
+      <div><span class="eyebrow eyebrow-ghost">ابدأ مجاناً</span></div>
+      <h2 id="register-aside-title">أول أسبوع منظّم يبدأ من هنا</h2>
+      <p style="color:rgba(26,18,6,.78);max-width:40ch">
+        لا حاجة لبطاقة بنكية ولا لإعداد طويل — ثلاث خطوات قصيرة ونضعك على المسار.
+      </p>
+
+      <ol class="timeline">
+        <li class="timeline-item">
+          <span class="timeline-num" aria-hidden="true" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32)">١</span>
+          <div class="stack-sm">
+            <h3>أنشئ حسابك</h3>
+            <p style="color:rgba(255,255,255,.78)">بيانات أساسية فقط: الاسم، البريد الإلكتروني، والصف الدراسي.</p>
+          </div>
+        </li>
+        <li class="timeline-item">
+          <span class="timeline-num" aria-hidden="true" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32)">٢</span>
+          <div class="stack-sm">
+            <h3>اختبار تشخيصي من ١٠ أسئلة</h3>
+            <p style="color:rgba(255,255,255,.78)">يحدّد مستواك الحالي في المادة التي تختارها، ويستغرق أقل من خمس دقائق.</p>
+          </div>
+        </li>
+        <li class="timeline-item">
+          <span class="timeline-num" aria-hidden="true" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32)">٣</span>
+          <div class="stack-sm">
+            <h3>خطة أسبوعية تصلك فوراً</h3>
+            <p style="color:rgba(255,255,255,.78)">دروس محدّدة بالوقت، وتقييم في نهاية كل أسبوع، وتقرير لولي الأمر.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+  </div>
+</main>
+
+<!-- ===================== MINIMAL BOTTOM LINE (auth) ===================== -->
+<footer>
+  <div class="container" style="padding-block:var(--sp-5)">
+    <p class="form-note" style="text-align:center">
+      © <span data-year>2026</span> منصة تابعني التعليمية · <a href="privacy.html">سياسة الخصوصية</a> · <a href="terms.html">الشروط والأحكام</a>
+    </p>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script src="assets/data/promo-config.js"></script>
+<script src="assets/js/splash.js" defer></script>
+<script>
+/* يوجّه زر «الدخول إلى منصة المدرسة» إلى مكان المنصة الصحيح أيًّا كان ترتيب المجلدات */
+(function () {
+  var a = document.getElementById('go-platform');
+  if (!a) return;
+  var cands = ['app/index.html', '../app/index.html', '/app/index.html', '../../app/index.html'];
+  (function next(i) {
+    if (i >= cands.length) return;
+    fetch(cands[i], { method: 'HEAD' }).then(function (r) {
+      if (r.ok) a.setAttribute('href', cands[i].replace('index.html', ''));
+      else next(i + 1);
+    }).catch(function () { next(i + 1); });
+  })(0);
+})();
+</script>
+</body>
+</html>

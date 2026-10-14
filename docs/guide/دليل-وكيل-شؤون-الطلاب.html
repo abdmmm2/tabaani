@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل وكيل شؤون الطلاب — منصة تابعني</title>
+<style>
+@import url("../../app/assets/fonts/fonts.css");
+
+/* ============================================================ الأساسيات */
+:root{
+  --gold:#CE9433; --gold-l:#EBCB74; --gold-d:#B47830; --gold-ink:#8A5A1E;
+  --copper:#C97F2C; --onyx:#14100A; --onyx-2:#1E1810; --cream:#F7F4ED;
+  --mint:#1E7A5A; --mint-bg:#E2F4EC; --terra:#C2593F; --terra-bg:#FBEDE8;
+  --line:#D9D1C2; --line-soft:#EAE3D6; --ink:#14100A; --ink-2:#5A5044; --ink-3:#7A7062;
+  --amber-bg:#FAF1D8; --r:14px; --r-sm:10px;
+  --shadow:0 10px 30px rgba(20,16,10,.10);
+  --shadow-sm:0 3px 10px rgba(20,16,10,.08);
+  --grad-gold:linear-gradient(135deg,#F1D28C 0%,#D89C48 45%,#B47830 100%);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--cream); color:var(--ink);
+  font-family:"IBM Plex Sans Arabic","Noto Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.85;
+}
+h1,h2,h3,h4,h5{font-family:"Alexandria","IBM Plex Sans Arabic",system-ui,sans-serif; margin:0; line-height:1.4}
+p{margin:0 0 10px}
+a{color:var(--gold-ink)}
+code{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; direction:ltr; unicode-bidi:embed;
+  background:#F2ECDF; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.86em; color:#5A3E12}
+img{max-width:100%}
+
+/* ============================================================ الصفحة */
+.page{max-width:210mm; margin:0 auto; background:#fff; padding:26px 30px 40px; box-shadow:var(--shadow)}
+@media screen and (min-width:900px){ .page{margin:26px auto 60px; border-radius:20px} }
+
+/* ============================================================ الغلاف */
+.cover{background:var(--onyx); color:#fff; border-radius:18px; padding:34px 30px 30px; position:relative; overflow:hidden}
+.cover::after{content:""; position:absolute; inset-inline-start:-90px; inset-block-end:-120px; width:320px; height:320px;
+  background:radial-gradient(circle,rgba(206,148,51,.35),transparent 65%)}
+.cover .logo{width:230px; max-width:64%; display:block; margin:0 auto 18px}
+.cover .eyebrow{display:inline-block; border:1px solid rgba(235,203,116,.55); color:var(--gold-l);
+  border-radius:999px; padding:3px 14px; font-size:.78rem; letter-spacing:.4px; margin-bottom:14px}
+.cover h1{font-size:clamp(1.7rem,1.3rem+1.6vw,2.5rem); font-weight:800; color:#fff; text-align:center}
+.cover .sub{text-align:center; color:#E9DFC8; margin-top:10px; font-size:1rem}
+.cover .meta{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:20px}
+.cover .chip{background:rgba(255,255,255,.08); border:1px solid rgba(235,203,116,.35); color:#EFE4C8;
+  border-radius:999px; padding:5px 14px; font-size:.8rem}
+
+/* ============================================================ الفهرس */
+.toc{margin-top:22px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.toc-head{background:var(--amber-bg); padding:12px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:10px}
+.toc-head h2{font-size:1.15rem}
+.toc-head span{font-size:.75rem; color:var(--ink-2)}
+.toc ol{list-style:none; margin:0; padding:6px 0}
+.toc li{margin:0}
+.toc a{display:flex; align-items:baseline; gap:8px; text-decoration:none; color:var(--ink); padding:8px 16px; border-bottom:1px dashed var(--line-soft)}
+.toc li:last-child a{border-bottom:0}
+.toc a:hover{background:#FCF7EC}
+.toc .num{flex:none; width:26px; text-align:center; font-weight:700; color:var(--gold-ink)}
+.toc .ttl{flex:1}
+.toc .dots{flex:1; border-bottom:1px dotted #C9BFAE; margin:0 6px; transform:translateY(-4px)}
+.toc .pg{flex:none; font-weight:700; color:var(--gold-d); font-variant-numeric:tabular-nums}
+.toc .sec-sub{display:block; font-size:.78rem; color:var(--ink-2); margin-top:2px}
+
+/* ============================================================ الفصول */
+.chapter{break-before:page; margin-top:34px; padding-top:6px}
+.chapter:first-of-type{break-before:auto}
+.chapter-head{display:flex; align-items:flex-start; gap:14px; border-bottom:2.5px solid var(--gold);
+  padding-bottom:12px; margin-bottom:18px}
+.chapter-head .badge{flex:none; width:46px; height:46px; border-radius:14px; background:var(--grad-gold);
+  color:#1A1206; font-weight:800; font-family:"Alexandria",sans-serif; display:flex; align-items:center;
+  justify-content:center; font-size:1.15rem; box-shadow:var(--shadow-sm)}
+.chapter-head h2{font-size:clamp(1.3rem,1.1rem+.8vw,1.7rem); font-weight:800}
+.chapter-head .lead{color:var(--ink-2); font-size:.9rem; margin-top:4px}
+h3{font-size:1.12rem; font-weight:700; margin:22px 0 8px; color:#2A2113; display:flex; align-items:center; gap:8px}
+h3::before{content:""; width:6px; height:20px; border-radius:3px; background:var(--gold); flex:none}
+h4{font-size:1rem; font-weight:700; margin:16px 0 6px; color:#3A2F1D}
+p,li{font-size:.95rem}
+ul,ol{margin:8px 0 12px; padding-inline-start:22px}
+li{margin:4px 0}
+
+/* ============================================================ البطاقات */
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; margin:14px 0}
+.card{border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; background:#fff; box-shadow:var(--shadow-sm)}
+.card h4{margin:0 0 4px; font-size:.98rem}
+.card p{margin:0; font-size:.85rem; color:var(--ink-2)}
+.card .ic{width:34px; height:34px; border-radius:10px; background:var(--amber-bg); display:flex; align-items:center;
+  justify-content:center; margin-bottom:8px; color:var(--gold-ink); font-size:1.05rem}
+.card.gold{background:linear-gradient(180deg,#FFFDF7,#FCF5E6); border-color:var(--gold-l)}
+.card.mint{border-color:#BEE6D6; background:#F6FCF9}
+.card.terra{border-color:#F0C9BC; background:#FEF8F5}
+
+/* ============================================================ الجداول */
+.tbl-wrap{overflow-x:auto; margin:12px 0}
+table.dt{width:100%; border-collapse:collapse; font-size:.86rem; background:#fff}
+table.dt caption{caption-side:top; text-align:start; font-weight:700; font-size:.85rem; color:var(--gold-ink); padding:4px 2px 8px}
+table.dt th,table.dt td{border:1px solid var(--line); padding:8px 10px; text-align:start; vertical-align:top}
+table.dt thead th{background:var(--amber-bg); font-family:"Alexandria",sans-serif; font-weight:700; font-size:.83rem}
+table.dt tbody tr:nth-child(even){background:#FCFAF4}
+table.dt code{background:#F2ECDF}
+.pill{display:inline-block; border-radius:999px; padding:1px 10px; font-size:.76rem; font-weight:600; border:1px solid transparent}
+.pill.brand{background:var(--amber-bg); color:var(--gold-ink); border-color:var(--gold-l)}
+.pill.mint{background:var(--mint-bg); color:var(--mint); border-color:#BEE6D6}
+.pill.terra{background:var(--terra-bg); color:var(--terra); border-color:#F0C9BC}
+.pill.plain{background:#F3F0E9; color:var(--ink-2); border-color:var(--line)}
+
+/* ============================================================ الخطوات */
+ol.steps{list-style:none; counter-reset:st; padding:0; margin:14px 0}
+ol.steps>li{counter-increment:st; position:relative; padding-inline-start:48px; margin:0 0 12px; min-height:32px}
+ol.steps>li::before{content:counter(st); position:absolute; inset-inline-start:0; top:0; width:32px; height:32px;
+  border-radius:50%; background:var(--grad-gold); color:#1A1206; font-weight:700; font-family:"Alexandria",sans-serif;
+  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); font-size:.9rem}
+ol.steps>li>strong{display:block; font-size:.95rem}
+ol.steps>li>span{color:var(--ink-2); font-size:.88rem}
+
+/* ============================================================ التنبيهات */
+.callout{border-radius:var(--r); padding:12px 14px 12px 46px; margin:14px 0; position:relative; font-size:.9rem; border:1px solid}
+.callout::before{position:absolute; inset-inline-start:14px; top:11px; font-size:1.05rem; font-weight:700}
+.callout.tip{background:var(--mint-bg); border-color:#BEE6D6; color:#14513C}
+.callout.tip::before{content:"\2714"; color:var(--mint)}
+.callout.warn{background:var(--terra-bg); border-color:#F0C9BC; color:#7C3320}
+.callout.warn::before{content:"\26A0"; color:var(--terra)}
+.callout.info{background:var(--amber-bg); border-color:var(--gold-l); color:#5A3E12}
+.callout.info::before{content:"\2139"; color:var(--gold-d)}
+.callout strong{display:block; margin-bottom:2px}
+
+/* ============================================================ الصور */
+figure.shot{margin:16px 0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden;
+  background:#FCFBF7; box-shadow:var(--shadow-sm); break-inside:avoid}
+figure.shot img{display:block; width:100%; height:auto; border-bottom:1px solid var(--line); background:#fff}
+figure.shot figcaption{padding:9px 14px; font-size:.82rem; color:var(--ink-2); line-height:1.7}
+figure.shot .fig-no{display:inline-block; background:var(--onyx); color:var(--gold-l); border-radius:6px;
+  padding:0 8px; font-size:.72rem; font-weight:700; margin-inline-end:6px; font-family:"Alexandria",sans-serif}
+figure.shot.tall img{max-height:620px; object-fit:cover; object-position:top center}
+figure.shot .open{font-size:.76rem; color:var(--gold-ink); text-decoration:none; border-bottom:1px dotted}
+figure.shot.narrow{max-width:74%; margin-inline:auto}
+.fig-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:720px){ .fig-pair{grid-template-columns:1fr} }
+
+/* ============================================================ الرسوم SVG */
+.fig-svg{margin:16px 0; border:1px solid var(--line); border-radius:var(--r); background:#FCFBF7; padding:14px; overflow-x:auto}
+.fig-svg svg{display:block; width:100%; height:auto; min-width:520px}
+.fig-svg .cap{font-size:.8rem; color:var(--ink-2); text-align:center; margin-top:8px}
+.fig-svg .cap b{color:var(--gold-ink)}
+
+/* ============================================================ التذييل */
+.foot-note{margin-top:26px; padding-top:14px; border-top:2px solid var(--gold); font-size:.8rem; color:var(--ink-2)}
+.end{background:var(--onyx); color:#EFE4C8; border-radius:var(--r); padding:18px 20px; margin-top:22px}
+.end h3{color:#fff}
+.end h3::before{background:var(--gold-l)}
+.end a{color:var(--gold-l)}
+.end code{background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); color:#F3E6C6}
+.two-col{columns:2; column-gap:26px}
+@media (max-width:640px){ .two-col{columns:1} }
+.no-print{}
+.small{font-size:.8rem; color:var(--ink-2)}
+
+/* ============================================================ الطباعة A4 */
+@page{ size:A4; margin:14mm 12mm }
+@media print{
+  body{background:#fff; font-size:11.5px; line-height:1.7}
+  .page{max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0}
+  .chapter{margin-top:0; break-before:page}
+  .chapter:first-of-type{break-before:auto}
+  .cover{border-radius:0; padding:16mm 12mm; break-after:page}
+  .cover .logo{width:60mm}
+  .toc{break-after:page}
+  h2,h3,h4{break-after:avoid}
+  figure.shot,table.dt,.callout,.card,.fig-svg{break-inside:avoid}
+  .toc a{padding:5px 12px}
+  a{text-decoration:none}
+  .no-print{display:none}
+  table.dt{font-size:10px}
+  .callout{font-size:10.5px}
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<header class="cover">
+  <img class="logo" src="../../brand/logo/master/tabaani-logo-stacked.png" alt="شعار تابعني">
+  <div style="text-align:center"><span class="eyebrow">دليل تشغيلي متخصّص</span></div>
+  <h1>دليل وكيل شؤون الطلاب</h1>
+  <p class="sub">من ضبط الإعدادات ونسب الحرمان… إلى الفصول والإسناد والجدول… ثم المتابعة اليومية (تحضير · مخالفات · استئذان) والتقارير الرسمية.</p>
+  <div class="meta">
+    <span class="chip">الإصدار 1.0</span>
+    <span class="chip">أكتوبر 2026</span>
+    <span class="chip">عربي — RTL</span>
+    <span class="chip">١٢ فصلًا · ١٢ شكلًا</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="فهرس الدليل">
+  <div class="toc-head">
+    <h2>الفهرس</h2>
+    <span>أرقام الصفحات تقديرية بحسب طباعة A4</span>
+  </div>
+  <ol id="toc-list">
+    <li><a href="#sec-1"><span class="num">1</span><span class="ttl">دورك ومسؤولياتك في المنصة<span class="sec-sub">ما يخصّك وحدك · ما تشارك فيه</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-2"><span class="num">2</span><span class="ttl">أول خطوة: إعداداتك ونسب الحرمان<span class="sec-sub">النسبة العامة · نسبة لكل مادة · الفصول الدراسية</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-3"><span class="num">3</span><span class="ttl">الفصول والطلاب<span class="sec-sub">استيراد · إسكان · نقل فردي وجماعي</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-4"><span class="num">4</span><span class="ttl">إسناد المواد وتثبيت الإسناد<span class="sec-sub">فلا يرى المعلم إلا فصوله</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-5"><span class="num">5</span><span class="ttl">جدول الحصص وقاعدة الإغلاق<span class="sec-sub">الحصص · رفع الجدول · توقيت الإغلاق</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-6"><span class="num">6</span><span class="ttl">تقارير التحضير ومتابعة المعلمين<span class="sec-sub">من حضر ومن تأخر · تفعيل المعلمين</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-7"><span class="num">7</span><span class="ttl">المخالفات السلوكية<span class="sec-sub">دورك: القرار ثم الإغلاق</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-8"><span class="num">8</span><span class="ttl">الاستئذان وتصاريح الخروج<span class="sec-sub">المنح · تصريح بباركود</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-9"><span class="num">9</span><span class="ttl">مراقبة الغياب والمحرومون<span class="sec-sub">الحد لكل مادة · إشعار ولي الأمر</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-10"><span class="num">10</span><span class="ttl">حسابات الطلاب: إيقاف وتفعيل جماعي<span class="sec-sub">ضغطة واحدة لكل المدرسة أو لصف</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-11"><span class="num">11</span><span class="ttl">تقاريرك الرسمية وأين تُطبع<span class="sec-sub">ترويسة · باركود تحقّق</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+    <li><a href="#sec-12"><span class="num">12</span><span class="ttl">قوائم تحقق سريعة<span class="sec-sub">يومي · أسبوعي · بداية العام</span></span><span class="dots"></span><span class="pg">—</span></a></li>
+  </ol>
+</nav>
+
+<section class="chapter" id="sec-1">
+  <div class="chapter-head">
+    <div class="badge">1</div>
+    <div>
+      <h2>دورك ومسؤولياتك في المنصة</h2>
+      <p class="lead">ما الذي يخصّك وحدك، وما يشاركك فيه غيرك — تعرف بالضبط أين تبدأ.</p>
+    </div>
+  </div>
+
+  <p>أنت <strong>وكيل شؤون الطلاب</strong>: حلقة الوصل بين إدارة المدرسة والمعلمين من جهة، وبين الطلاب وأولياء أمورهم من جهة أخرى. في منصة تابعني، دورك هو <strong>الأوسع</strong> بعد المدير: أنت من يضبط فصول الطلاب، ويوزّع الإسناد، ويرفع الجدول، ويتابع التحضير، ويقفل دائرة المخالفات، ويمنح الاستئذان، ويضبط نسب الحرمان، ويوقف/يفعّل حسابات الطلاب.</p>
+  <div class="cards">
+    <div class="card gold"><div class="ic">&#9776;</div><h4>وحدة الفصول والطلاب</h4><p>استيراد الطلاب، إسكانهم في الفصول، النقل الفردي والجماعي، وسجل النقل.</p></div>
+    <div class="card gold"><div class="ic">&#9998;</div><h4>الإسناد والجدول</h4><p>إسناد المواد للمعلمين، تثبيت الإسناد، جدول الحصص وقاعدة الإغلاق.</p></div>
+    <div class="card mint"><div class="ic">&#10003;</div><h4>المتابعة اليومية</h4><p>تقارير التحضير، المخالفات، الاستئذان وتصاريح الخروج، ومراقبة الغياب.</p></div>
+    <div class="card terra"><div class="ic">&#9888;</div><h4>الإعدادات الحسّاسة</h4><p>نسب الحرمان لكل مادة، وحسابات الطلاب (إيقاف/تفعيل جماعي).</p></div>
+  </div>
+  <figure class="shot">
+    <img src="../../screens/03-dash-deputy.png" alt="لوحة وكيل شؤون الطلاب: بطاقات المتابعة اليومية وإجراءاتك السريعة، مع عدّادات الغياب والمخالفات والاستئذان.">
+    <figcaption><span class="fig-no">الشكل 1.1</span> لوحة وكيل شؤون الطلاب: بطاقات المتابعة اليومية وإجراءاتك السريعة، مع عدّادات الغياب والمخالفات والاستئذان.</figcaption>
+  </figure>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 1.1 — ما يخصّك وما يشاركك فيه غيرك</caption>
+      <thead><tr><th style="width:26%">العمل</th><th style="width:20%">أنت</th><th>الشرح</th></tr></thead>
+      <tbody>
+        <tr><td>الفصول والطلاب والنقل</td><td><strong>صاحب الصلاحية</strong></td><td>لا يظهر للوكيل إلا ما يخصّ مدرسته.</td></tr>
+        <tr><td>الإسناد والجدول</td><td><strong>صاحب الصلاحية</strong></td><td>والمدير يطّلع على التقارير.</td></tr>
+        <tr><td>المخالفات</td><td>تُحوَّل إليك</td><td>المعلم يسجّل ← التوجيه يعالج ← أنت تقرّر (خصم/لائحة) وتغلق.</td></tr>
+        <tr><td>الاستئذان</td><td>أنت من يمنح</td><td>التوجيه يطلب، وأنت تمنح التصريح بالباركود.</td></tr>
+        <tr><td>حسابات الطلاب</td><td><strong>إيقاف/تفعيل جماعي</strong></td><td>المدير يشاركك، والمشرف العام يدير المستخدمين.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout tip"><strong>ترتيب العمل الصحيح</strong> الإعدادات ← الفصول والطلاب ← الإسناد وتثبيته ← الجدول وقاعدة الإغلاق ← ثم المتابعة اليومية. لا تبدأ المتابعة قبل إتمام الإعداد، وإلا ظهرت الأرقام ناقصة.</div>
+</section>
+<section class="chapter" id="sec-2">
+  <div class="chapter-head">
+    <div class="badge">2</div>
+    <div>
+      <h2>أول خطوة: إعداداتك ونسب الحرمان</h2>
+      <p class="lead">الإعدادات التي تحدّد كل الأرقام بعده: نسب الحرمان والفصول الدراسية.</p>
+    </div>
+  </div>
+
+  <p>افتح <strong>«إعدادات الوكيل»</strong> واضبط نسب الحرمان قبل أي شيء آخر:</p>
+  <ol class="steps">
+    <li><div><h4>النسبة العامة للحرمان</h4><p>النسبة الافتراضية لكل المواد (٢٥٪ مثلًا) — تُستخدم للمواد التي لم تحدّد لها نسبة خاصة.</p></div></li>
+    <li><div><h4>نسبة لكل مادة (الأدق)</h4><p>حدّد نسبة خاصة لكل مادة على حدة (مثال: القراءة ٣٠٪ · الرياضيات ٢٥٪ · البدنية ٤٠٪). النظام يحسب الحرمان <strong>لكل مادة</strong> على حدة.</p></div></li>
+    <li><div><h4>الفصول الدراسية</h4><p>تاريخ بداية ونهاية كل فصل، ليُحسب النطاق الزمني للتقارير (يومي · أسبوعي · شهري · نهاية فصل) بشكل صحيح.</p></div></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/26-mod-settings.png" alt="إعدادات الوكيل: النسبة العامة، ونسب الحرمان لكل مادة، وتواريخ الفصول الدراسية.">
+    <figcaption><span class="fig-no">الشكل 2.1</span> إعدادات الوكيل: النسبة العامة، ونسب الحرمان لكل مادة، وتواريخ الفصول الدراسية.</figcaption>
+  </figure>
+  <div class="callout info"><strong>مهم</strong> قيمة الحرمان تدخل في تقاريرك الرسمية وفي لوحة «مراقبة الغياب». غيّرها بداية الفصل لا في منتصفه، حتى لا تختلف الأرقام بين تقرير وآخر.</div>
+</section>
+<section class="chapter" id="sec-3">
+  <div class="chapter-head">
+    <div class="badge">3</div>
+    <div>
+      <h2>الفصول والطلاب</h2>
+      <p class="lead">استيراد الطلاب، إسكانهم، والنقل — أساس كل شيء بعده.</p>
+    </div>
+  </div>
+
+  <p>وحدة <strong>«الفصول والطلاب»</strong> هي مستودع بيانات الطلاب. العمل فيها على ثلاث مراحل:</p>
+  <ol class="steps">
+    <li><div><h4>تحديد الفصول</h4><p>أنشئ فصول مدرستك بحسب المراحل المسجّلة، واسمِها بصيغة ثابتة (مثال: الأول الثانوي / أ) لتتفق معها الجداول والتقارير.</p></div></li>
+    <li><div><h4>استيراد الطلاب</h4><p>نزّل <strong>قالب الاستيراد</strong> (CSV/Excel) واملأ الأعمدة: اسم الطالب · رقم الهوية · جوال ولي الأمر · المرحلة · الصف · الفصل، ثم ارفع الملف فيُسكَّن كلا طالب في فصله.</p></div></li>
+    <li><div><h4>النقل والتحويل</h4><p>نقل فردي لطالب أو <strong>نقل جماعي</strong> لعدد من الطلاب إلى فصل آخر، مع <strong>سجل نقل</strong> يحفظ من نقل، لمن، ومتى — بيدك وحدك.</p></div></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/14-mod-classes.png" alt="وحدة الفصول والطلاب: قائمة الفصول، وأزرار الاستيراد والإسكان والنقل وسجل النقل، وكشف طلاب كل فصل.">
+    <figcaption><span class="fig-no">الشكل 3.1</span> وحدة الفصول والطلاب: قائمة الفصول، وأزرار الاستيراد والإسكان والنقل وسجل النقل، وكشف طلاب كل فصل.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>الطلاب بلا فصل</strong> من رُفع من ملف بلا فصل أو نُقل من فصل ولم يُسكَّن بعد، يظهر في «الطلاب بلا إسكان» — راجع القائمة دوريًا وأسكنهم قبل التحضير.</div>
+  <div class="callout warn"><strong>احذر التكرار</strong> إن رفعت الملف نفسه مرتين قد تتكرر الأسماء؛ راجع الكشف بعد كل استيراد، واحذف المكرر بالبحث عن رقم الهوية.</div>
+</section>
+<section class="chapter" id="sec-4">
+  <div class="chapter-head">
+    <div class="badge">4</div>
+    <div>
+      <h2>إسناد المواد وتثبيت الإسناد</h2>
+      <p class="lead">من يعلّم ماذا — ثم تثبيته ليظهر لكل معلم فصوله فقط.</p>
+    </div>
+  </div>
+
+  <p>في <strong>«إسناد المواد»</strong> تربط كل معلم بالمادة والفصول التي يعلّمها، بحسب مواد مرحلته فقط (لا تظهر إلا مواد مراحل مدرستك).</p>
+  <ol class="steps">
+    <li><div><h4>اختيار المعلم</h4><p>من قائمة معلمي المدرسة (المستوردين من نور أو المضافين يدويًا).</p></div></li>
+    <li><div><h4>اختيار المادة والفصول</h4><p>بقوائم منسدلة، مع إمكانية إسناد المعلم لأكثر من فصل في المادة نفسها.</p></div></li>
+    <li><div><h4>التثبيت</h4><p>اضغط <strong>«تثبيت الإسناد»</strong> — بعدها لا يرى المعلم في شاشة التحضير <strong>إلا فصوله ومواده</strong>، ولا يستطيع التحضير لفصل ليس له.</p></div></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/15-mod-assignments.png" alt="إسناد المواد: جدول الإسناد الحالي، ونموذج الإسناد، وأزرار التثبيت وإلغاء التثبيت لكل معلم.">
+    <figcaption><span class="fig-no">الشكل 4.1</span> إسناد المواد: جدول الإسناد الحالي، ونموذج الإسناد، وأزرار التثبيت وإلغاء التثبيت لكل معلم.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>لا تثبّت قبل المراجعة</strong> التثبيت يقيّد المعلم. راجع الجدول كاملًا، وأصلح أي إسناد خاطئ، ثم ثبّت. ويمكنك إلغاء تثبيت معلم واحد فقط عند الحاجة دون المساس بالبقية.</div>
+</section>
+<section class="chapter" id="sec-5">
+  <div class="chapter-head">
+    <div class="badge">5</div>
+    <div>
+      <h2>جدول الحصص وقاعدة الإغلاق</h2>
+      <p class="lead">عدد الحصص، دقائقها، ومتى يُقفل التحضير.</p>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li><div><h4>ضبط الحصص</h4><p>حدّد عدد حصص اليوم (مثال: ٧ حصص) ووقت بداية اليوم ومدة الحصة.</p></div></li>
+    <li><div><h4>قاعدة الإغلاق</h4><p>اختر قاعدة إغلاق التحضير: <strong>قبل منتصف الحصة</strong> أو <strong>قبل نهايتها</strong> — وهي التي تمنع المعلم من التحضير في توقيت خاطئ، وتُظهر من تحضّر ومن تأخر.</p></div></li>
+    <li><div><h4>رفع الجدول</h4><p>ارفع جدول الحصص (Excel/CSV أو ملف PDF) ليُسنَد كل معلم إلى حصصه تلقائيًا، أو أدخِل الحصص يدويًا.</p></div></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/17-mod-schedule.png" alt="جدول الحصص: إعداد الحصص وقاعدة الإغلاق، ورفع الجدول، وشبكة الجدول الأسبوعي بالمعلمين والمواد.">
+    <figcaption><span class="fig-no">الشكل 5.1</span> جدول الحصص: إعداد الحصص وقاعدة الإغلاق، ورفع الجدول، وشبكة الجدول الأسبوعي بالمعلمين والمواد.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>قاعدة الإغلاق تحمي التقارير</strong> مع «قبل نهاية الحصة» يقلّ التحضير الوهمي؛ ومع «قبل منتصف الحصة» يكون الانضباط أشد. اختر ما يناسب سياسة مدرستك وثبّته للفصل كاملًا.</div>
+</section>
+<section class="chapter" id="sec-6">
+  <div class="chapter-head">
+    <div class="badge">6</div>
+    <div>
+      <h2>تقارير التحضير ومتابعة المعلمين</h2>
+      <p class="lead">من حضر، ومن تأخر، ومن لم يحضّر — بالأرقام.</p>
+    </div>
+  </div>
+
+  <p>وحدة <strong>«تقارير التحضير»</strong> تعطيك صورة يومية وأسبوعية عن انتظام المعلمين وحصصهم، وهي أول ما يُطلب منك في الاجتماعات الإدارية.</p>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 6.1 — ما تجده في تقارير التحضير</caption>
+      <thead><tr><th style="width:26%">التقرير</th><th>ما يجيب عنه</th></tr></thead>
+      <tbody>
+        <tr><td>تحضير اليوم</td><td>مَن حضّر حصصه ومن لم يحضّر، بحسب الجدول الفعلي لكل معلم.</td></tr>
+        <tr><td>التأخر في التحضير</td><td>الحصص التي أُغلقت في توقيت متأخر (بحسب قاعدة الإغلاق).</td></tr>
+        <tr><td>تفعيل المعلمين</td><td>نسبة استخدام المنصة لكل معلم: متميّز · منتظم · ضعيف التفعيل · لم يفعّل.</td></tr>
+        <tr><td>الكشوف القابلة للطباعة</td><td>كشف لكل فصل/مادة مع الترويسة الرسمية والباركود والتوقيعات.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure class="shot">
+    <img src="../../screens/19-mod-attendance-reports.png" alt="تقارير التحضير: تقرير اليوم بحسب الجدول الفعلي، مع تصدير CSV وطباعة القوالب الجاهزة.">
+    <figcaption><span class="fig-no">الشكل 6.1</span> تقارير التحضير: تقرير اليوم بحسب الجدول الفعلي، مع تصدير CSV وطباعة القوالب الجاهزة.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة عملية</strong> صدّر تقرير التأخر أسبوعيًا وأرسله للمعلمين عبر تلقرام من مركز التقارير؛ المتابعة المنتظمة أسرع أثرًا من التقارير الشهرية.</div>
+</section>
+<section class="chapter" id="sec-7">
+  <div class="chapter-head">
+    <div class="badge">7</div>
+    <div>
+      <h2>المخالفات السلوكية</h2>
+      <p class="lead">دورك في الحلقة الأخيرة: القرار ثم الإغلاق.</p>
+    </div>
+  </div>
+
+  <p>دورة المخالفة تمرّ بأربع محطات، وأنت المحطة الثالثة والرابعة:</p>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 7.1 — دورة المخالفة ومن مسؤول عن كل خطوة</caption>
+      <thead><tr><th style="width:14%">الترتيب</th><th style="width:26%">الخطوة</th><th>المسؤول</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>تسجيل المخالفة</td><td>المعلم (وصف المخالفة، تاريخها، الطالب).</td></tr>
+        <tr><td>2</td><td>المعالجة والتوجيه</td><td>موجّه التوجيه والإرشاد (رد/إجراء توجيهي).</td></tr>
+        <tr><td>3</td><td>القرار الإداري</td><td><strong>أنت</strong>: خصم درجة أو إحالة للائحة حسب درجة المخالفة.</td></tr>
+        <tr><td>4</td><td>الإغلاق والتقرير</td><td><strong>أنت</strong>: إغلاق المخالفة، ثم طباعة تقرير مفصل بترويسة المدرسة.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure class="shot">
+    <img src="../../screens/20-mod-violations.png" alt="المخالفات السلوكية: قائمة المخالفات بحالاتها (جديدة · قيد المعالجة · بانتظار القرار · مغلقة) وأزرار المعالجة والقرار.">
+    <figcaption><span class="fig-no">الشكل 7.1</span> المخالفات السلوكية: قائمة المخالفات بحالاتها (جديدة · قيد المعالجة · بانتظار القرار · مغلقة) وأزرار المعالجة والقرار.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>العدالة قبل السرعة</strong> القرار يُسجَّل باسمك وبتاريخه ويظهر في تقرير الطالب؛ راجع سجل الطالب السابق قبل القرار لتوحيد المعيار بين الطلاب.</div>
+</section>
+<section class="chapter" id="sec-8">
+  <div class="chapter-head">
+    <div class="badge">8</div>
+    <div>
+      <h2>الاستئذان وتصاريح الخروج</h2>
+      <p class="lead">من يخرج، ولماذا، وبأي إثبات.</p>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li><div><h4>الطلب</h4><p>يُسجَّل الاستئذان من التوجيه والإرشاد أو من حساب الطالب، بمبرر الزيارة أو الخروج ووقته.</p></div></li>
+    <li><div><h4>المنح</h4><p>أنت من يمنح الاستئذان: من المنصة، أو من الجوال، أو برد عبر تلقرام.</p></div></li>
+    <li><div><h4>تصريح الخروج</h4><p>يُصدر <strong>تصريح خروج بباركود</strong> يحمل بيانات الطالب ووقت الخروج والتاريخ (هجري وميلادي) — يُمسح عند البوابة ويُحفظ في السجل.</p></div></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/21-mod-permissions.png" alt="الاستئذان: الطلبات المعلّقة، والحالات (مقبول · مرفوض · منتهٍ)، وزر إصدار تصريح الخروج بالباركود.">
+    <figcaption><span class="fig-no">الشكل 8.1</span> الاستئذان: الطلبات المعلّقة، والحالات (مقبول · مرفوض · منتهٍ)، وزر إصدار تصريح الخروج بالباركود.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>أرشفة تلقائية</strong> كل تصريح يُسجَّل باسمك ووقته، ويمكن إعادة طباعته من مركز التقارير عند الحاجة — لا حاجة لدفاتر ورقية.</div>
+</section>
+<section class="chapter" id="sec-9">
+  <div class="chapter-head">
+    <div class="badge">9</div>
+    <div>
+      <h2>مراقبة الغياب والمحرومون</h2>
+      <p class="lead">من تجاوز الحد، ومن يحتاج تدخّلًا عاجلًا.</p>
+    </div>
+  </div>
+
+  <p>وحدة <strong>«مراقبة الغياب»</strong> تعرض الطلاب المتأخرين والغائبين بحسب النطاق (يوم/أسبوع/شهر/فصل)، وتحسب <strong>الحرمان لكل مادة</strong> وفق النسب التي ضبطتها، مع قائمة الطلاب الذين بلغوا الحد.</p>
+  <figure class="shot">
+    <img src="../../screens/28-mod-monitor.png" alt="مراقبة الغياب: قائمة الغائبين والمتأخرين، والطلاب الذين بلغوا نسبة الحرمان، وزر إشعار ولي الأمر.">
+    <figcaption><span class="fig-no">الشكل 9.1</span> مراقبة الغياب: قائمة الغائبين والمتأخرين، والطلاب الذين بلغوا نسبة الحرمان، وزر إشعار ولي الأمر.</figcaption>
+  </figure>
+  <div class="callout info"><strong>التدخل المبكّر</strong> راجع قائمة المحرومين أسبوعيًا؛ إشعار ولي الأمر عند ١٥٪ أنفع من إنذار عند ٢٥٪. وتقاريرك تستخدم النسب نفسها فتتفق مع سجلاتك.</div>
+</section>
+<section class="chapter" id="sec-10">
+  <div class="chapter-head">
+    <div class="badge">10</div>
+    <div>
+      <h2>حسابات الطلاب: إيقاف وتفعيل جماعي</h2>
+      <p class="lead">ضغطة واحدة لكل المدرسة أو لصف محدّد.</p>
+    </div>
+  </div>
+
+  <p>في وحدة <strong>«إدارة الحسابات»</strong> تدير حسابات الطلاب (والمدير يشاركك):</p>
+  <ul>
+    <li><strong>إيقاف كل الطلاب</strong> أو <strong>تفعيل كل الطلاب</strong> بضغطة واحدة — لكل المدرسة أو لفصل محدّد.</li>
+    <li><strong>عكس حالة المحدّدين</strong>، وإيقاف/تفعيل حساب فردي.</li>
+    <li>تصدير كشف الحسابات (CSV) لأرشفته أو تسليمه.</li>
+  </ul>
+  <figure class="shot">
+    <img src="../../screens/13-mod-accounts.png" alt="إدارة الحسابات: عدّادات (الإجمالي · الطلاب · الموقوفة · بانتظار الاعتماد)، وأزرار الإيقاف/التفعيل الجماعي، وكشف الحسابات.">
+    <figcaption><span class="fig-no">الشكل 10.1</span> إدارة الحسابات: عدّادات (الإجمالي · الطلاب · الموقوفة · بانتظار الاعتماد)، وأزرار الإيقاف/التفعيل الجماعي، وكشف الحسابات.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>متى توقف الحسابات؟</strong> عند نهاية العام أو إيقاف مجموعة عن الدخول مؤقتًا (مخالفات، اختبارات). والحساب الموقوف لا يستطيع الدخول، وتظهر له رسالة واضحة.</div>
+</section>
+<section class="chapter" id="sec-11">
+  <div class="chapter-head">
+    <div class="badge">11</div>
+    <div>
+      <h2>تقاريرك الرسمية وأين تُطبع</h2>
+      <p class="lead">كل تقرير بترويسة المدرسة وبباركود تحقّق.</p>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 11.1 — التقارير التي تُصدرها وتوقيت استخدامها</caption>
+      <thead><tr><th style="width:30%">التقرير</th><th style="width:22%">التوقيت</th><th>الجهة</th></tr></thead>
+      <tbody>
+        <tr><td>كشف تحضير فصل/مادة</td><td>أسبوعيًا</td><td>الإدارة والمعلم</td></tr>
+        <tr><td>تقرير الغياب والتأخر</td><td>يومي/أسبوعي</td><td>الإدارة وولي الأمر</td></tr>
+        <tr><td>سجل المخالفات</td><td>شهري/عند الحاجة</td><td>التوجيه والإدارة</td></tr>
+        <tr><td>المحرومون بحسب المادة</td><td>قبل الاختبارات</td><td>الإدارة والرصد</td></tr>
+        <tr><td>تصاريح الخروج</td><td>يوميًا</td><td>البوابة والأمن</td></tr>
+        <tr><td>تقارير دورية شاملة</td><td>نهاية الفصل</td><td>الإدارة العامة</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure class="shot">
+    <img src="../../screens/24-mod-reports.png" alt="مركز التقارير: التقارير الدورية والإحصائية الجاهزة، وكل تقرير يُطبع بترويسة المدرسة ورقم تحقّق وباركود.">
+    <figcaption><span class="fig-no">الشكل 11.1</span> مركز التقارير: التقارير الدورية والإحصائية الجاهزة، وكل تقرير يُطبع بترويسة المدرسة ورقم تحقّق وباركود.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>كل تقرير له رقم</strong> بصيغة <code>TBN-XXX-00001-YYYYMMDD</code> وباركود؛ إن شكّ أحد في ورقة، يُمسح الباركود فيُتحقق من التقرير. وصيغة الطباعة تُبنى من إعدادات «ترويسة التقارير» التي يضبطها المدير.</div>
+</section>
+<section class="chapter" id="sec-12">
+  <div class="chapter-head">
+    <div class="badge">12</div>
+    <div>
+      <h2>قوائم تحقق سريعة</h2>
+      <p class="lead">ابدأ يومك وأسبوعك وعامك من هذه القوائم.</p>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card gold"><div class="ic">&#9737;</div><h4>بداية العام</h4><p>الإعدادات ونسب الحرمان ← الفصول ← استيراد الطلاب ← الإسناد وتثبيته ← الجدول وقاعدة الإغلاق ← توزيع المناوبة مع وكيل المعلمين.</p></div>
+    <div class="card mint"><div class="ic">&#9998;</div><h4>كل أسبوع</h4><p>تقارير التحضير والتأخر ← المخالفات غير المغلقة ← قائمة المحرومين ← إشعار أولياء الأمور.</p></div>
+    <div class="card gold"><div class="ic">&#10003;</div><h4>كل يوم</h4><p>الطلاب بلا إسكان ← طلبات الاستئذان المعلّقة ← الغائبون والمتأخرون ← تصاريح الخروج.</p></div>
+    <div class="card terra"><div class="ic">&#9888;</div><h4>قبل الاختبارات</h4><p>تثبيت الحرمان بحسب كل مادة ← طباعة الكشوف الرسمية بالتوقيعات ← إشعار أولياء أمور الطلاب المحرومين.</p></div>
+  </div>
+  <figure class="shot">
+    <img src="../../screens/95-girls-principal.png" alt="نموذج الواجهة في مدرسة طالبات: تتحوّل كل المسمّيات تلقائيًا (وكيل شؤون الطلاب ← وكيلة شؤون الطالبات).">
+    <figcaption><span class="fig-no">الشكل 12.1</span> نموذج الواجهة في مدرسة طالبات: تتحوّل كل المسمّيات تلقائيًا (وكيل شؤون الطلاب ← وكيلة شؤون الطالبات).</figcaption>
+  </figure>
+  <div class="callout tip"><strong>أسئلة تتكرر عليك</strong> «لماذا لا أرى فصلي؟» ← الإسناد غير مثبَّت. «لماذا لا أستطيع التحضير؟» ← خارج قاعدة الإغلاق. «لماذا حسابي موقوف؟» ← راجع إدارة الحسابات. «كيف أستعيد كلمة المروري؟» ← «نسيت كلمة المرور؟» برمز تحقق.</div>
+</section>
+<section class="chapter" id="sec-end">
+  <div class="chapter-head">
+    <div class="badge">&#10003;</div>
+    <div>
+      <h2>الدعم والمراجع</h2>
+      <p class="lead">حيث تجد بقية الأدلة وجهات التواصل.</p>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 13.1 — مراجع مفيدة لك</caption>
+      <thead><tr><th style="width:34%">المرجع</th><th>لماذا</th></tr></thead>
+      <tbody>
+        <tr><td><strong>دليل منصة تابعني — للمدارس</strong></td><td>الشرح الكامل لكل خدمة وكل دور في المنصة.</td></tr>
+        <tr><td><strong>دليل المدير المختصر</strong></td><td>خطوات اعتماد الحسابات وأول خمس خطوات بعد التسليم.</td></tr>
+        <tr><td>دليل الاستخدام داخل المنصة</td><td>كل وحدة فيها تلميح وعنوان يشرح دورها في سطر.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout tip"><strong>قناة الدعم</strong> للاستفسارات الفنية والتشغيلية: <span dir="ltr"><strong>0550124240</strong></span> — أو عبر تلقرام من داخل المنصة (سجل تلقرام).</div>
+  <div class="cover" style="margin-top:22px;text-align:center">
+    <img class="logo" src="../../brand/logo/master/tabaani-logo-stacked.png" alt="شعار تابعني" style="max-width:150px;margin:0 auto 10px;display:block">
+    <h2 style="color:#EBCB74;border:0;margin:6px 0">تابعني — منصة الخدمات التعليمية</h2>
+    <p style="color:#D9D1C2;margin:0">دليل وكيل شؤون الطلاب · الإصدار 1.0 · أكتوبر 2026</p>
+  </div>
+  <div class="foot-note">
+    <p>هذا الدليل يصف النموذج الأولي العامل داخل المتصفح. الأرقام لاتينية، والواجهة عربية RTL بطابع الهوية الذهبية (ذهبي <code>#CE9433</code> · أونيكس <code>#14100A</code> · كريمي <code>#F7F4ED</code>).</p>
+  </div>
+</section>
+
+</main>
+<script>
+(function () {
+  try {
+    var CONTENT_PX = 1000, chapters = document.querySelectorAll('.chapter'), page = 2;
+    var tocList = document.getElementById('toc-list'); if (!tocList) return;
+    var starts = [];
+    chapters.forEach(function (ch) { starts.push(page); page += Math.max(1, Math.ceil((ch.getBoundingClientRect().height + 34) / CONTENT_PX)); });
+    chapters.forEach(function (ch, i) {
+      var a = tocList.querySelector('a[href="#' + ch.getAttribute('id') + '"]'); if (!a) return;
+      var pg = a.querySelector('.pg'); if (pg) pg.textContent = String(starts[i]);
+    });
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "تابعني — منصة الخدمات التعليمية للمدارس",
+  "short_name": "تابعني",
+  "description": "نظام تشغيل مدرسي متعدد الأدوار: الحسابات، الفصول، الجدول، التحضير، المخالفات، الاستئذان، المناوبة، والتقارير الرسمية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#14100A",
+  "theme_color": "#14100A",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

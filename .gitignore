@@ -1,0 +1,9 @@
+# ملفات النظام والمحرر
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+# أدوات التطوير المؤقتة
+node_modules/
+*.tmp

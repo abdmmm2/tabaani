@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل منصة تابعني — للمدارس</title>
+<meta name="description" content="دليل استخدام شامل لمنصة تابعني للخدمات التعليمية: الأدوار، الدخول، التقارير، التحضير، المناوبة، تلقرام، وبصمة الوجه.">
+<style>
+@import url("../../app/assets/fonts/fonts.css");
+
+/* ============================================================ الأساسيات */
+:root{
+  --gold:#CE9433; --gold-l:#EBCB74; --gold-d:#B47830; --gold-ink:#8A5A1E;
+  --copper:#C97F2C; --onyx:#14100A; --onyx-2:#1E1810; --cream:#F7F4ED;
+  --mint:#1E7A5A; --mint-bg:#E2F4EC; --terra:#C2593F; --terra-bg:#FBEDE8;
+  --line:#D9D1C2; --line-soft:#EAE3D6; --ink:#14100A; --ink-2:#5A5044; --ink-3:#7A7062;
+  --amber-bg:#FAF1D8; --r:14px; --r-sm:10px;
+  --shadow:0 10px 30px rgba(20,16,10,.10);
+  --shadow-sm:0 3px 10px rgba(20,16,10,.08);
+  --grad-gold:linear-gradient(135deg,#F1D28C 0%,#D89C48 45%,#B47830 100%);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--cream); color:var(--ink);
+  font-family:"IBM Plex Sans Arabic","Noto Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.85;
+}
+h1,h2,h3,h4,h5{font-family:"Alexandria","IBM Plex Sans Arabic",system-ui,sans-serif; margin:0; line-height:1.4}
+p{margin:0 0 10px}
+a{color:var(--gold-ink)}
+code{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; direction:ltr; unicode-bidi:embed;
+  background:#F2ECDF; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.86em; color:#5A3E12}
+img{max-width:100%}
+
+/* ============================================================ الصفحة */
+.page{max-width:210mm; margin:0 auto; background:#fff; padding:26px 30px 40px; box-shadow:var(--shadow)}
+@media screen and (min-width:900px){ .page{margin:26px auto 60px; border-radius:20px} }
+
+/* ============================================================ الغلاف */
+.cover{background:var(--onyx); color:#fff; border-radius:18px; padding:34px 30px 30px; position:relative; overflow:hidden}
+.cover::after{content:""; position:absolute; inset-inline-start:-90px; inset-block-end:-120px; width:320px; height:320px;
+  background:radial-gradient(circle,rgba(206,148,51,.35),transparent 65%)}
+.cover .logo{width:230px; max-width:64%; display:block; margin:0 auto 18px}
+.cover .eyebrow{display:inline-block; border:1px solid rgba(235,203,116,.55); color:var(--gold-l);
+  border-radius:999px; padding:3px 14px; font-size:.78rem; letter-spacing:.4px; margin-bottom:14px}
+.cover h1{font-size:clamp(1.7rem,1.3rem+1.6vw,2.5rem); font-weight:800; color:#fff; text-align:center}
+.cover .sub{text-align:center; color:#E9DFC8; margin-top:10px; font-size:1rem}
+.cover .meta{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:20px}
+.cover .chip{background:rgba(255,255,255,.08); border:1px solid rgba(235,203,116,.35); color:#EFE4C8;
+  border-radius:999px; padding:5px 14px; font-size:.8rem}
+
+/* ============================================================ الفهرس */
+.toc{margin-top:22px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.toc-head{background:var(--amber-bg); padding:12px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:10px}
+.toc-head h2{font-size:1.15rem}
+.toc-head span{font-size:.75rem; color:var(--ink-2)}
+.toc ol{list-style:none; margin:0; padding:6px 0}
+.toc li{margin:0}
+.toc a{display:flex; align-items:baseline; gap:8px; text-decoration:none; color:var(--ink); padding:8px 16px; border-bottom:1px dashed var(--line-soft)}
+.toc li:last-child a{border-bottom:0}
+.toc a:hover{background:#FCF7EC}
+.toc .num{flex:none; width:26px; text-align:center; font-weight:700; color:var(--gold-ink)}
+.toc .ttl{flex:1}
+.toc .dots{flex:1; border-bottom:1px dotted #C9BFAE; margin:0 6px; transform:translateY(-4px)}
+.toc .pg{flex:none; font-weight:700; color:var(--gold-d); font-variant-numeric:tabular-nums}
+.toc .sec-sub{display:block; font-size:.78rem; color:var(--ink-2); margin-top:2px}
+
+/* ============================================================ الفصول */
+.chapter{break-before:page; margin-top:34px; padding-top:6px}
+.chapter:first-of-type{break-before:auto}
+.chapter-head{display:flex; align-items:flex-start; gap:14px; border-bottom:2.5px solid var(--gold);
+  padding-bottom:12px; margin-bottom:18px}
+.chapter-head .badge{flex:none; width:46px; height:46px; border-radius:14px; background:var(--grad-gold);
+  color:#1A1206; font-weight:800; font-family:"Alexandria",sans-serif; display:flex; align-items:center;
+  justify-content:center; font-size:1.15rem; box-shadow:var(--shadow-sm)}
+.chapter-head h2{font-size:clamp(1.3rem,1.1rem+.8vw,1.7rem); font-weight:800}
+.chapter-head .lead{color:var(--ink-2); font-size:.9rem; margin-top:4px}
+h3{font-size:1.12rem; font-weight:700; margin:22px 0 8px; color:#2A2113; display:flex; align-items:center; gap:8px}
+h3::before{content:""; width:6px; height:20px; border-radius:3px; background:var(--gold); flex:none}
+h4{font-size:1rem; font-weight:700; margin:16px 0 6px; color:#3A2F1D}
+p,li{font-size:.95rem}
+ul,ol{margin:8px 0 12px; padding-inline-start:22px}
+li{margin:4px 0}
+
+/* ============================================================ البطاقات */
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; margin:14px 0}
+.card{border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; background:#fff; box-shadow:var(--shadow-sm)}
+.card h4{margin:0 0 4px; font-size:.98rem}
+.card p{margin:0; font-size:.85rem; color:var(--ink-2)}
+.card .ic{width:34px; height:34px; border-radius:10px; background:var(--amber-bg); display:flex; align-items:center;
+  justify-content:center; margin-bottom:8px; color:var(--gold-ink); font-size:1.05rem}
+.card.gold{background:linear-gradient(180deg,#FFFDF7,#FCF5E6); border-color:var(--gold-l)}
+.card.mint{border-color:#BEE6D6; background:#F6FCF9}
+.card.terra{border-color:#F0C9BC; background:#FEF8F5}
+
+/* ============================================================ الجداول */
+.tbl-wrap{overflow-x:auto; margin:12px 0}
+table.dt{width:100%; border-collapse:collapse; font-size:.86rem; background:#fff}
+table.dt caption{caption-side:top; text-align:start; font-weight:700; font-size:.85rem; color:var(--gold-ink); padding:4px 2px 8px}
+table.dt th,table.dt td{border:1px solid var(--line); padding:8px 10px; text-align:start; vertical-align:top}
+table.dt thead th{background:var(--amber-bg); font-family:"Alexandria",sans-serif; font-weight:700; font-size:.83rem}
+table.dt tbody tr:nth-child(even){background:#FCFAF4}
+table.dt code{background:#F2ECDF}
+.pill{display:inline-block; border-radius:999px; padding:1px 10px; font-size:.76rem; font-weight:600; border:1px solid transparent}
+.pill.brand{background:var(--amber-bg); color:var(--gold-ink); border-color:var(--gold-l)}
+.pill.mint{background:var(--mint-bg); color:var(--mint); border-color:#BEE6D6}
+.pill.terra{background:var(--terra-bg); color:var(--terra); border-color:#F0C9BC}
+.pill.plain{background:#F3F0E9; color:var(--ink-2); border-color:var(--line)}
+
+/* ============================================================ الخطوات */
+ol.steps{list-style:none; counter-reset:st; padding:0; margin:14px 0}
+ol.steps>li{counter-increment:st; position:relative; padding-inline-start:48px; margin:0 0 12px; min-height:32px}
+ol.steps>li::before{content:counter(st); position:absolute; inset-inline-start:0; top:0; width:32px; height:32px;
+  border-radius:50%; background:var(--grad-gold); color:#1A1206; font-weight:700; font-family:"Alexandria",sans-serif;
+  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); font-size:.9rem}
+ol.steps>li>strong{display:block; font-size:.95rem}
+ol.steps>li>span{color:var(--ink-2); font-size:.88rem}
+
+/* ============================================================ التنبيهات */
+.callout{border-radius:var(--r); padding:12px 14px 12px 46px; margin:14px 0; position:relative; font-size:.9rem; border:1px solid}
+.callout::before{position:absolute; inset-inline-start:14px; top:11px; font-size:1.05rem; font-weight:700}
+.callout.tip{background:var(--mint-bg); border-color:#BEE6D6; color:#14513C}
+.callout.tip::before{content:"\2714"; color:var(--mint)}
+.callout.warn{background:var(--terra-bg); border-color:#F0C9BC; color:#7C3320}
+.callout.warn::before{content:"\26A0"; color:var(--terra)}
+.callout.info{background:var(--amber-bg); border-color:var(--gold-l); color:#5A3E12}
+.callout.info::before{content:"\2139"; color:var(--gold-d)}
+.callout strong{display:block; margin-bottom:2px}
+
+/* ============================================================ الصور */
+figure.shot{margin:16px 0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden;
+  background:#FCFBF7; box-shadow:var(--shadow-sm); break-inside:avoid}
+figure.shot img{display:block; width:100%; height:auto; border-bottom:1px solid var(--line); background:#fff}
+figure.shot figcaption{padding:9px 14px; font-size:.82rem; color:var(--ink-2); line-height:1.7}
+figure.shot .fig-no{display:inline-block; background:var(--onyx); color:var(--gold-l); border-radius:6px;
+  padding:0 8px; font-size:.72rem; font-weight:700; margin-inline-end:6px; font-family:"Alexandria",sans-serif}
+figure.shot.tall img{max-height:620px; object-fit:cover; object-position:top center}
+figure.shot .open{font-size:.76rem; color:var(--gold-ink); text-decoration:none; border-bottom:1px dotted}
+figure.shot.narrow{max-width:74%; margin-inline:auto}
+.fig-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:720px){ .fig-pair{grid-template-columns:1fr} }
+
+/* ============================================================ الرسوم SVG */
+.fig-svg{margin:16px 0; border:1px solid var(--line); border-radius:var(--r); background:#FCFBF7; padding:14px; overflow-x:auto}
+.fig-svg svg{display:block; width:100%; height:auto; min-width:520px}
+.fig-svg .cap{font-size:.8rem; color:var(--ink-2); text-align:center; margin-top:8px}
+.fig-svg .cap b{color:var(--gold-ink)}
+
+/* ============================================================ التذييل */
+.foot-note{margin-top:26px; padding-top:14px; border-top:2px solid var(--gold); font-size:.8rem; color:var(--ink-2)}
+.end{background:var(--onyx); color:#EFE4C8; border-radius:var(--r); padding:18px 20px; margin-top:22px}
+.end h3{color:#fff}
+.end h3::before{background:var(--gold-l)}
+.end a{color:var(--gold-l)}
+.end code{background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); color:#F3E6C6}
+.two-col{columns:2; column-gap:26px}
+@media (max-width:640px){ .two-col{columns:1} }
+.no-print{}
+.small{font-size:.8rem; color:var(--ink-2)}
+
+/* ============================================================ الطباعة A4 */
+@page{ size:A4; margin:14mm 12mm }
+@media print{
+  body{background:#fff; font-size:11.5px; line-height:1.7}
+  .page{max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0}
+  .chapter{margin-top:0; break-before:page}
+  .chapter:first-of-type{break-before:auto}
+  .cover{border-radius:0; padding:16mm 12mm; break-after:page}
+  .cover .logo{width:60mm}
+  .toc{break-after:page}
+  h2,h3,h4{break-after:avoid}
+  figure.shot,table.dt,.callout,.card,.fig-svg{break-inside:avoid}
+  .toc a{padding:5px 12px}
+  a{text-decoration:none}
+  .no-print{display:none}
+  table.dt{font-size:10px}
+  .callout{font-size:10.5px}
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<!-- ==================================================== الغلاف -->
+<header class="cover">
+  <img class="logo" src="../../brand/logo/master/tabaani-logo-stacked.png" alt="شعار تابعني">
+  <div style="text-align:center">
+    <span class="eyebrow">دليل الاستخدام الرسمي</span>
+  </div>
+  <h1>دليل منصة تابعني — للمدارس</h1>
+  <p class="sub">من تأسيس المدرسة والحسابات… إلى التحضير والمخالفات والمناوبة… ثم التقارير الرسمية المطبوعة بباركود التحقق.</p>
+  <div class="meta">
+    <span class="chip">الإصدار 1.0</span>
+    <span class="chip">أكتوبر 2026</span>
+    <span class="chip">عربي — RTL</span>
+    <span class="chip">10 أدوار · 23 وحدة خدمة</span>
+  </div>
+</header>
+
+<!-- ==================================================== الفهرس -->
+<nav class="toc" aria-label="فهرس الدليل">
+  <div class="toc-head">
+    <h2>الفهرس</h2>
+    <span>أرقام الصفحات تقديرية بحسب طباعة A4</span>
+  </div>
+  <ol id="toc-list">
+    <li><a href="#sec-1"><span class="num">1</span><span class="ttl">نظرة عامة والأدوار العشرة<span class="sec-sub">ما هي المنصة · الأدوار · ما يستطيع كل دور</span></span><span class="dots"></span><span class="pg">3</span></a></li>
+    <li><a href="#sec-2"><span class="num">2</span><span class="ttl">الدخول والتسجيل واستعادة كلمة المرور<span class="sec-sub">شاشة الدخول · إنشاء حساب · رمز التحقق</span></span><span class="dots"></span><span class="pg">5</span></a></li>
+    <li><a href="#sec-3"><span class="num">3</span><span class="ttl">ترويسة التقارير الرسمية<span class="sec-sub">ترتيب عناصر الترويسة بالتفصيل</span></span><span class="dots"></span><span class="pg">7</span></a></li>
+    <li><a href="#sec-4"><span class="num">4</span><span class="ttl">المشرف: المناطق والمدن وتأسيس المدرسة<span class="sec-sub">القوائم الانزلاقية · جنس المدرسة</span></span><span class="dots"></span><span class="pg">9</span></a></li>
+    <li><a href="#sec-5"><span class="num">5</span><span class="ttl">المدير: الحسابات واستيراد نور وإسناد المواد<span class="sec-sub">اعتماد الطلبات · Excel/CSV</span></span><span class="dots"></span><span class="pg">11</span></a></li>
+    <li><a href="#sec-6"><span class="num">6</span><span class="ttl">وكيل شؤون الطلاب<span class="sec-sub">الفصول والطلاب · الجدول · التحضير · المخالفات · الاستئذان · نسب الحرمان</span></span><span class="dots"></span><span class="pg">13</span></a></li>
+    <li><a href="#sec-7"><span class="num">7</span><span class="ttl">تثبيت الوكيل للإسناد<span class="sec-sub">فلا يرى المعلم إلا فصوله</span></span><span class="dots"></span><span class="pg">17</span></a></li>
+    <li><a href="#sec-8"><span class="num">8</span><span class="ttl">المعلم<span class="sec-sub">التحضير · المخالفة · النشاط · بصمة الوجه · تقاريري</span></span><span class="dots"></span><span class="pg">18</span></a></li>
+    <li><a href="#sec-9"><span class="num">9</span><span class="ttl">التوجيه والإرشاد<span class="sec-sub">الرد على المخالفات وتحويل الاستئذان</span></span><span class="dots"></span><span class="pg">21</span></a></li>
+    <li><a href="#sec-10"><span class="num">10</span><span class="ttl">وكيل شؤون المعلمين: المناوبة<span class="sec-sub">الأماكن · التوزيع الآلي · الفترات الثلاث · تذكير تلقرام</span></span><span class="dots"></span><span class="pg">22</span></a></li>
+    <li><a href="#sec-11"><span class="num">11</span><span class="ttl">التطوع والنشاط ومراقبة الغياب<span class="sec-sub">ساعات التطوع · النشاط الطلابي · مراقب الغياب</span></span><span class="dots"></span><span class="pg">24</span></a></li>
+    <li><a href="#sec-12"><span class="num">12</span><span class="ttl">مركز التقارير والتحليلات<span class="sec-sub">يومي/أسبوعي/شهري/نهاية فصل · رسوم · تحقق بالباركود</span></span><span class="dots"></span><span class="pg">26</span></a></li>
+    <li><a href="#sec-13"><span class="num">13</span><span class="ttl">تلقرام: إنشاء التوكن خطوة بخطوة<span class="sec-sub">BotFather · getUpdates · sendMessage</span></span><span class="dots"></span><span class="pg">29</span></a></li>
+    <li><a href="#sec-14"><span class="num">14</span><span class="ttl">إدارة الحسابات وإدارة المستخدمين<span class="sec-sub">إيقاف/تفعيل الطلاب · تغيير الأدوار · كلمات مرور التسليم</span></span><span class="dots"></span><span class="pg">31</span></a></li>
+    <li><a href="#sec-15"><span class="num">15</span><span class="ttl">جنس المدرسة والتأنيث التلقائي<span class="sec-sub">جدول المسمّيات: طلاب ↔ طالبات</span></span><span class="dots"></span><span class="pg">32</span></a></li>
+    <li><a href="#sec-16"><span class="num">16</span><span class="ttl">أسئلة متكررة وجهات الدعم<span class="sec-sub">8 أسئلة · حدود النموذج الحالي</span></span><span class="dots"></span><span class="pg">33</span></a></li>
+    <li><a href="#appendix"><span class="num">م</span><span class="ttl">ملحق: بيانات الدخول التجريبية ورابط المستودع</span><span class="dots"></span><span class="pg">35</span></a></li>
+  </ol>
+</nav>
+
+<!-- ==================================================== 1 -->
+<section class="chapter" id="sec-1">
+  <div class="chapter-head">
+    <div class="badge">1</div>
+    <div>
+      <h2>نظرة عامة والأدوار العشرة</h2>
+      <p class="lead">ما هي منصة تابعني، ومن يستخدمها، وما الذي يستطيعه كل دور.</p>
+    </div>
+  </div>
+
+  <h3>ما هي المنصة</h3>
+  <p>منصة تابعني للخدمات التعليمية هي نظام تشغيل مدرسي متعدد الأدوار، يبدأ من تسجيل المدرسة وتأسيسها،
+  ويمتد إلى الحسابات، وإسناد المواد، وجدول الحصص، والتحضير اليومي، والمخالفات السلوكية، والاستئذان
+  وتصاريح الخروج، والمناوبة، وساعات التطوع، والنشاط الطلابي، وينتهي بتقارير رسمية مطبوعة بترويسة المدرسة
+  وباركود تحقّق. كل شيء يعمل داخل المتصفح بلا خادم ولا تثبيت.</p>
+
+  <div class="cards">
+    <div class="card gold"><div class="ic">&#9776;</div><h4>التسلسل الإداري محفوظ</h4><p>مشرف المنصة ← مدير المدرسة ← وكيل شؤون الطلاب ← المعلم/التوجيه.</p></div>
+    <div class="card mint"><div class="ic">&#10003;</div><h4>كل إجراء يُنتج أثرًا</h4><p>تقريرًا برقم، أو رسالة، أو قيدًا في سجل — لا عمل بلا أثر.</p></div>
+    <div class="card"><div class="ic">&#128274;</div><h4>الصلاحية من الدور</h4><p>كل وحدة تظهر لمن يملكها فقط، فلا تداخل بين الخدمات.</p></div>
+    <div class="card terra"><div class="ic">&#9635;</div><h4>تقارير قابلة للتحقق</h4><p>رقم فريد + باركود + تاريخ ووقت الطباعة على كل تقرير.</p></div>
+  </div>
+
+  <h3>الأدوار العشرة</h3>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 1.1 — الأدوار في المنصة وما يستطيع كل دور</caption>
+      <thead>
+        <tr><th style="width:19%">الدور</th><th style="width:13%">المعرّف</th><th>ما يستطيع</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>مشرف المنصة</strong></td><td><code>super</code></td><td>إنشاء المناطق والمدن (قوائم انزلاقية)، تأسيس المدارس، إنشاء حساب مدير المدرسة، تبديل جنس المدرسة.</td></tr>
+        <tr><td><strong>مدير المدرسة</strong></td><td><code>principal</code></td><td>إنشاء كل حسابات المدرسة، اعتماد طلبات التسجيل، استيراد المعلمين من نور، إسناد المواد بحسب المرحلة، متابعة كل التقارير.</td></tr>
+        <tr><td><strong>وكيل شؤون الطلاب</strong></td><td><code>deputy</code></td><td>الفصول والطلاب (استيراد وإسكان ونقل)، إسناد الفصول والمواد، جدول الحصص وقاعدة الإغلاق، استلام تقارير التحضير، تنفيذ لائحة المخالفات، منح الاستئذان، نسب الحرمان.</td></tr>
+        <tr><td><strong>موجّه التوجيه والإرشاد</strong></td><td><code>guidance</code></td><td>الرد على المخالفات السلوكية بالإجراءات المقترحة، وتحويل طلبات الاستئذان إلى الوكيل.</td></tr>
+        <tr><td><strong>معلم</strong></td><td><code>teacher</code></td><td>التحضير لكل حصة، تسجيل المخالفات، الرد على طلبات النشاط، بصمة الوجه، كشوف تقاريره.</td></tr>
+        <tr><td><strong>وكيل شؤون المعلمين</strong></td><td><code>teachers_deputy</code></td><td>أماكن المناوبة، توزيع المناوبين (يدويًا أو آليًا عادلًا)، الفترات الثلاث، التذكير الآلي بتلقرام، لافتة يوم المناوبة.</td></tr>
+        <tr><td><strong>مسؤول ساعات التطوع</strong></td><td><code>volunteer</code></td><td>البرامج التطوعية، اعتماد التسجيلات والساعات، إصدار شهادات الساعات.</td></tr>
+        <tr><td><strong>مسؤول النشاط الطلابي</strong></td><td><code>activity</code></td><td>الأنشطة وطلبات المشاركة وقراراتها.</td></tr>
+        <tr><td><strong>مراقب الغياب</strong></td><td><code>absence_monitor</code></td><td>متابعة غياب الطلاب، قائمة الحرمان، إشعار ولي الأمر، تقرير «غياب اليوم».</td></tr>
+        <tr><td><strong>طالب</strong></td><td><code>student</code></td><td>طلب المشاركة في الأنشطة، التسجيل في التطوع، متابعة استئذاناته، كشف حضوره.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>خط سير العمل في لمحة</h3>
+  <div class="fig-svg">
+    <svg viewBox="0 0 900 260" role="img" aria-label="مخطط خط سير العمل: من تأسيس المدرسة إلى التقرير المطبوع">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#F1D28C"/><stop offset="1" stop-color="#B47830"/>
+        </linearGradient>
+        <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#CE9433"/>
+        </marker>
+      </defs>
+      <g font-family="Alexandria, sans-serif" font-size="15" text-anchor="middle">
+        <rect x="20" y="90" width="140" height="70" rx="14" fill="url(#g1)"/>
+        <text x="90" y="122" fill="#1A1206" font-weight="700">تأسيس المدرسة</text>
+        <text x="90" y="142" fill="#4A3A16" font-size="12">المشرف</text>
+
+        <rect x="200" y="90" width="140" height="70" rx="14" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="270" y="122" fill="#5A3E12" font-weight="700">الحسابات</text>
+        <text x="270" y="142" fill="#7A6A4A" font-size="12">المدير</text>
+
+        <rect x="380" y="90" width="140" height="70" rx="14" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="450" y="122" fill="#5A3E12" font-weight="700">الفصول والجدول</text>
+        <text x="450" y="142" fill="#7A6A4A" font-size="12">الوكيل</text>
+
+        <rect x="560" y="90" width="140" height="70" rx="14" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="630" y="122" fill="#5A3E12" font-weight="700">التحضير</text>
+        <text x="630" y="142" fill="#7A6A4A" font-size="12">المعلم</text>
+
+        <rect x="740" y="90" width="140" height="70" rx="14" fill="#14100A"/>
+        <text x="810" y="122" fill="#EBCB74" font-weight="700">التقرير المطبوع</text>
+        <text x="810" y="142" fill="#C9BFA6" font-size="12">باركود تحقّق</text>
+
+        <line x1="160" y1="125" x2="198" y2="125" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar)"/>
+        <line x1="340" y1="125" x2="378" y2="125" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar)"/>
+        <line x1="520" y1="125" x2="558" y2="125" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar)"/>
+        <line x1="700" y1="125" x2="738" y2="125" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar)"/>
+
+        <text x="450" y="52" fill="#8A5A1E" font-size="14">مخالفات · استئذان · مناوبة · تطوع · نشاط · تحليلات — كلها تغذّي التقارير</text>
+        <line x1="450" y1="62" x2="450" y2="88" stroke="#D9D1C2" stroke-width="1.5" stroke-dasharray="4 4"/>
+      </g>
+    </svg>
+    <div class="cap"><b>الشكل 1.1</b> — التسلسل: من تأسيس المدرسة إلى التقرير الرسمي القابل للتحقق.</div>
+  </div>
+
+  <figure class="shot tall">
+    <img src="../../screens/02-dash-principal.png" alt="لوحة تحكم مدير المدرسة">
+    <figcaption><span class="fig-no">الشكل 1.2</span> لوحة البداية لمدير المدرسة: بطاقات إحصائية، الإجراءات السريعة، وآخر الإشعارات. <a class="open" href="../../screens/02-dash-principal.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+
+  <div class="callout tip"><strong>نصيحة</strong> ابدأ دائمًا من الأعلى إلى الأسفل: المدرسة ← الحسابات ← الفصول والطلاب ← الإسناد وتثبيت الوكيل ← الجدول. كل خطوة تبني على التي قبلها.</div>
+</section>
+
+<!-- ==================================================== 2 -->
+<section class="chapter" id="sec-2">
+  <div class="chapter-head">
+    <div class="badge">2</div>
+    <div>
+      <h2>الدخول والتسجيل واستعادة كلمة المرور</h2>
+      <p class="lead">من يستخدمها: كل المستخدمين — شاشة الدخول، إنشاء حساب جديد، ورمز الاستعادة.</p>
+    </div>
+  </div>
+
+  <h3>خطوات الدخول</h3>
+  <ol class="steps">
+    <li><strong>افتح المنصة</strong><span>عبر خادم محلي أو GitHub Pages (يفضّل https أو localhost لتعمل الكاميرا في بصمة الوجه).</span></li>
+    <li><strong>أدخل اسم المستخدم أو البريد</strong><span>مثل <code>principal</code>، وكلمة المرور الموحّدة في النموذج التجريبي: <code>Tabaani@2026</code>.</span></li>
+    <li><strong>اضغط «تسجيل الدخول»</strong><span>تُبنى القائمة الجانبية تلقائيًا حسب دورك، ولا تظهر لك إلا وحدات دورك.</span></li>
+  </ol>
+
+  <div class="fig-pair">
+    <figure class="shot">
+      <img src="../../screens/90-login.png" alt="شاشة تسجيل الدخول">
+      <figcaption><span class="fig-no">الشكل 2.1</span> شاشة الدخول: حقل المستخدم وكلمة المرور، ورابطا «نسيت كلمة المرور؟» و«إنشاء حساب جديد».</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="../../screens/91-register.png" alt="صفحة إنشاء حساب جديد">
+      <figcaption><span class="fig-no">الشكل 2.2</span> إنشاء حساب جديد: الاسم، اسم المستخدم، البريد، الجوال، المدرسة، الدور، وكلمة المرور.</figcaption>
+    </figure>
+  </div>
+
+  <h3>إنشاء حساب جديد</h3>
+  <p>من شاشة الدخول ← «إنشاء حساب جديد». تُحدَّد المدرسة والدور، وتُطبَّق قواعد التحقق على اسم المستخدم
+  (4 أحرف إنجليزية على الأقل) وكلمة المرور (8 أحرف مع رقم وحرف). سلوك الحساب يعتمد على الدور:</p>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 2.1 — الأدوار المتاحة للتسجيل الذاتي وحالة الحساب بعد التسجيل</caption>
+      <thead><tr><th>الدور</th><th>يحتاج اعتماد المدير؟</th><th>حالة الحساب فور التسجيل</th></tr></thead>
+      <tbody>
+        <tr><td>طالب</td><td><span class="pill mint">لا</span></td><td>نشط مباشرة ويمكنه الدخول فورًا.</td></tr>
+        <tr><td>معلم</td><td><span class="pill brand">نعم</span></td><td>بانتظار اعتماد مدير المدرسة.</td></tr>
+        <tr><td>موجّه التوجيه والإرشاد</td><td><span class="pill brand">نعم</span></td><td>بانتظار اعتماد مدير المدرسة.</td></tr>
+        <tr><td>مراقب الغياب</td><td><span class="pill brand">نعم</span></td><td>بانتظار اعتماد مدير المدرسة.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info"><strong>ملاحظة</strong> عند تقديم الطلب يصل إشعار إلى مدير المدرسة ووكيل شؤون الطلاب، وتُسجَّل رسالة في «سجل تلقرام» موجّهة إلى المدير.</div>
+
+  <h3>استعادة كلمة المرور</h3>
+  <ol class="steps">
+    <li><strong>اضغط «نسيت كلمة المرور؟»</strong><span>أدخل اسم المستخدم أو البريد الإلكتروني.</span></li>
+    <li><strong>اختر قناة الإرسال</strong><span>يُنشأ رمز تحقّق من ستة أرقام صالح 15 دقيقة، ويُسجَّل في سجل تلقرام (محاكاة).</span></li>
+    <li><strong>أدخل الرمز وكلمة المرور الجديدة</strong><span>ثم أكّدها. عند النجاح يُسجَّل التغيير ويصل إشعار للمدير.</span></li>
+  </ol>
+  <figure class="shot narrow">
+    <img src="../../screens/92-forgot.png" alt="شاشة استعادة كلمة المرور">
+    <figcaption><span class="fig-no">الشكل 2.3</span> شاشة استعادة كلمة المرور: طلب الرمز ثم إدخال الرمز وكلمة المرور الجديدة.</figcaption>
+  </figure>
+  <div class="callout warn"><strong>تحذير</strong> كلمات المرور في النموذج التجريبي تُخزَّن محليًا للعرض فقط؛ استبدلها بمصادقة حقيقية (خادم + تشفير) قبل أي استخدام فعلي.</div>
+</section>
+
+<!-- ==================================================== 3 -->
+<section class="chapter" id="sec-3">
+  <div class="chapter-head">
+    <div class="badge">3</div>
+    <div>
+      <h2>ترويسة التقارير الرسمية</h2>
+      <p class="lead">يضبطها مدير المدرسة — الترتيب الرسمي لعناصر الترويسة من الأعلى إلى الأسفل.</p>
+    </div>
+  </div>
+
+  <p>ترويسة التقارير هي الوجه الرسمي للمدرسة على كل تقرير مطبوع. تُبنى من بيانات المدرسة المحفوظة في
+  المنصة (الاسم، الشعار، إدارة التعليم) ويُضاف إليها بيانات التقرير (الرقم، التاريخ، وقت الطباعة، الباركود).
+  فيما يلي الترتيب المعتمد بالتفصيل:</p>
+
+  <ol class="steps">
+    <li><strong>بسم الله الرحمن الرحيم — في المنتصف</strong><span>أعلى الترويسة، خط واضح في منتصف الصفحة.</span></li>
+    <li><strong>المملكة العربية السعودية</strong><span>ثم <strong>وزارة التعليم</strong> تحتها، في المنتصف أيضًا.</span></li>
+    <li><strong>إدارة التعليم — من قائمة منسدلة</strong><span>تُختار إدارة التعليم التابعة للمدرسة (مثل: إدارة تعليم منطقة الرياض) وتُطبع في المنتصف.</span></li>
+    <li><strong>اسم المدرسة</strong><span>في المنتصف تحت اسم الإدارة، بخط أوضح بقليل.</span></li>
+    <li><strong>شعار وزارة التعليم وشعار المدرسة</strong><span>شعار وزارة التعليم الرسمي (النقاط الخضراء) في <strong>منتصف الصفحة</strong>، وشعار المدرسة (إن وُجد) على <strong>يسار الصفحة</strong> وتحته تاريخ الإصدار والباركود — وكلاهما قابل للاستبدال برفع صورة.</span></li>
+    <li><strong>أسفل شعار المدرسة: تاريخ الإصدار والباركود</strong><span>تاريخ إصدار الترويسة/التقرير، ويقابله باركود التحقق الخاص بالتقرير.</span></li>
+    <li><strong>اسم التقرير بخط كبير في المنتصف</strong><span>تحت الترويسة مباشرة: عنوان التقرير بخط كبير وبارز (مثل «تقرير التحضير اليوم»).</span></li>
+    <li><strong>في نهاية التقرير: معدّ التقرير والتاريخ والوقت</strong><span>اسم من أعدّ التقرير، وتاريخ التقرير ووقت طباعته (هجري + ميلادي)، مع الخطوط المخصّصة للتوقيع.</span></li>
+  </ol>
+
+  <div class="fig-svg">
+    <svg viewBox="0 0 900 430" role="img" aria-label="مخطط تخطيطي لترويسة التقرير الرسمي">
+      <rect x="10" y="10" width="880" height="410" rx="12" fill="#FFFFFF" stroke="#D9D1C2"/>
+      <line x1="10" y1="250" x2="890" y2="250" stroke="#CE9433" stroke-width="3"/>
+      <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="13" text-anchor="middle">
+        <text x="450" y="38" font-size="15" fill="#14100A" font-weight="700">بسم الله الرحمن الرحيم</text>
+
+        <rect x="300" y="52" width="300" height="82" rx="8" fill="#FAF1D8" stroke="#EBCB74"/>
+        <text x="450" y="74" fill="#5A3E12" font-weight="700">المملكة العربية السعودية</text>
+        <text x="450" y="96" fill="#5A3E12" font-weight="700">وزارة التعليم</text>
+        <text x="450" y="118" fill="#8A5A1E">إدارة التعليم ▾ (قائمة منسدلة)</text>
+
+        <text x="450" y="160" font-size="16" fill="#14100A" font-weight="700">اسم المدرسة</text>
+
+        <rect x="370" y="52" width="160" height="96" rx="8" fill="#F2FAF4" stroke="#BFE3CB" stroke-dasharray="5 4"/>
+        <text x="450" y="90" fill="#2E6B45" font-weight="700">شعار وزارة التعليم</text>
+        <text x="450" y="112" fill="#5B8A6E" font-size="11">(النقاط الخضراء — في المنتصف)</text>
+        <rect x="40" y="52" width="180" height="96" rx="8" fill="#F7F4ED" stroke="#D9D1C2" stroke-dasharray="5 4"/>
+        <text x="130" y="86" fill="#7A7062">شعار المدرسة</text>
+        <text x="130" y="104" fill="#8A8172" font-size="11">(اختياري — يسار الصفحة)</text>
+        <text x="130" y="132" font-size="11" fill="#8A5A1E">تاريخ الإصدار + الباركود</text>
+
+        <rect x="250" y="180" width="400" height="48" rx="10" fill="#14100A"/>
+        <text x="450" y="210" font-size="18" fill="#EBCB74" font-weight="700">اسم التقرير — بخط كبير</text>
+
+        <text x="450" y="285" fill="#5A5044">جدول التقرير / محتوى القسم / الرسوم البيانية</text>
+        <rect x="80" y="300" width="740" height="60" rx="8" fill="#FCFAF4" stroke="#EAE3D6"/>
+        <text x="450" y="325" fill="#7A7062" font-size="12">تُبنى ترويسة كل تقرير من بيانات المدرسة + رقم التقرير وتاريخه ووقت طباعته</text>
+        <text x="450" y="345" fill="#7A7062" font-size="12">ويقابلها في نهاية الصفحة: الباركود والخطوط المخصّصة للتوقيع</text>
+
+        <line x1="60" y1="386" x2="840" y2="386" stroke="#D9D1C2" stroke-dasharray="4 4"/>
+        <text x="220" y="406" fill="#8A5A1E" font-weight="700">معدّ التقرير: ..............</text>
+        <text x="640" y="406" fill="#8A5A1E" font-weight="700">التاريخ والوقت: .... / ....</text>
+      </g>
+    </svg>
+    <div class="cap"><b>الشكل 3.1</b> — التخطيط الرسمي للترويسة: بسم الله · الوزارة · إدارة التعليم · اسم المدرسة · الشعاران · تاريخ الإصدار والباركود · اسم التقرير · ثم معدّ التقرير والتاريخ والوقت في النهاية.</div>
+  </div>
+
+  <div class="fig-pair">
+    <figure class="shot tall">
+      <img src="../../screens/11-mod-schools.png" alt="وحدة المدارس — بيانات المدرسة وشعارها">
+      <figcaption><span class="fig-no">الشكل 3.2</span> بيانات المدرسة التي تُبنى منها الترويسة: الاسم، الرمز، العنوان، المراحل، وجنس المدرسة. <a class="open" href="../../screens/11-mod-schools.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+    </figure>
+    <figure class="shot tall">
+      <img src="../../screens/24-mod-reports.png" alt="مركز التقارير — تصدير وطباعة PDF">
+      <figcaption><span class="fig-no">الشكل 3.3</span> مركز التقارير: كل تقرير يُطبع بترويسة المدرسة ورقم فريد وباركود. <a class="open" href="../../screens/24-mod-reports.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+    </figure>
+  </div>
+
+  <div class="callout tip"><strong>نصيحة</strong> اضبط بيانات المدرسة وشعارها أولًا، ثم اطبع أي تقرير للتأكد من ظهور الترويسة كما تريد. كل عنصر من عناصر الترويسة يأتي من بيانات المدرسة، فإن ظهر ناقصًا فالمصدر ناقص في بيانات المدرسة.</div>
+  <div class="callout warn"><strong>تحذير</strong> لا تُعدَّل الترويسة يدويًا على الورق؛ عدّلها من المنصة حتى تبقى كل التقارير متطابقة.</div>
+</section>
+
+<!-- ==================================================== 4 -->
+<section class="chapter" id="sec-4">
+  <div class="chapter-head">
+    <div class="badge">4</div>
+    <div>
+      <h2>المشرف: المناطق والمدن وتأسيس المدرسة</h2>
+      <p class="lead">من يستخدمها: مشرف المنصة <code>super</code>.</p>
+    </div>
+  </div>
+
+  <h3>المناطق والمدن — قوائم انزلاقية</h3>
+  <ol class="steps">
+    <li><strong>افتح «المناطق والمدن والمدارس»</strong><span>من القائمة الجانبية لحساب المشرف.</span></li>
+    <li><strong>اختر المنطقة أو أضفها</strong><span>مثل: منطقة الرياض.</span></li>
+    <li><strong>تُبنى قائمة المدن انزلاقيًا</strong><span>عند اختيار منطقة تظهر مدنها تلقائيًا لتختار منها المدينة.</span></li>
+  </ol>
+
+  <h3>تأسيس المدرسة</h3>
+  <ol class="steps">
+    <li><strong>أدخل اسم المدرسة والرمز</strong><span>مع العنوان، الموقع، الهاتف، البريد.</span></li>
+    <li><strong>حدّد المراحل</strong><span>روضة / ابتدائي / متوسط / ثانوي — والمراحل تحكم المواد المتاحة لاحقًا.</span></li>
+    <li><strong>اختر جنس المدرسة</strong><span>طلاب (بنين) أو طالبات (بنات) — ويُشتق من الاختيار كل المسمّيات والنصوص.</span></li>
+    <li><strong>أنشئ حساب مدير المدرسة</strong><span>يُنشأ مع المدرسة أو بعدها، ثم تبدأ المدرسة عملها من حسابها.</span></li>
+  </ol>
+
+  <figure class="shot tall">
+    <img src="../../screens/11-mod-schools.png" alt="وحدة المناطق والمدن والمدارس">
+    <figcaption><span class="fig-no">الشكل 4.1</span> وحدة «المناطق والمدن والمدارس»: اختيار المنطقة ← قائمة المدن ← تأسيس المدرسة مع المراحل وجنس المدرسة. <a class="open" href="../../screens/11-mod-schools.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <figure class="shot narrow">
+    <img src="../../screens/01-dash-super.png" alt="لوحة تحكم مشرف المنصة">
+    <figcaption><span class="fig-no">الشكل 4.2</span> لوحة بداية مشرف المنصة: ملخص المدارس والمناطق والإجراءات السريعة.</figcaption>
+  </figure>
+
+  <div class="callout tip"><strong>نصيحة</strong> يمكن للمشرف تبديل جنس المدرسة لاحقًا من الوحدة نفسها بزر «اجعله طالبات / اجعله طلابًا»، فتتغيّر الواجهة بالكامل فورًا (انظر الفصل 15).</div>
+</section>
+
+<!-- ==================================================== 5 -->
+<section class="chapter" id="sec-5">
+  <div class="chapter-head">
+    <div class="badge">5</div>
+    <div>
+      <h2>المدير: الحسابات واستيراد نور وإسناد المواد</h2>
+      <p class="lead">من يستخدمها: مدير المدرسة <code>principal</code>.</p>
+    </div>
+  </div>
+
+  <h3>أ) إنشاء الحسابات</h3>
+  <ol class="steps">
+    <li><strong>افتح «الموظفون والحسابات»</strong><span>وأنشئ حسابات الوكيل والتوجيه والمعلمين ومسؤولي الخدمات.</span></li>
+    <li><strong>أنشئ كل حساب بدوره</strong><span>وعند اختيار دور المعلم يمكن تحديد فصوله ومواده بقوائم متسلسلة (المرحلة ← الصف ← الشعبة).</span></li>
+    <li><strong>لا تظهر إلا مواد مراحل المدرسة</strong><span>فلا يمكن إسناد مادة من مرحلة لا تشملها المدرسة.</span></li>
+  </ol>
+
+  <h3>ب) اعتماد طلبات التسجيل</h3>
+  <ol class="steps">
+    <li><strong>يسجّل الموظف نفسه</strong><span>من «إنشاء حساب جديد» فيصل طلبه بحالة «بانتظار الاعتماد».</span></li>
+    <li><strong>يظهر الطلب للمدير</strong><span>في «إدارة الحسابات ← طلبات الاعتماد» بعدّاد يبيّن عدد الطلبات.</span></li>
+    <li><strong>اضغط «اعتماد» أو «رفض»</strong><span>الاعتماد يجعل الحساب نشطًا ويستطيع الدخول، ويصله إشعار/رسالة.</span></li>
+  </ol>
+  <div class="callout info"><strong>ملاحظة</strong> الطالب يُفعَّل فورًا بلا اعتماد؛ الاعتماد مطلوب للمعلم والتوجيه ومراقب الغياب.</div>
+
+  <h3>ج) استيراد المعلمين من نور (Excel/CSV)</h3>
+  <ol class="steps">
+    <li><strong>ارفع ملف نور</strong><span>ملف Excel أو CSV مستخرجًا من نظام نور.</span></li>
+    <li><strong>طابِق الأعمدة</strong><span>الاسم · المادة · رقم الهوية · الجوال · البريد — والمواد تُستخرج من عمود المادة (تفصلها <code>,</code> أو <code>،</code> أو <code>/</code>).</span></li>
+    <li><strong>راجع نتيجة الاستيراد</strong><span>مضاف / متخطّى (مكرر) / خطأ — والمنع من التكرار برقم الهوية أو البريد.</span></li>
+  </ol>
+
+  <h3>د) إسناد المواد بحسب المرحلة</h3>
+  <p>بعد الاستيراد تجري عملية الإسناد على تبويب لكل مرحلة من مراحل المدرسة، فتُختار مواد المعلم من مواد
+  مرحلته فقط. ثم يبدأ وكيل شؤون الطلاب إسناد الفصول والمواد وتثبيتها (الفصل 7).</p>
+
+  <figure class="shot tall">
+    <img src="../../screens/12-mod-staff.png" alt="وحدة الموظفون والحسابات واستيراد المعلمين من نور">
+    <figcaption><span class="fig-no">الشكل 5.1</span> «الموظفون والحسابات»: إنشاء الحسابات، مطابقة الأعمدة لملف نور، وإسناد المواد بحسب المرحلة. <a class="open" href="../../screens/12-mod-staff.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="../../screens/13-mod-accounts.png" alt="وحدة إدارة الحسابات وطلبات الاعتماد">
+    <figcaption><span class="fig-no">الشكل 5.2</span> «إدارة الحسابات»: حسابات الطلاب والموظفين، وتبويب «طلبات الاعتماد» بزرّي اعتماد/رفض.</figcaption>
+  </figure>
+
+  <div class="callout tip"><strong>نصيحة</strong> نفّذ الاستيراد قبل الإسناد: كل معلم يُستورد أولًا، ثم تُسند له مواده، ثم تُسند له فصوله من وكيل شؤون الطلاب.</div>
+</section>
+
+<!-- ==================================================== 6 -->
+<section class="chapter" id="sec-6">
+  <div class="chapter-head">
+    <div class="badge">6</div>
+    <div>
+      <h2>وكيل شؤون الطلاب</h2>
+      <p class="lead">من يستخدمها: <code>deputy</code> — الفصول والطلاب، الإسناد، الجدول، التحضير، المخالفات، الاستئذان، والإعدادات.</p>
+    </div>
+  </div>
+
+  <h3>أ) الفصول والطلاب</h3>
+  <ol class="steps">
+    <li><strong>أنشئ الفصول</strong><span>مرحلة ← صف ← شعبة ← غرفة ← مشرف — وعدد طلاب الفصل يُحدَّث تلقائيًا.</span></li>
+    <li><strong>استورد الطلاب</strong><span>ملف <code>.xlsx/.xls/.csv</code> بأعمدة: اسم الطالب، رقم الهوية، جوال ولي الأمر، المرحلة، الصف، الفصل.</span></li>
+    <li><strong>الإسكان في الفصول</strong><span>إما فصل مستهدف واحد، أو قراءة الصف والشعبة من الملف تلقائيًا — وما لا يُطابق فصلاً قائمًا يُدرج في «غير مسكّنين».</span></li>
+    <li><strong>أسكن غير المسكّنين</strong><span>تحديد فردي أو جماعي ثم «إسكان في فصل».</span></li>
+    <li><strong>انقل الطلاب (من الوكيل فقط)</strong><span>فردي أو جماعي بسبب إلزامي، ويُقيَّد كل نقل في «سجل النقل» بالتاريخ والمنفّذ.</span></li>
+  </ol>
+  <div class="callout warn"><strong>تحذير</strong> استيراد الطلاب وإسكانهم ونقلهم حصريًا لوكيل شؤون الطلاب؛ لا يملكه مدير المدرسة ولا المعلم.</div>
+
+  <h3>ب) إسناد الفصول والمواد للمعلمين</h3>
+  <ol class="steps">
+    <li><strong>افتح «إسناد الفصول والمواد»</strong><span>واختر المعلم من القائمة.</span></li>
+    <li><strong>حدّد فصوله ومواده</strong><span>بقوائم متسلسلة، والحصص الأسبوعية لكل إسناد.</span></li>
+    <li><strong>ثبّت الإسناد</strong><span>لتظهر للمعلم فصوله فقط في التحضير (الفصل 7).</span></li>
+  </ol>
+
+  <h3>ج) جدول الحصص وقاعدة الإغلاق</h3>
+  <ol class="steps">
+    <li><strong>اضبط الحصص</strong><span>رقم الحصة ووقت البداية والنهاية لكل حصة.</span></li>
+    <li><strong>حدّد قاعدة الإغلاق</strong><span>«منتصف الحصة» أو «نهاية الحصة» — وهي التي تحكم متى يُسمح للمعلم بإغلاق التحضير.</span></li>
+    <li><strong>ارفع الجدول (اختياري)</strong><span>من ملف Excel/CSV أو PDF لإسناد الحصص تلقائيًا.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/17-mod-schedule.png" alt="وحدة جدول الحصص وقاعدة الإغلاق">
+    <figcaption><span class="fig-no">الشكل 6.1</span> «جدول الحصص»: أوقات الحصص وقاعدة الإغلاق، ورفع جدول من ملف لإسناد الحصص تلقائيًا.</figcaption>
+  </figure>
+
+  <h3>د) تقارير التحضير</h3>
+  <p>تصلك تقارير كل جلسة تحضير يغلقها المعلم: عدد الحاضرين والمتأخرين والغائبين، ويُرسل تقرير فوري
+  لوكيل شؤون الطلاب ومدير المدرسة، مع رسالة تلقرام بالغائبين والمتأخرين. ويمكن طباعة الكشوف بالباركود.</p>
+  <figure class="shot tall">
+    <img src="../../screens/19-mod-attendance-reports.png" alt="وحدة تقارير التحضير">
+    <figcaption><span class="fig-no">الشكل 6.2</span> «تقارير التحضير»: كشوف الجلسات المغلقة والغياب والتأخر، مع الطباعة والتصدير. <a class="open" href="../../screens/19-mod-attendance-reports.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+
+  <h3>هـ) المخالفات السلوكية</h3>
+  <ol class="steps">
+    <li><strong>يسجّل المعلم المخالفة</strong><span>داخل الحصة، مع النوع والوصف.</span></li>
+    <li><strong>يرد التوجيه والإرشاد</strong><span>بالإجراء المقترح والخيارات الممكنة.</span></li>
+    <li><strong>تنفّذ الوكيل اللائحة</strong><span>خصم درجات سلوك (يُكتب الرقم أمام المخالفة) أو إجراء آخر + ملاحظة.</span></li>
+    <li><strong>تُغلق القضية</strong><span>فتُصدر رسالة تلقرام للمعلم والتوجيه والمدير + تقرير مفصّل + أرشفة.</span></li>
+  </ol>
+
+  <h3>و) الاستئذان وتصريح الخروج</h3>
+  <ol class="steps">
+    <li><strong>يُنشئ التوجيه الطلب</strong><span>الطالب، الحصة/المادة، التاريخ، السبب — ويُحوَّل للوكيل.</span></li>
+    <li><strong>يمنحه الوكيل</strong><span>من المنصة أو الجوال أو تلقرام.</span></li>
+    <li><strong>يُصدر تصريح خروج بباركود</strong><span>يتضمن اسم الطالب، الصف والفصل، الحصة، وقت الخروج، والتاريخ (هجري + ميلادي)، ورقم طلب الاستئذان.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/21-mod-permissions.png" alt="وحدة الاستئذان وتصاريح الخروج">
+    <figcaption><span class="fig-no">الشكل 6.3</span> «الاستئذان وتصاريح الخروج»: الطلبات المحوّلة، المنح من الوكيل، وطباعة التصريح بباركود.</figcaption>
+  </figure>
+
+  <h3>ز) الإعدادات ونسب الحرمان لكل مادة</h3>
+  <ol class="steps">
+    <li><strong>افتح «إعدادات الوكيل ← نسب الحرمان»</strong><span>جدول كل مواد مراحل المدرسة، ولكل مادة نسبة.</span></li>
+    <li><strong>عدّل النسبة</strong><span>أدخل النسبة لكل مادة، أو اضبط «النسبة الافتراضية» للمواد غير المحدّدة (الافتراضي 25%).</span></li>
+    <li><strong>راجع «معاينة الأثر»</strong><span>لتظهر فورًا قائمة الطلاب المتجاوزين للحد بحسب الفترة (يومي/أسبوعي/شهري/نهاية الفصل).</span></li>
+    <li><strong>اطبع سياسة الحرمان</strong><span>تقريرًا بترويسة المدرسة وباركود وجدول المواد ونسبها.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/26-mod-settings.png" alt="وحدة إعدادات الوكيل ونسب الحرمان">
+    <figcaption><span class="fig-no">الشكل 6.4</span> «إعدادات الوكيل»: نسب الحرمان لكل مادة، النسبة الافتراضية، ومعاينة الأثر. <a class="open" href="../../screens/26-mod-settings.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="../../screens/14-mod-classes.png" alt="وحدة الفصول والطلاب">
+    <figcaption><span class="fig-no">الشكل 6.5</span> «الفصول والطلاب»: إنشاء الفصول، الاستيراد والإسكان، والنقل مع سجل النقل.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة</strong> اضبط نسب الحرمان قبل بدء الفصل الدراسي، ثم راجع «معاينة الأثر» شهريًا لرصد الطلاب المقتربين من الحد ومخاطبة أولياء أمورهم مبكرًا.</div>
+</section>
+
+<!-- ==================================================== 7 -->
+<section class="chapter" id="sec-7">
+  <div class="chapter-head">
+    <div class="badge">7</div>
+    <div>
+      <h2>تثبيت الوكيل للإسناد</h2>
+      <p class="lead">من يستخدمها: وكيل شؤون الطلاب <code>deputy</code> — فلا يرى المعلم إلا فصوله.</p>
+    </div>
+  </div>
+  <p>بعد أن يسند الوكيل الفصول والمواد للمعلم، يأتي دور <strong>التثبيت</strong>: يثبّت الوكيل الإسناد
+  فيصبح المعلم مرتبطًا بفصوله ومواده المحدّدة، ولا يرى في التحضير وبصمة الوجه وكشوف تقاريره إلا فصوله.
+  قبل التثبيت يرى المعلم كل إسناداته المرحلية؛ وبعده لا تتغيّر قائمته إلا بتثبيت جديد من الوكيل.</p>
+
+  <ol class="steps">
+    <li><strong>افتح «إسناد الفصول والمواد»</strong><span>تبويب إسنادات المعلمين.</span></li>
+    <li><strong>راجع فصول المعلم ومواده</strong><span>وتأكّد من مطابقتها للجدول الفعلي.</span></li>
+    <li><strong>اضغط «تثبيت»</strong><span>فيُقيَّد التاريخ ومَن ثبّت، ويظهر للمعلم ما يخصّه فقط.</span></li>
+    <li><strong>راجع «فصول ومواد المعلمين»</strong><span>لوحة عرض وتتبّع لِما ثُبّت وما لم يُثبّت بعد.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/15-mod-assignments.png" alt="وحدة إسناد الفصول والمواد وتثبيت الوكيل">
+    <figcaption><span class="fig-no">الشكل 7.1</span> «إسناد الفصول والمواد»: اختيار فصول المعلم ومواده، وزر التثبيت، ولوحة «فصول ومواد المعلمين». <a class="open" href="../../screens/15-mod-assignments.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <div class="callout warn"><strong>تحذير</strong> إن لم يُثبَّت الإسناد فقد لا تظهر للمعلم فصوله كما تتوقّع؛ التثبيت هو ما يضمن «لا يرى المعلم إلا فصوله».</div>
+</section>
+
+<!-- ==================================================== 8 -->
+<section class="chapter" id="sec-8">
+  <div class="chapter-head">
+    <div class="badge">8</div>
+    <div>
+      <h2>المعلم</h2>
+      <p class="lead">من يستخدمها: <code>teacher</code> — التحضير، المخالفة، النشاط، بصمة الوجه، وكشوف تقاريري.</p>
+    </div>
+  </div>
+
+  <h3>أ) التحضير لكل حصة</h3>
+  <ol class="steps">
+    <li><strong>اختر الفصل والمادة والحصة والتاريخ</strong><span>فيُفتح كشف الطلاب.</span></li>
+    <li><strong>اضبط حالة كل طالب</strong><span>حاضر · متأخر · غائب · بعذر — وتُحفظ لحظيًا.</span></li>
+    <li><strong>أغلق الكشف</strong><span>ولا يُغلق قبل منتصف الحصة أو نهايتها بحسب قاعدة الإغلاق التي ضبطها الوكيل.</span></li>
+    <li><strong>يُرسل التقرير تلقائيًا</strong><span>للوكيل والمدير + رسالة تلقرام بالغائبين والمتأخرين.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/18-mod-attendance.png" alt="وحدة التحضير للمعلم">
+    <figcaption><span class="fig-no">الشكل 8.1</span> «التحضير»: كشف الطلاب وحالات الحضور، مع توضيح وقت السماح بالإغلاق.</figcaption>
+  </figure>
+
+  <h3>ب) تسجيل المخالفة وطلب النشاط</h3>
+  <ol class="steps">
+    <li><strong>سجّل المخالفة</strong><span>نوع المخالفة والوصف، فيصل الإشعار للتوجيه والوكيل.</span></li>
+    <li><strong>اطلب النشاط</strong><span>الطالب يطلب المشاركة مع المدة خارج الصف والسبب؛ والقرار لك: قبول أو اعتذار مع سبب.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/20-mod-violations.png" alt="وحدة المخالفات السلوكية">
+    <figcaption><span class="fig-no">الشكل 8.2</span> «المخالفات السلوكية»: تسجيل المخالفة ومتابعة دورتها حتى الإغلاق. <a class="open" href="../../screens/20-mod-violations.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+
+  <h3>ج) بصمة الوجه</h3>
+  <p>ثلاث خطوات مترابطة: تسجيل البصمة مرة واحدة، ثم طلب تمرير الوجه عند الدخول، ثم تسجيل حضور الحصة بالوجه.
+  التعرّف يجري محليًا على الجهاز ولا تُخزَّن صورة، بل وصف رقمي فقط.</p>
+  <ol class="steps">
+    <li><strong>سجّل بصمة وجهك</strong><span>من «بصمة الوجه ← تسجيل بصمة وجهي» بعد السماح بالكاميرا.</span></li>
+    <li><strong>طلب تمرير الوجه عند الدخول</strong><span>يُطلب منك تمرير وجهك للتحقق قبل الدخول بعد التفعيل.</span></li>
+    <li><strong>سجّل حضور الحصة بالوجه</strong><span>اختر الفصل والحصة ثم مرّر وجهك لتُسجَّل الحضور.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/27-mod-face-checkin.png" alt="وحدة بصمة الوجه">
+    <figcaption><span class="fig-no">الشكل 8.3</span> «بصمة الوجه»: حالة البصمة، تسجيل الحضور بالوجه، وسجل التحقق. <a class="open" href="../../screens/27-mod-face-checkin.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <div class="callout info"><strong>ملاحظة تقنية</strong> تعمل الكاميرا وبصمة الوجه على <code>https</code> أو <code>localhost</code> فقط؛ لذا شغّل المنصة عبر خادم محلي أو GitHub Pages.</div>
+
+  <h3>د) كشوف تقاريري</h3>
+  <p>من «تقاريري»: كشف حضورك وانصرافك، وإحصاء الطلاب الأكثر غيابًا وتأخرًا وحضورًا، وقائمة من بلغ نسبة
+  الحرمان، مع كشف رسمي بترويسة المدرسة وباركود.</p>
+  <figure class="shot tall">
+    <img src="../../screens/29-mod-my-reports.png" alt="وحدة تقاريري للمعلم">
+    <figcaption><span class="fig-no">الشكل 8.4</span> «تقاريري»: الحضور والانصراف، قوائم الغياب والتأخر، وكشف الحضور المطبوع. <a class="open" href="../../screens/29-mod-my-reports.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <figure class="shot narrow">
+    <img src="../../screens/05-dash-teacher.png" alt="لوحة تحكم المعلم">
+    <figcaption><span class="fig-no">الشكل 8.5</span> لوحة بداية المعلم: مهامّ اليوم، حصصه، وتنبيهاته.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة</strong> لا تُغلق التحضير قبل منتصف الحصة أو نهايتها؛ الزر يوضّح لك الوقت المسموح. وإن تأخّرت يُسجَّل وقت الإغلاق الفعلي.</div>
+</section>
+
+<!-- ==================================================== 9 -->
+<section class="chapter" id="sec-9">
+  <div class="chapter-head">
+    <div class="badge">9</div>
+    <div>
+      <h2>التوجيه والإرشاد</h2>
+      <p class="lead">من يستخدمها: <code>guidance</code> — الرد على المخالفات وتحويل الاستئذان.</p>
+    </div>
+  </div>
+  <ol class="steps">
+    <li><strong>تصلك المخالفات الجديدة</strong><span>من المعلم، بحالة «بانتظار التوجيه»، مع عدّاد على الوحدة.</span></li>
+    <li><strong>ردّ بالإجراء</strong><span>حدّد الإجراء المقترح والإجراءات الممكنة (واحدة أو أكثر: تنبيه، إشعار ولي الأمر، تعهد، إحالة لمجلس التوجيه…).</span></li>
+    <li><strong>حوّل المخالفة للوكيل</strong><span>لتنتقل إلى «بانتظار الوكيل» لتنفيذ اللائحة وإغلاق القضية.</span></li>
+    <li><strong>أنشئ طلب الاستئذان</strong><span>للطالب ثم حوّله لوكيل شؤون الطلاب لمنح الإذن.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/04-dash-guidance.png" alt="لوحة تحكم التوجيه والإرشاد">
+    <figcaption><span class="fig-no">الشكل 9.1</span> لوحة بداية التوجيه والإرشاد: المخالفات الواردة وطلبات الاستئذان. <a class="open" href="../../screens/04-dash-guidance.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة</strong> لا تُغلق المخالفة من عندك؛ إغلاقها بيد الوكيل بعد تنفيذ اللائحة، وأنت من يحدّد الإجراء التربوي المقترح.</div>
+</section>
+
+<!-- ==================================================== 10 -->
+<section class="chapter" id="sec-10">
+  <div class="chapter-head">
+    <div class="badge">10</div>
+    <div>
+      <h2>وكيل شؤون المعلمين: المناوبة</h2>
+      <p class="lead">من يستخدمها: <code>teachers_deputy</code> — الأماكن، التوزيع، الفترات الثلاث، التذكير، واللافتة.</p>
+    </div>
+  </div>
+
+  <h3>أ) أماكن المناوبة</h3>
+  <p>عرّف الأماكن التي تُغطّى بالمناوبة: بجوار المقصف، ساحة المقصف، الدور الأول، الجهة الجنوبية، البوابة…</p>
+
+  <h3>ب) التوزيع الآلي العادل</h3>
+  <ol class="steps">
+    <li><strong>حدّد نطاقًا تاريخيًا</strong><span>من تاريخ إلى تاريخ.</span></li>
+    <li><strong>حدّد عدد المناوبين في اليوم والأماكن</strong><span>واستثنِ من تشاء من المعلمين، مع خيار تضمين نهاية الأسبوع (مستثناة افتراضيًا).</span></li>
+    <li><strong>وزّع آليًا</strong><span>يوزّع النظام بالعدالة (الأقل مناوبات أولًا) بلا تكرار لنفس المعلم في اليوم نفسه.</span></li>
+    <li><strong>أو أضف يدويًا</strong><span>يوم/معلم/مكان/توقيت، ثم غيّر أو احذف أو سجّل الاستلام.</span></li>
+  </ol>
+
+  <h3>ج) الفترات الثلاث</h3>
+  <div class="fig-svg">
+    <svg viewBox="0 0 900 210" role="img" aria-label="فترات المناوبة الثلاث">
+      <g font-family="Alexandria, sans-serif" font-size="15" text-anchor="middle">
+        <rect x="40" y="60" width="240" height="86" rx="14" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="160" y="94" fill="#5A3E12" font-weight="700">الفسحة</text>
+        <text x="160" y="118" fill="#7A6A4A" font-size="12">الاستراحة الكبرى</text>
+
+        <rect x="330" y="60" width="240" height="86" rx="14" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="450" y="94" fill="#5A3E12" font-weight="700">بين الحصص</text>
+        <text x="450" y="118" fill="#7A6A4A" font-size="12">الدقائق الخمس بين الحصص</text>
+
+        <rect x="620" y="60" width="240" height="86" rx="14" fill="#14100A"/>
+        <text x="740" y="94" fill="#EBCB74" font-weight="700">نهاية اليوم</text>
+        <text x="740" y="118" fill="#C9BFA6" font-size="12">مناوبة خروج الطلاب</text>
+
+        <text x="450" y="34" fill="#8A5A1E" font-size="14">تُحدَّد الفترات عند إضافة المناوبة، ويجوز الجمع بين أكثر من فترة</text>
+      </g>
+    </svg>
+    <div class="cap"><b>الشكل 10.1</b> — فترات المناوبة الثلاث: الفسحة · بين الحصص · نهاية اليوم (خروج الطلاب).</div>
+  </div>
+
+  <h3>د) التذكير الآلي ولافتة المناوبة</h3>
+  <ol class="steps">
+    <li><strong>تذكير تلقرام قبل المناوبة بيوم</strong><span>يُرسل للمعلم من اليوم الذي يسبق مناوبته باسم المكان والتوقيت، ويُقيَّد الإرسال فلا يتكرّر لنفس المناوبة.</span></li>
+    <li><strong>لافتة يوم المناوبة</strong><span>في يوم مناوبته تظهر لافتة فور دخوله حسابه فيها المكان والتوقيت، مع زر «تم استلام المناوبة».</span></li>
+    <li><strong>طباعة الجدول أو تصديره</strong><span>جدول أسبوعي للمناوبين (TBN-DUT) أو تصدير CSV.</span></li>
+  </ol>
+  <figure class="shot tall">
+    <img src="../../screens/16-mod-duties.png" alt="وحدة المناوبة وتوزيع المناوبين">
+    <figcaption><span class="fig-no">الشكل 10.2</span> «المناوبة»: أماكن المناوبة، التوزيع الآلي، مناوبو اليوم، والتذكيرات. <a class="open" href="../../screens/16-mod-duties.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+  <figure class="shot narrow">
+    <img src="../../screens/06-dash-teachers_deputy.png" alt="لوحة تحكم وكيل شؤون المعلمين">
+    <figcaption><span class="fig-no">الشكل 10.3</span> لوحة بداية وكيل شؤون المعلمين: مناوبو اليوم وحالة التذكيرات.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة</strong> وزّع المناوبين آليًا في بداية كل أسبوع أو شهر؛ النظام يوازن الأنصبة تلقائيًا فلا يتراكم العبء على معلم واحد.</div>
+</section>
+
+<!-- ==================================================== 11 -->
+<section class="chapter" id="sec-11">
+  <div class="chapter-head">
+    <div class="badge">11</div>
+    <div>
+      <h2>ساعات التطوع والنشاط الطلابي ومراقبة الغياب</h2>
+      <p class="lead">من يستخدمها: <code>volunteer</code> · <code>activity</code> · <code>absence_monitor</code>.</p>
+    </div>
+  </div>
+
+  <h3>أ) ساعات التطوع</h3>
+  <ol class="steps">
+    <li><strong>أنشئ البرنامج</strong><span>العنوان، الساعات المعتمدة، عدد المقاعد، المدة.</span></li>
+    <li><strong>يسجّل الطلاب من المنصة</strong><span>وتظهر التسجيلات بحالة «بانتظار الاعتماد».</span></li>
+    <li><strong>اعتمد التسجيلات والساعات</strong><span>ثم أصدر <strong>شهادة ساعات تطوعية</strong> بباركود لكل طالب.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/22-mod-volunteer.png" alt="وحدة ساعات التطوع">
+    <figcaption><span class="fig-no">الشكل 11.1</span> «ساعات التطوع»: البرامج والتسجيلات واعتماد الساعات وإصدار الشهادات.</figcaption>
+  </figure>
+
+  <h3>ب) النشاط الطلابي</h3>
+  <ol class="steps">
+    <li><strong>أنشئ النشاط</strong><span>وحدّد تفاصيله وموعده.</span></li>
+    <li><strong>يطلب الطالب المشاركة</strong><span>مع المدة التي سيجلس فيها خارج الصف والسبب.</span></li>
+    <li><strong>يقرّر معلم المادة</strong><span>قبول أو اعتذار مع سبب (درس مهم / اختبار / سبب آخر + ملاحظة).</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/23-mod-activities.png" alt="وحدة النشاط الطلابي">
+    <figcaption><span class="fig-no">الشكل 11.2</span> «النشاط الطلابي»: الأنشطة وطلبات المشاركة وقرارات المعلمين.</figcaption>
+  </figure>
+
+  <h3>ج) مراقبة الغياب</h3>
+  <ol class="steps">
+    <li><strong>تابع غياب اليوم</strong><span>وقوائم الطلاب الأكثر غيابًا وتأخرًا.</span></li>
+    <li><strong>راجع قائمة الحرمان</strong><span>لمن بلغ نسبة الحرمان بحسب نسب المواد.</span></li>
+    <li><strong>أشعر ولي الأمر</strong><span>باختيار قناة الإبلاغ وتحرير نص الرسالة، ثم يُسجَّل الإشعار.</span></li>
+    <li><strong>اطبع تقرير غياب اليوم</strong><span>بترويسة المدرسة وباركود TBN-MON، أو صدّر CSV.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/28-mod-monitor.png" alt="وحدة مراقبة الغياب">
+    <figcaption><span class="fig-no">الشكل 11.3</span> «مراقبة الغياب»: غياب اليوم، قائمة الحرمان، وإشعار ولي الأمر.</figcaption>
+  </figure>
+  <figure class="shot narrow">
+    <img src="../../screens/10-dash-student.png" alt="لوحة تحكم الطالب">
+    <figcaption><span class="fig-no">الشكل 11.4</span> لوحة الطالب: طلباته في الأنشطة والتطوع، واستئذاناته، وحضوره.</figcaption>
+  </figure>
+</section>
+
+<!-- ==================================================== 12 -->
+<section class="chapter" id="sec-12">
+  <div class="chapter-head">
+    <div class="badge">12</div>
+    <div>
+      <h2>مركز التقارير والتحليلات</h2>
+      <p class="lead">من يستخدمها: كل الأدوار الإدارية — يومي · أسبوعي · شهري · نهاية فصل.</p>
+    </div>
+  </div>
+
+  <h3>أ) التقارير الجاهزة</h3>
+  <p>يشمل مركز التقارير: التحضير، الغياب والتأخر، المخالفات، تصاريح الخروج، ساعات التطوع، الأنشطة،
+  بيانات المدرسة، كشوف الطلاب، وكشوف المعلمين. وكل تقرير يُنشأ من البيانات الحالية ويُسجَّل برقم فريد
+  بالصيغة <code>TBN-النوع-التسلسل-التاريخ</code> ويُطبع مع باركود.</p>
+
+  <h3>ب) التقارير الدورية (يومي · أسبوعي · شهري · نهاية فصل)</h3>
+  <ol class="steps">
+    <li><strong>حدّد التقويم الدراسي</strong><span>مدير المدرسة يضبط بداية ونهاية كل فصل ويعيّن الفصل الحالي.</span></li>
+    <li><strong>اختر الفترة</strong><span>يومي / أسبوعي / شهري / نهاية الفصل، فيُبنى النطاق تلقائيًا.</span></li>
+    <li><strong>عاين واطبع</strong><span>كل تقرير يُطبع PDF بترويسة المدرسة وباركود تحقّق.</span></li>
+  </ol>
+
+  <h3>ج) التحليلات والرسوم البيانية</h3>
+  <p>التحليلات تعرض الأكثر غيابًا وتأخرًا وحضورًا، ونسب الحرمان لكل مادة، وتفعيل المعلمين للمنصة،
+  مع رسوم بيانية (أعمدة مفردة ومجمّعة، خطوط، ودوائر نسب) تُبنى بلا مكتبات وتُطبع داخل التقرير.</p>
+  <figure class="shot tall">
+    <img src="../../screens/25-mod-analytics.png" alt="وحدة التقارير التحليلية">
+    <figcaption><span class="fig-no">الشكل 12.1</span> «التقارير التحليلية»: بطاقات ورسوم بيانية للغياب والحرمان وتفعيل المعلمين. <a class="open" href="../../screens/25-mod-analytics.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+
+  <h3>د) التحقق بالباركود</h3>
+  <ol class="steps">
+    <li><strong>امسح الباركود</strong><span>من التقرير المطبوع بكاميرا الجوال لقراءة رقم التقرير.</span></li>
+    <li><strong>أدخل الرقم في «تحقّق من تقرير بالباركود»</strong><span>ثم اضغط «بحث».</span></li>
+    <li><strong>راجع بيانات التقرير</strong><span>من أصدره، وقت طباعته، وعدد الطبعات — فإن كانت النسخة سليمة ظهرت بياناتها.</span></li>
+  </ol>
+  <figure class="shot">
+    <img src="../../screens/24-mod-reports.png" alt="مركز التقارير">
+    <figcaption><span class="fig-no">الشكل 12.2</span> «مركز التقارير»: التقارير الجاهزة للطباعة، والتحقق من تقرير برقمه.</figcaption>
+  </figure>
+  <div class="callout tip"><strong>نصيحة</strong> استخدم التحقق بالباركود عند تسليم أي شهادة أو تصريح أو كشف لأحد الجهات؛ الرقم يثبت أن الورقة صادرة من المنصة فعلًا.</div>
+</section>
+
+<!-- ==================================================== 13 -->
+<section class="chapter" id="sec-13">
+  <div class="chapter-head">
+    <div class="badge">13</div>
+    <div>
+      <h2>تلقرام: إنشاء التوكن خطوة بخطوة</h2>
+      <p class="lead">من يستخدمها: مدير المدرسة أو وكيل شؤون الطلاب — لتفعيل الإرسال الحقيقي.</p>
+    </div>
+  </div>
+  <p>في النموذج الحالي تُسجَّل الرسائل في «سجل تلقرام» (محاكاة). ولتفعيل الإرسال الحقيقي عبر بوت تلقرام،
+  اتبع الخطوات التالية بالتفصيل:</p>
+
+  <ol class="steps">
+    <li><strong>افتح تلقرام وابحث عن BotFather</strong><span>الحساب الرسمي <code>@BotFather</code>، ثم أرسل الأمر <code>/newbot</code>.</span></li>
+    <li><strong>أدخل اسمًا للبوت</strong><span>ثم اسم مستخدم ينتهي بـ <code>bot</code> مثل <code>tabaani_school_bot</code>.</span></li>
+    <li><strong>انسخ التوكن (Token)</strong><span>سيردّ BotFather برسالة فيها التوكن بالشكل <code>123456789:AAE...</code> — انسخه وضعه في الخادم (متغيّر بيئة) ولا تضعه في الواجهة.</span></li>
+    <li><strong>شغّل المستخدمون محادثة البوت</strong><span>على كل مستخدم يريد استقبال الرسائل أن يفتح محادثة البوت ويضغط Start ثم يرسل <code>/start</code>.</span></li>
+    <li><strong>احصل على معرّف المحادثة (chat id)</strong><span>افتح رابط <code>getUpdates</code> واقرأ قيمة <code>result[].message.chat.id</code> — أو أرسل رسالة للبوت ثم حدّث الصفحة.</span></li>
+    <li><strong>اختبر الإرسال</strong><span>افتح رابط <code>sendMessage</code> الجاهز — إن وصلتك الرسالة فالإعداد صحيح.</span></li>
+    <li><strong>أدخل الـ chat id في المنصة</strong><span>في «سجل تلقرام ← ربط حسابات تلقرام»، ضع معرّف المحادثة أمام كل مستخدم واحفظ.</span></li>
+  </ol>
+
+  <div class="fig-svg">
+    <svg viewBox="0 0 900 250" role="img" aria-label="مخطط خطوات تفعيل بوت تلقرام">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#CE9433"/>
+        </marker>
+      </defs>
+      <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="13" text-anchor="middle">
+        <rect x="20" y="40" width="160" height="72" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="100" y="72" fill="#5A3E12" font-weight="700">BotFather</text>
+        <text x="100" y="94" fill="#7A6A4A" font-size="12">/newbot</text>
+
+        <rect x="200" y="40" width="160" height="72" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="280" y="72" fill="#5A3E12" font-weight="700">التوكن</text>
+        <text x="280" y="94" fill="#7A6A4A" font-size="12">في الخادم</text>
+
+        <rect x="380" y="40" width="160" height="72" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="460" y="72" fill="#5A3E12" font-weight="700">/start لكل مستخدم</text>
+        <text x="460" y="94" fill="#7A6A4A" font-size="12">فتح محادثة البوت</text>
+
+        <rect x="560" y="40" width="160" height="72" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+        <text x="640" y="72" fill="#5A3E12" font-weight="700">getUpdates</text>
+        <text x="640" y="94" fill="#7A6A4A" font-size="12">chat id</text>
+
+        <rect x="740" y="40" width="140" height="72" rx="12" fill="#14100A"/>
+        <text x="810" y="66" fill="#EBCB74" font-weight="700">sendMessage</text>
+        <text x="810" y="86" fill="#C9BFA6" font-size="12">اختبار</text>
+        <text x="810" y="104" fill="#C9BFA6" font-size="12">ثم إدخال id</text>
+
+        <line x1="180" y1="76" x2="198" y2="76" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar2)"/>
+        <line x1="360" y1="76" x2="378" y2="76" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar2)"/>
+        <line x1="540" y1="76" x2="558" y2="76" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar2)"/>
+        <line x1="720" y1="76" x2="738" y2="76" stroke="#CE9433" stroke-width="2.5" marker-end="url(#ar2)"/>
+
+        <text x="450" y="160" fill="#8A5A1E">رابط قراءة المحادثات</text>
+        <text x="450" y="184" fill="#5A5044" font-family="monospace" font-size="12">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</text>
+        <text x="450" y="216" fill="#8A5A1E">رابط اختبار الإرسال</text>
+        <text x="450" y="238" fill="#5A5044" font-family="monospace" font-size="12">https://api.telegram.org/bot&lt;TOKEN&gt;/sendMessage?chat_id=&lt;CHAT_ID&gt;&amp;text=مرحبًا</text>
+      </g>
+    </svg>
+    <div class="cap"><b>الشكل 13.1</b> — مسار تفعيل تلقرام: من إنشاء البوت حتى إدخال معرّف المحادثة في المنصة.</div>
+  </div>
+
+  <figure class="shot tall">
+    <img src="../../screens/30-mod-telegram.png" alt="وحدة سجل تلقرام">
+    <figcaption><span class="fig-no">الشكل 13.2</span> «سجل تلقرام»: الرسائل المُسجَّلة، جدول ربط معرّفات المحادثة، وخطوات إنشاء التوكن داخل المنصة. <a class="open" href="../../screens/30-mod-telegram.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+  </figure>
+
+  <div class="callout warn"><strong>تحذير</strong> لا تضع التوكن في ملفات الواجهة أو المستودع؛ ضعه في متغيّر بيئة على الخادم، وإلا استطاع أي شخص إرسال رسائل من بوت المدرسة.</div>
+  <div class="callout tip"><strong>نصيحة</strong> القوالب الجاهزة تشمل: تحضير، مخالفة جديدة، رد التوجيه، إغلاق مخالفة، استئذان، اعتماد تطوع، وطلب نشاط، وتذكير المناوبة قبل يوم.</div>
+</section>
+
+<!-- ==================================================== 14 -->
+<section class="chapter" id="sec-14">
+  <div class="chapter-head">
+    <div class="badge">14</div>
+    <div>
+      <h2>إدارة الحسابات</h2>
+      <p class="lead">من يستخدمها: مدير المدرسة ووكيل شؤون الطلاب <code>principal</code> · <code>deputy</code>.</p>
+    </div>
+  </div>
+
+  <h3>إيقاف/تفعيل حسابات الطلاب كلهم بضغطة</h3>
+  <ol class="steps">
+    <li><strong>افتح «إدارة الحسابات ← حسابات الطلاب»</strong><span>تظهر البطاقات: إجمالي الحسابات، حسابات الطلاب، الموقوفة، وبانتظار الاعتماد.</span></li>
+    <li><strong>اختر النطاق</strong><span>كل الفصول، أو فصلًا محدّدًا من القائمة — وأيضًا تصفية بالحالة (نشط/موقوف/بانتظار الاعتماد).</span></li>
+    <li><strong>اضغط «إيقاف كل الطلاب» أو «تفعيل كل الطلاب»</strong><span>فيُؤكَّد الطلب ثم تُطبَّق الحالة على الجميع بضغطة واحدة، مع رسالة بعدد الحسابات التي تغيّرت.</span></li>
+    <li><strong>أو عالج فرديًا</strong><span>حدّد صفوفًا ثم «عكس حالة المحدّدين»، أو استخدم زر إيقاف/تفعيل في كل صف.</span></li>
+  </ol>
+
+  <h3>حسابات الموظفين</h3>
+  <p>من تبويب «حسابات الموظفين» يمكن إيقاف أي حساب أو تفعيله (المدير، الوكلاء، التوجيه، المعلمون،
+  ومسؤولو الخدمات). والحساب الموقوف لا يستطيع الدخول، وتظهر له رسالة «الحساب موقوف — راجع مدير المدرسة».
+  ويمكن تصدير حسابات الطلاب إلى ملف CSV.</p>
+  <div class="callout info"><strong>ملاحظة</strong> كل عملية إيقاف أو تفعيل جماعي تُسجَّل وتُرسل كإشعار إلى مدير المدرسة ووكيل شؤون الطلاب.</div>
+  <h3 id="users-block">إدارة المستخدمين وكلمات مرور التسليم (المشرف العام)</h3>
+  <p>من «إدارة المستخدمين» يستطيع المشرف العام <strong>إضافة مستخدم</strong> و<strong>تعطيل/تفعيل</strong> الحسابات و<strong>تغيير الدور</strong> وإعادة تعيين كلمة المرور، مع عدّادات (الإجمالي · الموظفون · الطلاب · بانتظار الاعتماد · غير النشط) وتصفية بالبحث والدور والحالة والنوع والمدرسة.</p>
+  <div class="callout tip"><strong>تسليم الحسابات:</strong> زر «توليد لكلم الحسابات» يمنح <strong>كل حساب كلمة مرور مختلفة</strong> قوية (حرف كبير وصغير ورقم ورمز)، ثم يظهر كشف يمكن <strong>تنزيله CSV</strong> أو <strong>طباعته بترويسة المدرسة والتوقيعات</strong>. وكل من وُلّدت كلمته <strong>يُلزَم بتغييرها عند أول دخول</strong>، وتصبح الكلمة الموحّدة السابقة غير صالحة.</div>
+  <div class="callout warn"><strong>تنبيه أمني:</strong> في هذا النموذج تُخزَّن كلمات المرور في متصفح الجهاز بلا تشفير. في الإنتاج: تشفير على الخادم + تحقق ثنائي + سجل تدقيق.</div>
+  <p>ولمنع أي تسرّب صلاحيات، اختُبر آليًا دخول كل دور من شاشة الدخول: القائمة الجانبية تعرض وحداته فقط، ومحاولة فتح وحدة ليست من صلاحياته بالرابط تُعيده إلى لوحته.</p>
+</section>
+
+<!-- ==================================================== 15 -->
+<section class="chapter" id="sec-15">
+  <div class="chapter-head">
+    <div class="badge">15</div>
+    <div>
+      <h2>جنس المدرسة والتأنيث التلقائي</h2>
+      <p class="lead">يُحدَّد عند تأسيس المدرسة، ويُشتق منه كل المسمّيات والنصوص.</p>
+    </div>
+  </div>
+  <p>عند تسجيل المدرسة يُحدَّد جنسها: <strong>طلاب (بنين)</strong> أو <strong>طالبات (بنات)</strong>، ومنه تُشتق
+  كل المسمّيات والنصوص في الواجهة والتقارير تلقائيًا (القائمة الجانبية، لوحات التحكم، عناوين الوحدات،
+  ونصوص التقارير). ويمكن للمشرف تبديل الجنس لاحقًا من «المناطق والمدن والمدارس» ← زر «اجعله طالبات/اجعله طلابًا».</p>
+
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 15.1 — أمثلة على التأنيث التلقائي بحسب جنس المدرسة</caption>
+      <thead><tr><th style="width:48%">طلاب (بنين)</th><th>طالبات (بنات)</th></tr></thead>
+      <tbody>
+        <tr><td>وكيل شؤون الطلاب</td><td>وكيلة شؤون الطالبات</td></tr>
+        <tr><td>معلم</td><td>معلمة</td></tr>
+        <tr><td>مدير المدرسة</td><td>مديرة المدرسة</td></tr>
+        <tr><td>وكيل شؤون المعلمين</td><td>وكيلة شؤون المعلمات</td></tr>
+        <tr><td>موجّه التوجيه والإرشاد</td><td>موجّهة التوجيه والإرشاد</td></tr>
+        <tr><td>مسؤول ساعات التطوع</td><td>مسؤولة ساعات التطوع</td></tr>
+        <tr><td>مراقب الغياب</td><td>مراقبة الغياب</td></tr>
+        <tr><td>الطلاب · المتميزون</td><td>الطالبات · المتميزات</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fig-pair">
+    <figure class="shot tall">
+      <img src="../../screens/95-girls-principal.png" alt="لوحة مديرة المدرسة في مدرسة للطالبات">
+      <figcaption><span class="fig-no">الشكل 15.1</span> لوحة مديرة المدرسة في مدرسة للطالبات: المسمّيات كلها بصيغة التأنيث. <a class="open" href="../../screens/95-girls-principal.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+    </figure>
+    <figure class="shot tall">
+      <img src="../../screens/96-girls-teacher.png" alt="لوحة المعلمة في مدرسة للطالبات">
+      <figcaption><span class="fig-no">الشكل 15.2</span> لوحة المعلمة وقوائم «الطالبات» في مدرسة للطالبات. <a class="open" href="../../screens/96-girls-teacher.png" target="_blank" rel="noopener">عرض اللقطة كاملة</a></figcaption>
+    </figure>
+  </div>
+  <div class="callout tip"><strong>نصيحة</strong> لا تكتب المسمّيات بصيغة ثابتة في أي مادة تدريبية؛ اترك المنصة تشتقّها من جنس المدرسة حتى تبقى كل الشاشات متطابقة.</div>
+</section>
+
+<!-- ==================================================== 16 -->
+<section class="chapter" id="sec-16">
+  <div class="chapter-head">
+    <div class="badge">16</div>
+    <div>
+      <h2>أسئلة متكررة وجهات الدعم</h2>
+      <p class="lead">أكثر ما يُسأل عنه، ومن تراجع عند الحاجة، وحدود النموذج الحالي.</p>
+    </div>
+  </div>
+
+  <h3>أسئلة متكررة</h3>
+  <h4>1) هل أحتاج إلى إنترنت أو تثبيت؟</h4>
+  <p>لا. كل شيء يعمل في المتصفح بلا تثبيت. يُفضّل الإنترنت فقط لعمل بصمة الوجه عبر <code>localhost</code>
+  أو <code>https</code>؛ وباقي المنصة تعمل دون اتصال.</p>
+
+  <h4>2) لماذا لا يعمل استيراد ملف نور؟</h4>
+  <p>تأكّد من أن الملف <code>.xlsx/.xls/.csv</code>، ومن مطابقة أسماء الأعمدة (الاسم/المادة/الهوية/البريد)، وأن يكون
+  ملف CSV بترميز <code>UTF-8</code> حتى لا تتحطّم العناوين العربية.</p>
+
+  <h4>3) لماذا لا يظهر للمعلم إلا بعض الفصول؟</h4>
+  <p>لأن وكيل شؤون الطلاب ثبّت له هذه الفصول فقط. راجع «إسناد الفصول والمواد ← تثبيت» (الفصل 7).</p>
+
+  <h4>4) لماذا لا يقبل النظام إغلاق التحضير؟</h4>
+  <p>لأن قاعدة الإغلاق تمنع الإغلاق قبل منتصف الحصة أو نهايتها بحسب ضبط الوكيل. الزر يوضّح الوقت المسموح.</p>
+
+  <h4>5) كيف أضيف مدرسة أو أغيّر جنسها؟</h4>
+  <p>مدرسة جديدة: من حساب المشرف في «المناطق والمدن والمدارس». تغيير الجنس: الزر «اجعله طالبات/اجعله طلابًا» في الوحدة نفسها.</p>
+
+  <h4>6) لماذا لم تصل رسالة تلقرام؟</h4>
+  <p>راجع: هل أنشأت التوكن ووضعته في الخادم؟ هل أرسل المستخدم <code>/start</code> للبوت؟ هل أُدخل معرّف
+  المحادثة في «ربط حسابات تلقرام»؟ (الفصل 13).</p>
+
+  <h4>7) كيف أوقف حسابات الطلاب كلها؟</h4>
+  <p>«إدارة الحسابات ← حسابات الطلاب» ثم اختر النطاق واضغط «إيقاف كل الطلاب» (الفصل 14).</p>
+
+  <h4>8) كيف أتحقق من صحة تقرير مطبوع؟</h4>
+  <p>امسح الباركود بكاميرا الجوال، ثم أدخل رقم التقرير في «مركز التقارير ← تحقّق من تقرير بالباركود» واضغط «بحث».</p>
+
+  <h3>جهات الدعم</h3>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 16.1 — من تراجع عند الحاجة</caption>
+      <thead><tr><th style="width:26%">الجهة</th><th style="width:16%">الحساب</th><th>المسؤولية</th></tr></thead>
+      <tbody>
+        <tr><td>مشرف المنصة</td><td><code>admin</code></td><td>تأسيس المدارس والمناطق والمدن، وحساب مدير المدرسة.</td></tr>
+        <tr><td>مدير المدرسة</td><td><code>principal</code></td><td>الحسابات والاعتمادات واستيراد نور وإسناد المواد وترويسة التقارير.</td></tr>
+        <tr><td>وكيل شؤون الطلاب</td><td><code>deputy</code></td><td>الفصول والطلاب والنقل والإسناد والجدول والتحضير والاستئذان ونسب الحرمان.</td></tr>
+        <tr><td>وكيل شؤون المعلمين</td><td><code>tdeputy</code></td><td>المناوبة وتوزيعها والفترات وتذكيرها.</td></tr>
+        <tr><td>الدعم الفني</td><td>—</td><td>راجع <code>README.md</code> و<code>docs/BLUEPRINT.md</code> في جذر المستودع.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>حدود النموذج الحالي (قبل الإنتاج)</h3>
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول 16.2 — الحدود المعروفة للنموذج الأولي</caption>
+      <thead><tr><th style="width:24%">العنصر</th><th>الحالة الحالية</th></tr></thead>
+      <tbody>
+        <tr><td>البيانات</td><td>محلية في <code>localStorage</code> — تُستبدل بـ API وقاعدة بيانات (طبقة <code>store.js</code> هي المطلوب استبدالها).</td></tr>
+        <tr><td>المصادقة</td><td>اسم مستخدم/كلمة مرور في المتصفح — تحتاج خادمًا وتشفيرًا.</td></tr>
+        <tr><td>تلقرام</td><td>الرسائل <strong>محاكاة مسجّلة</strong> في «سجل تلقرام»؛ الإرسال الحقيقي يحتاج ربط التوكن بالخادم.</td></tr>
+        <tr><td>بصمة الوجه</td><td>تعرّف هندسي محلي <strong>تجريبي</strong> — لا يُعتمد كبصمة رسمية (يحتاج نظامًا معتمدًا ومضادًا للتحايل).</td></tr>
+        <tr><td>طباعة PDF</td><td>عبر حوار الطباعة في المتصفح — الإنتاج يستخدم مولّد PDF على الخادم.</td></tr>
+        <tr><td>ملف نور</td><td>الاستيراد بقالب أعمدة قياسي — يُضبط على الملف الفعلي لاحقًا.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================================================== الملحق -->
+<section class="chapter" id="appendix">
+  <div class="chapter-head">
+    <div class="badge">م</div>
+    <div>
+      <h2>ملحق: بيانات الدخول التجريبية ورابط المستودع</h2>
+      <p class="lead">كلمة المرور الموحّدة لكل الحسابات التجريبية: <code>Tabaani@2026</code>.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><strong>تنبيه</strong> هذه حسابات عرض تجريبية بكلمة مرور موحّدة؛ يجب استبدالها بمصادقة حقيقية قبل أي استخدام فعلي.</div>
+
+  <div class="tbl-wrap">
+    <table class="dt">
+      <caption>جدول م.1 — بيانات الدخول التجريبية</caption>
+      <thead><tr><th style="width:24%">الدور</th><th style="width:20%">اسم المستخدم</th><th>ملاحظة</th></tr></thead>
+      <tbody>
+        <tr><td>مشرف المنصة</td><td><code>admin</code></td><td>تأسيس المدارس والمناطق.</td></tr>
+        <tr><td>مدير المدرسة</td><td><code>principal</code></td><td>الحساب الرئيسي للتهيئة الأولى.</td></tr>
+        <tr><td>وكيل شؤون الطلاب</td><td><code>deputy</code></td><td>الفصول والطلاب والإسناد والتحضير.</td></tr>
+        <tr><td>موجّه التوجيه والإرشاد</td><td><code>guidance</code></td><td>المخالفات والاستئذان.</td></tr>
+        <tr><td>وكيل شؤون المعلمين</td><td><code>tdeputy</code></td><td>المناوبة.</td></tr>
+        <tr><td>مسؤول ساعات التطوع</td><td><code>volunteer</code></td><td>البرامج والساعات والشهادات.</td></tr>
+        <tr><td>مسؤول النشاط الطلابي</td><td><code>activity</code></td><td>الأنشطة والطلبات.</td></tr>
+        <tr><td>مراقب الغياب</td><td><code>monitor</code></td><td>متابعة الغياب والحرمان.</td></tr>
+        <tr><td>معلم (6 حسابات)</td><td><code>teacher1</code> … <code>teacher6</code></td><td>التحضير والمخالفات والنشاط وبصمة الوجه.</td></tr>
+        <tr><td>طالب (4 حسابات)</td><td><code>student1</code> … <code>student4</code></td><td>الأنشطة والتطوع والاستئذان.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="end">
+    <h3>المستودع والتشغيل</h3>
+    <p>منصة المدارس: مجلد <code>app/</code> — شغّلها عبر خادم محلي ثم افتح <code>http://localhost:8081</code>.
+    الموقع التعريفي: مجلد <code>site/</code>. معرض الشاشات: <code>screens/index.html</code>.</p>
+    <p>راجع <a href="../../README.md">README.md</a> للتشغيل السريع وبيانات الدخول، و<a href="../BLUEPRINT.md">docs/BLUEPRINT.md</a>
+    للمتطلبات والمعمارية، و<a href="../brand-guidelines.md">docs/brand-guidelines.md</a> لدليل الهوية البصرية.
+    ولمعرض الشاشات الكامل: <a href="../../screens/index.html">screens/index.html</a>.</p>
+    <p class="small" style="color:#C9BFA6">منصة تابعني للخدمات التعليمية — دليل الاستخدام · الإصدار 1.0 · أكتوبر 2026.</p>
+  </div>
+
+  <div class="foot-note">
+    <p>هذا الدليل يصف النموذج الأولي العامل داخل المتصفح. الأرقام لاتينية، والواجهة عربية RTL بطابع الهوية
+    الذهبية (ذهبي <code>#CE9433</code> · أونيكس <code>#14100A</code> · كريمي <code>#F7F4ED</code>).</p>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ترقيم تقديري للفهرس بحسب نموذج صفحات A4 — يعمل بلا أي مكتبة خارجية */
+(function () {
+  try {
+    var CONTENT_PX = 1000;          /* ارتفاع محتوى صفحة A4 التقديري بالبكسل */
+    var chapters = document.querySelectorAll('.chapter');
+    var page = 2;                    /* الغلاف = 1 · الفهرس = 2 */
+    var tocList = document.getElementById('toc-list');
+    if (!tocList) return;
+    var links = tocList.querySelectorAll('a');
+    var starts = [];
+    chapters.forEach(function (ch) {
+      starts.push(page);
+      var h = ch.getBoundingClientRect().height + 34;
+      page += Math.max(1, Math.ceil(h / CONTENT_PX));
+    });
+    /* ربط كل رابط فهرس بالفصل المقابل حسب ترتيب ظهوره */
+    chapters.forEach(function (ch, i) {
+      var id = ch.getAttribute('id');
+      var a = tocList.querySelector('a[href="#' + id + '"]');
+      if (!a) return;
+      var pg = a.querySelector('.pg');
+      if (pg) pg.textContent = String(starts[i]);
+    });
+  } catch (e) { /* في حال أي خطأ يبقى الترقيم الافتراضي في HTML */ }
+})();
+</script>
+</body>
+</html>

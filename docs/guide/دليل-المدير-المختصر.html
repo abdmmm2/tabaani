@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل المدير المختصر — منصة تابعني</title>
+<meta name="description" content="دليل تشغيل مختصر لمدير المدرسة: أول خمس خطوات، اعتماد الحسابات، إيقاف/تفعيل الطلاب، ومن يعتمد من.">
+<style>
+@import url("../../app/assets/fonts/fonts.css");
+
+:root{
+  --gold:#CE9433; --gold-l:#EBCB74; --gold-d:#B47830; --gold-ink:#8A5A1E;
+  --onyx:#14100A; --cream:#F7F4ED; --mint:#1E7A5A; --mint-bg:#E2F4EC;
+  --terra:#C2593F; --terra-bg:#FBEDE8; --amber-bg:#FAF1D8;
+  --line:#D9D1C2; --line-soft:#EAE3D6; --ink:#14100A; --ink-2:#5A5044;
+  --grad-gold:linear-gradient(135deg,#F1D28C 0%,#D89C48 45%,#B47830 100%);
+  --shadow:0 8px 24px rgba(20,16,10,.10); --shadow-sm:0 2px 8px rgba(20,16,10,.08);
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--cream); color:var(--ink);
+  font-family:"IBM Plex Sans Arabic","Noto Sans Arabic",system-ui,-apple-system,sans-serif; font-size:15px; line-height:1.75}
+h1,h2,h3{font-family:"Alexandria","IBM Plex Sans Arabic",sans-serif; margin:0; line-height:1.35}
+p{margin:0 0 8px}
+a{color:var(--gold-ink)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace; direction:ltr; unicode-bidi:embed;
+  background:#F2ECDF; border:1px solid var(--line); border-radius:5px; padding:0 5px; font-size:.86em; color:#5A3E12}
+img{max-width:100%}
+
+.sheet{max-width:210mm; margin:0 auto; background:#fff; box-shadow:var(--shadow); padding:20px 26px 28px}
+@media screen and (min-width:900px){ .sheet{margin:24px auto; border-radius:18px} }
+
+/* الترويسة */
+.head{display:flex; align-items:center; gap:16px; border-bottom:3px solid var(--gold); padding-bottom:10px; margin-bottom:14px}
+.head .logo{width:66px; height:auto; flex:none}
+.head .t{flex:1}
+.head .eyebrow{display:inline-block; background:var(--amber-bg); color:var(--gold-ink); border:1px solid var(--gold-l);
+  border-radius:999px; padding:1px 10px; font-size:.68rem; font-weight:700; margin-bottom:4px}
+.head h1{font-size:1.35rem; font-weight:800}
+.head .sub{color:var(--ink-2); font-size:.76rem}
+.head .badge{flex:none; background:var(--onyx); color:var(--gold-l); border-radius:10px; padding:6px 12px; text-align:center; font-size:.68rem; font-weight:700}
+.head .badge b{display:block; font-size:1.05rem; font-family:"Alexandria",sans-serif}
+
+/* الأقسام */
+.sec{margin-top:14px; break-inside:avoid}
+.sec>h2{font-size:1.02rem; display:flex; align-items:center; gap:8px; margin-bottom:8px}
+.sec>h2 .n{flex:none; width:26px; height:26px; border-radius:9px; background:var(--grad-gold); color:#1A1206;
+  font-family:"Alexandria",sans-serif; font-weight:700; font-size:.82rem; display:flex; align-items:center; justify-content:center}
+
+/* الخطوات */
+ol.flow{list-style:none; counter-reset:s; padding:0; margin:6px 0}
+ol.flow>li{counter-increment:s; position:relative; padding-inline-start:34px; margin:0 0 8px; font-size:.88rem}
+ol.flow>li::before{content:counter(s); position:absolute; inset-inline-start:0; top:1px; width:23px; height:23px;
+  border-radius:50%; background:var(--grad-gold); color:#1A1206; font-weight:700; font-size:.72rem;
+  display:flex; align-items:center; justify-content:center; font-family:"Alexandria",sans-serif}
+ol.flow>li>strong{display:block; font-size:.9rem}
+ol.flow>li>span{color:var(--ink-2); font-size:.82rem}
+
+/* الجداول */
+table.dt{width:100%; border-collapse:collapse; font-size:.8rem; background:#fff; margin:6px 0}
+table.dt th,table.dt td{border:1px solid var(--line); padding:6px 8px; text-align:start; vertical-align:top}
+table.dt thead th{background:var(--amber-bg); font-family:"Alexandria",sans-serif; font-weight:700; font-size:.78rem}
+table.dt tbody tr:nth-child(even){background:#FCFAF4}
+.pill{display:inline-block; border-radius:999px; padding:0 9px; font-size:.72rem; font-weight:600; border:1px solid transparent; white-space:nowrap}
+.pill.mint{background:var(--mint-bg); color:var(--mint); border-color:#BEE6D6}
+.pill.brand{background:var(--amber-bg); color:var(--gold-ink); border-color:var(--gold-l)}
+.pill.plain{background:#F3F0E9; color:var(--ink-2); border-color:var(--line)}
+
+/* التنبيهات */
+.note{border-radius:11px; padding:9px 12px 9px 38px; position:relative; font-size:.82rem; border:1px solid; margin:8px 0}
+.note::before{position:absolute; inset-inline-start:12px; top:8px; font-weight:700}
+.note.tip{background:var(--mint-bg); border-color:#BEE6D6; color:#14513C}
+.note.tip::before{content:"\2714"; color:var(--mint)}
+.note.warn{background:var(--terra-bg); border-color:#F0C9BC; color:#7C3320}
+.note.warn::before{content:"\26A0"; color:var(--terra)}
+.note.info{background:var(--amber-bg); border-color:var(--gold-l); color:#5A3E12}
+.note.info::before{content:"\2139"; color:var(--gold-d)}
+
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media (max-width:640px){ .grid2{grid-template-columns:1fr} }
+
+.card{border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#FCFBF7; box-shadow:var(--shadow-sm)}
+.card h3{font-size:.88rem; margin-bottom:4px; color:#2A2113}
+.card p,.card li{font-size:.8rem; color:var(--ink-2)}
+.card ul{padding-inline-start:18px; margin:4px 0}
+
+.fig-svg{border:1px solid var(--line); border-radius:12px; background:#FCFBF7; padding:8px; margin:8px 0}
+.fig-svg svg{display:block; width:100%; height:auto; min-width:420px}
+.fig-svg .cap{font-size:.72rem; color:var(--ink-2); text-align:center; margin-top:4px}
+
+.foot{margin-top:14px; border-top:2px solid var(--gold); padding-top:8px; font-size:.72rem; color:var(--ink-2); display:flex;
+  justify-content:space-between; gap:12px; flex-wrap:wrap}
+.end{background:var(--onyx); color:#EFE4C8; border-radius:12px; padding:12px 14px; margin-top:12px}
+.end h3{color:#fff; font-size:.92rem; margin-bottom:4px}
+.end p,.end li{font-size:.78rem; color:#E4D9BE}
+.end a{color:var(--gold-l)}
+.end code{background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); color:#F3E6C6}
+
+.page-break{break-before:page}
+
+@page{ size:A4; margin:10mm }
+@media print{
+  body{background:#fff; font-size:10.4px; line-height:1.55}
+  .sheet{max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0}
+  .sec,table.dt,.note,.card,.fig-svg,ol.flow>li{break-inside:avoid}
+  .head{margin-bottom:10px}
+  .head h1{font-size:1.15rem}
+  a{text-decoration:none}
+  .head .logo{width:52px}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header class="head">
+    <img class="logo" src="../../brand/logo/master/tabaani-logo-stacked.png" alt="شعار تابعني">
+    <div class="t">
+      <span class="eyebrow">دليل تشغيل مختصر</span>
+      <h1>دليل المدير المختصر — تشغيل منصة تابعني في 5 خطوات</h1>
+      <div class="sub">مدير المدرسة <code>principal</code> · كلمة المرور <code>Tabaani@2026</code> · الدليل الكامل: <a href="index.html">docs/guide/index.html</a></div>
+    </div>
+    <div class="badge"><b>2</b>صفحتان للطباعة A4</div>
+  </header>
+
+  <!-- 1) أول 5 خطوات -->
+  <section class="sec">
+    <h2><span class="n">1</span> أول 5 خطوات بعد التسليم</h2>
+    <ol class="flow">
+      <li><strong>ادخل بحساب المدير</strong><span>اسم المستخدم <code>principal</code> وكلمة المرور <code>Tabaani@2026</code>، ثم غيّر كلمة المرور من أيقونة المفتاح في الشريط العلوي.</span></li>
+      <li><strong>اضبط ترويسة التقارير</strong><span>راجع بيانات المدرسة والمراحل وجنس المدرسة وشعارها واسم إدارة التعليم، ثم اطبع أي تقرير للتأكد من ظهور الترويسة كاملة.</span></li>
+      <li><strong>أنشئ الحسابات أو استورد المعلمين من نور</strong><span>من «الموظفون والحسابات» أنشئ الحسابات يدويًا، أو ارفع ملف نور (Excel/CSV) وطابِق الأعمدة: الاسم · المادة · الهوية · الجوال · البريد.</span></li>
+      <li><strong>أسنِد المواد بحسب المرحلة</strong><span>من تبويب كل مرحلة، ولا تظهر إلا مواد مراحل مدرستك. ثم يثبّت وكيل شؤون الطلاب الفصول فيراها كل معلم.</span></li>
+      <li><strong>تابع التقارير</strong><span>من «مركز التقارير» و«التقارير التحليلية»: التحضير، الغياب والحرمان، المخالفات، وتفعيل المعلمين — كلها قابلة للطباعة بباركود.</span></li>
+    </ol>
+    <div class="note tip"><strong>الترتيب مهم:</strong> المدرسة ← الحسابات ← المواد ← الفصول وتثبيت الوكيل ← الجدول وقاعدة الإغلاق. لا تنتقل لخطوة قبل إتمام التي قبلها.</div>
+  </section>
+
+  <!-- 2) اعتماد الحسابات -->
+  <section class="sec page-break">
+    <h2><span class="n">2</span> اعتماد الحسابات خطوة بخطوة</h2>
+    <ol class="flow">
+      <li><strong>يسجّل الموظف نفسه</strong><span>من شاشة الدخول ← «إنشاء حساب جديد»: الاسم واسم المستخدم والبريد والجوال والمدرسة والدور وكلمة المرور، ثم يقبل الشروط ويرسل الطلب.</span></li>
+      <li><strong>يظهر الطلب في لوحة المدير</strong><span>إمّا في بطاقة «بانتظار الاعتماد» على لوحة البداية، أو في «إدارة الحسابات ← طلبات الاعتماد» مع عدّاد بعددها.</span></li>
+      <li><strong>اضغط «اعتماد» أو «رفض»</strong><span>«اعتماد» يجعل الحساب نشطًا، و«رفض» يحذف الطلب نهائيًا بعد تأكيد.</span></li>
+      <li><strong>ماذا يتغيّر بعد الاعتماد</strong><span>يصبح الحساب نشطًا ويمكنه الدخول فورًا، ويصله إشعار/رسالة بالتفعيل، ويظهر دوره في القائمة الجانبية عند دخوله.</span></li>
+      <li><strong>الطالب يُفعَّل فورًا بلا اعتماد</strong><span>حساب الطالب يُنشأ نشطًا مباشرة؛ ويمكن للوكيل أو المدير إيقافه/تفعيله لاحقًا من «إدارة الحسابات».</span></li>
+    </ol>
+
+    <div class="fig-svg">
+      <svg viewBox="0 0 900 116" role="img" aria-label="مسار اعتماد الحساب">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#CE9433"/>
+          </marker>
+        </defs>
+        <g font-family="IBM Plex Sans Arabic, sans-serif" font-size="13" text-anchor="middle">
+          <rect x="20" y="26" width="180" height="64" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+          <text x="110" y="54" fill="#5A3E12" font-weight="700">الموظف يسجّل</text>
+          <text x="110" y="74" fill="#7A6A4A" font-size="12">بنفسه من المنصة</text>
+
+          <rect x="240" y="26" width="180" height="64" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+          <text x="330" y="54" fill="#5A3E12" font-weight="700">بانتظار الاعتماد</text>
+          <text x="330" y="74" fill="#7A6A4A" font-size="12">لوحة المدير</text>
+
+          <rect x="460" y="26" width="180" height="64" rx="12" fill="#FAF1D8" stroke="#CE9433"/>
+          <text x="550" y="54" fill="#5A3E12" font-weight="700">اعتماد / رفض</text>
+          <text x="550" y="74" fill="#7A6A4A" font-size="12">قرار المدير</text>
+
+          <rect x="680" y="26" width="200" height="64" rx="12" fill="#14100A"/>
+          <text x="780" y="54" fill="#EBCB74" font-weight="700">حساب نشط + إشعار</text>
+          <text x="780" y="74" fill="#C9BFA6" font-size="12">يمكنه الدخول</text>
+
+          <line x1="200" y1="58" x2="238" y2="58" stroke="#CE9433" stroke-width="2.5" marker-end="url(#a)"/>
+          <line x1="420" y1="58" x2="458" y2="58" stroke="#CE9433" stroke-width="2.5" marker-end="url(#a)"/>
+          <line x1="640" y1="58" x2="678" y2="58" stroke="#CE9433" stroke-width="2.5" marker-end="url(#a)"/>
+          <text x="450" y="108" fill="#8A5A1E" font-size="12">الاستثناء: حساب الطالب يُفعَّل مباشرة بلا اعتماد</text>
+        </g>
+      </svg>
+      <div class="cap"><b>مسار اعتماد الحساب</b> — من تسجيل الموظف حتى تفعيل حسابه.</div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>أين يجد الطلب</h3>
+        <ul>
+          <li>بطاقة «بانتظار الاعتماد» في لوحة البداية.</li>
+          <li>أو «إدارة الحسابات ← طلبات الاعتماد».</li>
+          <li>ويصل إشعار إلى المدير والوكيل عند كل طلب.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>بعد القرار</h3>
+        <ul>
+          <li>اعتماد: الحساب نشط ويدخل فورًا.</li>
+          <li>رفض: يُحذف الطلب بعد تأكيدك.</li>
+          <li>الطالب: نشط منذ لحظة التسجيل.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) إيقاف/تفعيل الطلاب -->
+  <section class="sec">
+    <h2><span class="n">3</span> إيقاف/تفعيل حسابات الطلاب جماعيًا</h2>
+    <ol class="flow">
+      <li><strong>افتح «إدارة الحسابات ← حسابات الطلاب»</strong><span>تلخّص البطاقات: إجمالي الحسابات · حسابات الطلاب · الموقوفة · بانتظار الاعتماد.</span></li>
+      <li><strong>اختر النطاق</strong><span>كل الفصول أو فصلًا محدّدًا، وصفِّ بالحالة (نشط/موقوف/بانتظار الاعتماد).</span></li>
+      <li><strong>اضغط «إيقاف كل الطلاب» أو «تفعيل كل الطلاب»</strong><span>أكّد الطلب فتُطبّق الحالة على الجميع بضغطة، مع رسالة بعدد الحسابات المتغيّرة.</span></li>
+      <li><strong>أو عالج فرديًا</strong><span>حدّد صفوفًا ثم «عكس حالة المحدّدين»، أو استخدم زر إيقاف/تفعيل في صف الطالب.</span></li>
+    </ol>
+    <div class="note info"><strong>الحساب الموقوف:</strong> لا يستطيع الدخول، وتظهر له رسالة «الحساب موقوف — راجع مدير المدرسة»، ويُسجَّل كل تغيير ويُرسل كإشعار للمدير والوكيل.</div>
+  </section>
+
+  <!-- 4) من يعتمد من؟ -->
+  <section class="sec">
+    <h2><span class="n">4</span> جدول سريع: من يعتمد من؟</h2>
+    <table class="dt">
+      <thead><tr><th style="width:30%">الحساب</th><th style="width:26%">مَن يعتمده</th><th>ملاحظة</th></tr></thead>
+      <tbody>
+        <tr><td>حساب مدير المدرسة</td><td><span class="pill brand">مشرف المنصة</span></td><td>يُنشأ مع تأسيس المدرسة أو بعده من حساب <code>admin</code>.</td></tr>
+        <tr><td>الموظفون (معلم · توجيه · مراقب غياب)</td><td><span class="pill brand">مدير المدرسة</span></td><td>يُسجّل الموظف نفسه ثم يعتمده المدير.</td></tr>
+        <tr><td>الوكيل ومسؤولو الخدمات</td><td><span class="pill brand">مدير المدرسة</span></td><td>يُنشئها المدير من «الموظفون والحسابات».</td></tr>
+        <tr><td>الطلاب</td><td><span class="pill mint">تلقائيًا</span></td><td>يُفعَّل الحساب فور التسجيل، وللوكيل/المدير إيقافه أو تفعيله.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 5) أرقام مهمة -->
+  <section class="sec">
+    <h2><span class="n">5</span> أرقام مهمة وبيانات الدخول</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>جهات المراجعة</h3>
+        <ul>
+          <li>مشرف المنصة <code>admin</code> — المدارس والمناطق.</li>
+          <li>وكيل شؤون الطلاب <code>deputy</code> — الطلاب والتحضير.</li>
+          <li>وكيل شؤون المعلمين <code>tdeputy</code> — المناوبة.</li>
+          <li>الدعم الفني: <code>README.md</code> و<code>docs/BLUEPRINT.md</code>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>الدخول التجريبي</h3>
+        <ul>
+          <li>كلمة المرور الموحّدة: <code>Tabaani@2026</code></li>
+          <li>المدير <code>principal</code> · الوكيل <code>deputy</code></li>
+          <li>التوجيه <code>guidance</code> · المناوبة <code>tdeputy</code></li>
+          <li>المعلمون <code>teacher1</code>…<code>teacher6</code> · الطلاب <code>student1</code>…<code>student4</code></li>
+        </ul>
+      </div>
+    </div>
+    <div class="note warn"><strong>تنبيه:</strong> الحسابات بكلمة مرور موحّدة للنموذج التجريبي فقط — استبدلها بمصادقة حقيقية قبل الاستخدام الفعلي.</div>
+  </section>
+
+  <div class="end">
+    <h3>للدليل التفصيلي</h3>
+    <p>هذا مختصر تشغيلي. للتفاصيل الكاملة (16 فصلًا: الأدوار، الدخول، الترويسة، الفصول والتحضير، المناوبة، تلقرام، بصمة الوجه، والتقارير) افتح
+    <a href="index.html">دليل منصة تابعني — للمدارس</a>. وبيانات التشغيل في <a href="../../README.md">README.md</a>.</p>
+  </div>
+
+  <div class="foot">
+    <span>منصة تابعني للخدمات التعليمية — دليل المدير المختصر · الإصدار 1.0 · أكتوبر 2026</span>
+    <span>صفحتان للطباعة A4 · عربي RTL</span>
+  </div>
+
+</main>
+</body>
+</html>

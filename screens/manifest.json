@@ -1,0 +1,351 @@
+[
+ {
+  "file": "01-dash-super",
+  "label": "لوحة التحكم — مشرف المنصة",
+  "role": "مشرف المنصة",
+  "mod": "dashboard",
+  "height": 950,
+  "cat": "dash"
+ },
+ {
+  "file": "02-dash-principal",
+  "label": "لوحة التحكم — مدير المدرسة",
+  "role": "مدير المدرسة",
+  "mod": "dashboard",
+  "height": 1133,
+  "cat": "dash"
+ },
+ {
+  "file": "03-dash-deputy",
+  "label": "لوحة التحكم — وكيل شؤون الطلاب",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "dashboard",
+  "height": 1196,
+  "cat": "dash"
+ },
+ {
+  "file": "04-dash-guidance",
+  "label": "لوحة التحكم — التوجيه والإرشاد",
+  "role": "التوجيه والإرشاد",
+  "mod": "dashboard",
+  "height": 1232,
+  "cat": "dash"
+ },
+ {
+  "file": "05-dash-teacher",
+  "label": "لوحة التحكم — معلم",
+  "role": "معلم",
+  "mod": "dashboard",
+  "height": 1463,
+  "cat": "dash"
+ },
+ {
+  "file": "06-dash-teachers_deputy",
+  "label": "لوحة التحكم — وكيل شؤون المعلمين",
+  "role": "وكيل شؤون المعلمين",
+  "mod": "dashboard",
+  "height": 1103,
+  "cat": "dash"
+ },
+ {
+  "file": "07-dash-volunteer",
+  "label": "لوحة التحكم — مسؤول ساعات التطوع",
+  "role": "مسؤول ساعات التطوع",
+  "mod": "dashboard",
+  "height": 1103,
+  "cat": "dash"
+ },
+ {
+  "file": "08-dash-activity",
+  "label": "لوحة التحكم — مسؤول النشاط الطلابي",
+  "role": "مسؤول النشاط الطلابي",
+  "mod": "dashboard",
+  "height": 950,
+  "cat": "dash"
+ },
+ {
+  "file": "09-dash-absence_monitor",
+  "label": "لوحة التحكم — مراقب الغياب",
+  "role": "مراقب الغياب",
+  "mod": "dashboard",
+  "height": 1103,
+  "cat": "dash"
+ },
+ {
+  "file": "10-dash-student",
+  "label": "لوحة التحكم — طالب",
+  "role": "طالب",
+  "mod": "dashboard",
+  "height": 1075,
+  "cat": "dash"
+ },
+ {
+  "file": "11-mod-schools",
+  "label": "المدارس والمناطق",
+  "role": "مشرف المنصة",
+  "mod": "schools",
+  "height": 1002,
+  "cat": "mod",
+  "modkey": "schools"
+ },
+ {
+  "file": "12-mod-staff",
+  "label": "الموظفون والحسابات",
+  "role": "مدير المدرسة",
+  "mod": "staff",
+  "height": 3022,
+  "cat": "mod",
+  "modkey": "staff"
+ },
+ {
+  "file": "13-mod-accounts",
+  "label": "إدارة الحسابات",
+  "role": "مدير المدرسة",
+  "mod": "accounts",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "accounts"
+ },
+ {
+  "file": "14-mod-classes",
+  "label": "الفصول والطلاب",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "classes",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "classes"
+ },
+ {
+  "file": "15-mod-assignments",
+  "label": "إسناد المواد",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "assignments",
+  "height": 2335,
+  "cat": "mod",
+  "modkey": "assignments"
+ },
+ {
+  "file": "16-mod-duties",
+  "label": "المناوبة",
+  "role": "وكيل شؤون المعلمين",
+  "mod": "duties",
+  "height": 4974,
+  "cat": "mod",
+  "modkey": "duties"
+ },
+ {
+  "file": "17-mod-schedule",
+  "label": "جدول الحصص",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "schedule",
+  "height": 1171,
+  "cat": "mod",
+  "modkey": "schedule"
+ },
+ {
+  "file": "18-mod-attendance",
+  "label": "التحضير",
+  "role": "معلم",
+  "mod": "attendance",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "attendance"
+ },
+ {
+  "file": "19-mod-attendance-reports",
+  "label": "تقارير التحضير",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "attendance-reports",
+  "height": 2414,
+  "cat": "mod",
+  "modkey": "attendance-reports"
+ },
+ {
+  "file": "20-mod-violations",
+  "label": "المخالفات السلوكية",
+  "role": "التوجيه والإرشاد",
+  "mod": "violations",
+  "height": 1007,
+  "cat": "mod",
+  "modkey": "violations"
+ },
+ {
+  "file": "21-mod-permissions",
+  "label": "الاستئذان والتصاريح",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "permissions",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "permissions"
+ },
+ {
+  "file": "22-mod-volunteer",
+  "label": "ساعات التطوع",
+  "role": "مسؤول ساعات التطوع",
+  "mod": "volunteer",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "volunteer"
+ },
+ {
+  "file": "23-mod-activities",
+  "label": "النشاط الطلابي",
+  "role": "مسؤول النشاط الطلابي",
+  "mod": "activities",
+  "height": 950,
+  "cat": "mod",
+  "modkey": "activities"
+ },
+ {
+  "file": "24-mod-reports",
+  "label": "مركز التقارير",
+  "role": "مدير المدرسة",
+  "mod": "reports",
+  "height": 2178,
+  "cat": "mod",
+  "modkey": "reports"
+ },
+ {
+  "file": "25-mod-analytics",
+  "label": "التقارير التحليلية",
+  "role": "مدير المدرسة",
+  "mod": "analytics",
+  "height": 1367,
+  "cat": "mod",
+  "modkey": "analytics"
+ },
+ {
+  "file": "26-mod-settings",
+  "label": "إعدادات الوكيل",
+  "role": "وكيل شؤون الطلاب",
+  "mod": "settings",
+  "height": 2414,
+  "cat": "mod",
+  "modkey": "settings"
+ },
+ {
+  "file": "27-mod-face-checkin",
+  "label": "بصمة الوجه",
+  "role": "معلم",
+  "mod": "face-checkin",
+  "height": 2106,
+  "cat": "mod",
+  "modkey": "face-checkin"
+ },
+ {
+  "file": "28-mod-monitor",
+  "label": "مراقبة الغياب",
+  "role": "مراقب الغياب",
+  "mod": "monitor",
+  "height": 1196,
+  "cat": "mod",
+  "modkey": "monitor"
+ },
+ {
+  "file": "29-mod-my-reports",
+  "label": "تقاريري",
+  "role": "معلم",
+  "mod": "my-reports",
+  "height": 5338,
+  "cat": "mod",
+  "modkey": "my-reports"
+ },
+ {
+  "file": "30-mod-telegram",
+  "label": "سجل تلقرام",
+  "role": "مدير المدرسة",
+  "mod": "telegram",
+  "height": 2883,
+  "cat": "mod",
+  "modkey": "telegram"
+ },
+ {
+  "file": "31-mod-users",
+  "cat": "mod",
+  "mod": "users",
+  "label": "إدارة المستخدمين",
+  "role": "مشرف المنصة"
+ },
+ {
+  "file": "32-mod-promo",
+  "cat": "mod",
+  "mod": "promo",
+  "label": "الإعلان الافتتاحي",
+  "role": "مشرف المنصة"
+ },
+ {
+  "file": "90-login",
+  "label": "شاشة تسجيل الدخول",
+  "role": "-",
+  "mod": "login",
+  "height": 950,
+  "cat": "auth"
+ },
+ {
+  "file": "91-register",
+  "label": "صفحة إنشاء حساب جديد",
+  "role": "-",
+  "mod": "register",
+  "height": 1200,
+  "cat": "auth"
+ },
+ {
+  "file": "92-forgot",
+  "label": "استعادة كلمة المرور",
+  "role": "-",
+  "mod": "forgot",
+  "height": 1000,
+  "cat": "auth"
+ },
+ {
+  "file": "93-letterhead-settings",
+  "label": "إعدادات ترويسة التقارير (مدير المدرسة)",
+  "role": "مدير المدرسة",
+  "mod": "letterhead",
+  "cat": "lh"
+ },
+ {
+  "file": "94-printed-report",
+  "label": "تقرير مطبوع بالترويسة الرسمية والباركود",
+  "role": "مدير المدرسة",
+  "mod": "letterhead",
+  "cat": "lh"
+ },
+ {
+  "file": "95-girls-principal",
+  "label": "لوحة المديرة (مدرسة طالبات)",
+  "role": "لوحة المديرة (مدرسة طالبات)",
+  "mod": "dashboard",
+  "height": 1388,
+  "cat": "girls"
+ },
+ {
+  "file": "96-girls-teacher",
+  "label": "لوحة المعلمة (مدرسة طالبات)",
+  "role": "لوحة المعلمة (مدرسة طالبات)",
+  "mod": "dashboard",
+  "height": 1527,
+  "cat": "girls"
+ },
+ {
+  "file": "97-girls-duties",
+  "label": "وحدة المناوبة — مدرسة طالبات",
+  "role": "وكيلة شؤون المعلمات",
+  "mod": "duties",
+  "cat": "girls"
+ },
+ {
+  "file": "98-girls-volunteer",
+  "label": "وحدة ساعات التطوع — مدرسة طالبات",
+  "role": "مسؤولة ساعات التطوع",
+  "mod": "volunteer",
+  "cat": "girls"
+ },
+ {
+  "file": "99-girls-violations",
+  "label": "وحدة المخالفات — مدرسة طالبات",
+  "role": "موجّهة التوجيه والإرشاد",
+  "mod": "violations",
+  "cat": "girls"
+ }
+]
