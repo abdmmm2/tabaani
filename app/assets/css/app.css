@@ -37,10 +37,39 @@
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 .burger-app { display: none; }
 @media (max-width: 1024px) {
-  .sidebar { position: fixed; inset-block: 0; inset-inline-end: 0; width: 280px; z-index: 120; transform: translateX(100%); transition: transform var(--dur) var(--ease); box-shadow: var(--sh-lg); }
-  .sidebar.is-open { transform: none; }
+  /* قائمة منسدلة (Drawer) على الجانب الأيمن — RTL صحيح */
+  html, body { overflow-x: hidden; }
+  .sidebar {
+    position: fixed; inset-block: 0; inset-inline-start: 0; width: min(86vw, 300px);
+    z-index: 120; transform: translateX(100%); visibility: hidden;
+    transition: transform .28s cubic-bezier(.2,.75,.3,1), visibility .28s;
+    box-shadow: 0 18px 50px rgba(20, 16, 10, .45); height: 100dvh;
+  }
+  .sidebar.is-open { transform: none; visibility: visible; }
   .burger-app { display: grid; }
   .main-area { padding: 16px; }
+  .app-main { padding: 16px; }
+  .nav-backdrop {
+    position: fixed; inset: 0; z-index: 110; background: rgba(20, 16, 10, .55);
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+  }
+  .nav-backdrop.is-open { opacity: 1; visibility: visible; }
+  @media (prefers-reduced-motion: reduce) { .sidebar, .nav-backdrop { transition: none; } }
+}
+
+/* شاشات الجوال الضيقة: شريط علوي مضغوط بلا فائض أفقي */
+@media (max-width: 620px) {
+  .topbar { gap: 8px; padding: 10px 12px; min-height: 58px; }
+  .topbar h2 { font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-actions { gap: 4px; }
+  .topbar-actions .icon-btn { width: 36px; height: 36px; font-size: 15px; }
+  .topbar-actions .btn-sm { padding: 6px 10px; font-size: var(--fs-xs); }
+  .hide-sm { display: none !important; }
+  .app-main { padding: 12px; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 560px; }
+  .stat-row { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .grid-2-app { grid-template-columns: minmax(0, 1fr); }
 }
 .app-main { padding: 24px; max-width: 1280px; }
 .main-area { width: 100%; }

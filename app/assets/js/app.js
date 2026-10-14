@@ -80,6 +80,11 @@
         h('span', { text: school ? [school.city, school.code].filter(Boolean).join(' · ') : '' })
       ]));
 
+      /* خلفية القائمة المنسدلة على الجوال */
+      var backdrop = h('div', { class: 'nav-backdrop', onClick: function () { sidebar.classList.remove('is-open'); backdrop.classList.remove('is-open'); } });
+      document.body.appendChild(backdrop);
+      sidebar._backdrop = backdrop;
+
       var nav = h('nav', { class: 'side-nav', 'aria-label': 'أقسام المنصة' });
       App.order.forEach(function (id) {
         var mod = App.modules[id];
@@ -100,15 +105,16 @@
       var inbox = S.inbox();
       var unread = inbox.filter(function (n) { return !n.read; }).length;
       topbar.appendChild(h('button', { class: 'icon-btn burger-app', type: 'button', 'aria-label': 'القائمة', onClick: function () {
-        sidebar.classList.toggle('is-open');
+        var open = sidebar.classList.toggle('is-open');
+        if (sidebar._backdrop) sidebar._backdrop.classList.toggle('is-open', open);
       } }, [h('span', { html: '&#9776;' })]));
       topbar.appendChild(h('h2', { id: 'view-title', text: '' }));
       topbar.appendChild(h('div', { class: 'topbar-actions' }, [
         h('button', { class: 'icon-btn', type: 'button', title: 'الإشعارات', onClick: function () { App.openInbox(); } },
           [h('span', { html: '&#128276;' }), unread ? h('span', { class: 'count', style: { position: 'absolute', transform: 'translate(10px,-10px)', background: 'var(--amber-500)', color: 'var(--on-gold)', borderRadius: '999px', fontSize: '10px', padding: '1px 6px', fontWeight: '700' }, text: String(unread) }) : null]),
-        h('button', { class: 'icon-btn', type: 'button', title: 'سجل رسائل تلقرام', onClick: function () { App.openTelegram(); } },
+        h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'سجل رسائل تلقرام', onClick: function () { App.openTelegram(); } },
           [h('span', { html: '&#9992;&#65039;' })]),
-        h('button', { class: 'icon-btn', type: 'button', title: 'تغيير كلمة المرور', onClick: App.openChangePassword },
+        h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'تغيير كلمة المرور', onClick: App.openChangePassword },
           [h('span', { html: '&#128273;' })]),
         h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'خروج', onClick: App.logout })
       ]));
@@ -172,7 +178,10 @@
         view.appendChild(h('div', { class: 'muted-block', text: 'خطأ في تحميل الوحدة: ' + e.message }));
         console.error(e);
       }
-      if (global.innerWidth <= 1024) { var sb = document.getElementById('sidebar'); sb && sb.classList.remove('is-open'); }
+      if (global.innerWidth <= 1024) {
+        var sb = document.getElementById('sidebar');
+        if (sb) { sb.classList.remove('is-open'); if (sb._backdrop) sb._backdrop.classList.remove('is-open'); }
+      }
       window.scrollTo(0, 0);
       App.refreshBadges();
     },

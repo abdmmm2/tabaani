@@ -7,13 +7,6 @@
 <meta name="description" content="منصة تابعني لإدارة خدمات المدارس: الحسابات، إسناد المواد، التحضير، المخالفات السلوكية، الاستئذان، التطوع، النشاط الطلابي، والتقارير الرسمية بالباركود.">
 <meta name="theme-color" content="#14100A">
 <link rel="icon" href="assets/img/favicon.png" type="image/png">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="تابعني">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="assets/css/brand.css">
 <link rel="stylesheet" href="assets/css/app.css">
@@ -55,13 +48,5 @@
 <script src="assets/js/modules/users.js"></script>
 <script src="assets/js/modules/my-reports.js"></script>
 <script src="assets/js/modules/telegram.js"></script>
-<script>
-/* تسجيل عامل الخدمة: يشتغل عند الاستضافة بـ https (مثل GitHub Pages) — للعمل بلا إنترنت */
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function () { /* يعمل الموقع عادي بدونه */ });
-  });
-}
-</script>
 </body>
 </html>
