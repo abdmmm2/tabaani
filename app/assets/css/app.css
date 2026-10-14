@@ -685,3 +685,15 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .backup-banner .bb-txt { flex: 1 1 260px; font-size: var(--fs-sm); line-height: 1.7; }
 .backup-banner .bb-txt strong { color: #8A5A1E; }
 .backup-banner .btn { margin: 0; }
+
+/* الحفظ السحابي — كود Apps Script وخطوات الربط */
+.cloud-steps { margin: 0 0 14px 18px; padding: 0; font-size: var(--fs-sm); line-height: 2; }
+.cloud-code { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; margin-bottom: 12px; }
+.cloud-code-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; background: var(--bg-soft); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.code-box { width: 100%; border: 0; padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; line-height: 1.75; direction: ltr; text-align: left; background: #FBFBFA; color: #1E293B;
+  resize: vertical; max-height: 260px; }
+.cloud-result { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-md); font-size: var(--fs-sm); background: var(--bg-soft); }
+.cloud-result.ok { background: #E9F6F1; color: #0E5F4C; }
+.cloud-result.bad { background: #FDEDEA; color: #9B2C1F; }

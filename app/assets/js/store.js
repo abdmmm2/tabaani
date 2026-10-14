@@ -1893,6 +1893,37 @@
       var s = store.backupSchedule();
       return store.WEEKDAYS[s.weekday] + ' · ' + (s.hour < 12 ? s.hour + ' صباحًا' : (s.hour === 12 ? '١٢ ظهرًا' : (s.hour - 12) + ' مساءً'));
     },
+    /* ---------------- الحفظ السحابي (Google Drive عبر Apps Script) ---------------- */
+    driveConfig: function () {
+      var d = (db.settings && db.settings.drive) || {};
+      return {
+        url: d.url || '', enabled: !!d.url && d.enabled !== false, auto: d.auto !== false,
+        folder: d.folder || '', lastOk: d.lastOk || '', lastError: d.lastError || '',
+        lastTest: d.lastTest || '', count: parseInt(d.count, 10) || 0
+      };
+    },
+    saveDriveConfig: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.drive = Object.assign({}, db.settings.drive || {}, patch || {});
+      save(); return store.driveConfig();
+    },
+    driveConfigured: function () { var c = store.driveConfig(); return !!c.url && c.enabled; },
+    driveLog: function () { return ((db.settings && db.settings.driveLog) || []).slice().reverse(); },
+    addDriveLog: function (entry) {
+      if (!db.settings) db.settings = {};
+      if (!db.settings.driveLog) db.settings.driveLog = [];
+      db.settings.driveLog.push(entry);
+      while (db.settings.driveLog.length > 30) db.settings.driveLog.shift();
+      if (db.settings.drive) db.settings.drive.count = (parseInt(db.settings.drive.count, 10) || 0) + (entry.ok ? 1 : 0);
+      save(); return entry;
+    },
+    drivePending: function () { return (db.settings && db.settings.drivePending) || null; },
+    saveDrivePending: function (p) {
+      if (!db.settings) db.settings = {};
+      db.settings.drivePending = p || null; save(); return p;
+    },
+    clearDrivePending: function () { return store.saveDrivePending(null); },
+
     lastBackupAt: function () { return (db.meta && db.meta.lastBackupAt) || ''; },
     markBackup: function () {
       if (!db.meta) db.meta = {};

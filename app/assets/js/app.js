@@ -293,15 +293,35 @@
     },
 
     /* ---------------------- النسخة الاحتياطية المجدولة ---------------------- */
-    /** تنزيل نسخة احتياطية للجهاز الآن + تسجيل الوقت */
-    backupNow: function (silent) {
+    /** ملف النسخة واسمه — مصدر واحد للتنزيل والرفع السحابي */
+    backupPayload: function () {
       var d = new Date();
-      var name = 'تابعني-نسخة-' + d.toISOString().slice(0, 10) + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
-      UI.downloadText(S.backupJson(), name, 'application/json');
+      var name = 'تابعني-نسخة-' + d.toISOString().slice(0, 10) + '-' +
+        String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
+      return { text: S.backupJson(), name: name };
+    },
+    /** تنزيل نسخة احتياطية للجهاز الآن (+ رفع سحابي إن كان مربوطًا) */
+    backupNow: function (silent) {
+      var p = App.backupPayload();
+      UI.downloadText(p.text, p.name, 'application/json');
       S.markBackup();
       var banner = document.querySelector('.backup-banner');
       if (banner) banner.remove();          /* الشريط خارج #view فلا يكفي App.route() */
-      if (!silent) UI.toast('نُزّلت النسخة ✓ — احفظها في درايف أو بريدك', 'ok');
+      var cfg = S.driveConfig();
+      if (cfg.enabled && cfg.auto && cfg.url) {
+        if (!navigator.onLine) {
+          S.saveDrivePending({ text: p.text, name: p.name, at: new Date().toISOString() });
+          UI.toast('نُزّلت النسخة ✓ — لا إنترنت الآن، ستُرفع إلى درايف تلقائيًا', 'warn');
+        } else {
+          UI.toast('نُزّلت النسخة ✓ — جارٍ رفعها إلى درايف…', 'ok');
+          window.App.cloud.upload(p.text, p.name, function (err, res) {
+            if (err) UI.toast('تعذّر الرفع: ' + (err.message || '') + ' — الملف محفوظ عندك', 'warn');
+            else if (res && res.unverified) UI.toast('أُرسلت إلى درايف (بلا تحقّق) — راجع المجلد', 'warn');
+            else UI.toast('✓ رُفعت إلى درايف — «' + window.App.cloud.folderName + '»', 'ok');
+            App.route();
+          });
+        }
+      } else if (!silent) UI.toast('نُزّلت النسخة ✓ — احفظها في درايف أو بريدك', 'ok');
       App.route();
     },
     /** شريط تذكير النسخة الأسبوعية */
@@ -420,6 +440,9 @@
       /* لافتة المناوبة: تظهر فور دخول صاحب المناوبة في يومه */
       var duty = S.todayDutyFor(S.session.userId);
       if (duty) main.insertBefore(App.dutyBanner(duty), content);
+
+      /* محاولة رفع أي نسخة معلّقة (انقطاع سابق) */
+      if (S.session && S.session.role === 'super') window.App.cloud.retryPending();
 
       /* تذكير النسخة الاحتياطية: للمشرف العام وقائد المدرسة */
       var due = S.backupDue();

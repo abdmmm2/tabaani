@@ -43,7 +43,32 @@ const MIME = {
 function serve(dir) {
   const root = path.resolve(dir);
   return new Promise((resolve, reject) => {
+    /* نقطتا اختبار لمسار الحفظ السحابي (محليًا فقط — تحاكيان تطبيق Apps Script) */
+    let cloudHits = [];
     const server = http.createServer((req, res) => {
+      const pure = String(req.url || '').split('?')[0];
+      if (pure === '/__cloud' || pure === '/__cloudfail') {
+        let body = '';
+        req.on('data', (d) => { body += d; });
+        req.on('end', () => {
+          let payload = {}; try { payload = JSON.parse(body || '{}'); } catch (e) {}
+          cloudHits.push({ url: pure, payload, body: body.length });
+          const cors = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store'
+          };
+          if (pure === '/__cloudfail') { res.writeHead(500, cors); res.end(JSON.stringify({ ok: false, error: 'boom' })); return; }
+          res.writeHead(200, cors);
+          res.end(JSON.stringify({
+            ok: true, test: !!payload.test, name: payload.name || '',
+            size: (payload.data || '').length, kept: 1,
+            folder: 'https://drive.google.com/drive/folders/__TEST__'
+          }));
+        });
+        return;
+      }
       let rel = decodeURIComponent(String(req.url || '/').split('?')[0].split('#')[0]);
       if (rel.endsWith('/')) rel += 'index.html';
       const file = path.resolve(path.join(root, rel));
@@ -61,7 +86,12 @@ function serve(dir) {
     });
     server.on('error', reject);
     server.listen(0, '127.0.0.1', () => {
-      resolve({ url: 'http://127.0.0.1:' + server.address().port, close: () => server.close() });
+      resolve({
+        url: 'http://127.0.0.1:' + server.address().port,
+        close: () => server.close(),
+        cloudHits: () => cloudHits.slice(),
+        resetCloud: () => { cloudHits = []; }
+      });
     });
   });
 }

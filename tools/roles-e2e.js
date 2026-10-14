@@ -182,7 +182,7 @@ async function main() {
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
 
     /* ------------------ بقاء البيانات والنسخة الاحتياطية ------------------ */
-    const bkRes = await backupSuite(page, site.url);
+    const bkRes = await backupSuite(page, site.url, () => site.cloudHits());
     bkRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'backup', modules: String(bkRes.filter((r) => r.ok).length) + '/' + bkRes.length, note: bkRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'البيانات والنسخ الاحتياطي' });
 
@@ -287,7 +287,7 @@ async function studentCtlSuite(page, base) {
 }
 
 /** فحص بقاء البيانات والنسخة الاحتياطية (تنزيل/استرجاع) */
-async function backupSuite(page, base) {
+async function backupSuite(page, base, hitsFn) {
   const res = [];
   const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
   await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
@@ -314,6 +314,67 @@ async function backupSuite(page, base) {
   ok(due2 === false, '«تأجيل أسبوعًا» يُخفي التذكير');
   const r4 = await page.eval('Store.markBackup(); var d = Store.backupDue(); return { due:d.due, since:d.daysSince, last:Store.lastBackupAt() ? true : false };');
   ok(r4.due === false && r4.since === 0 && r4.last, 'بعد تنزيل نسخة: لا تذكير حتى الموعد القادم', JSON.stringify({ due: r4.due, since: r4.since }));
+
+  /* ============ الحفظ السحابي في Google Drive ============
+     نقطتان محليتان تحاكيان تطبيق Apps Script: /__cloud (نجاح) و/__cloudfail (فشل). */
+  const hits = (typeof hitsFn === 'function') ? hitsFn : (() => []);
+  const waitEval = async (expr, pollExpr, tries = 24) => {
+    await page.eval(expr);
+    for (let i = 0; i < tries; i++) {
+      const v = await page.eval('return ' + pollExpr + ';');
+      if (v) return v;
+      await B.sleep(250);
+    }
+    return null;
+  };
+  const OK = base + '/__cloud', BAD = base + '/__cloudfail';
+
+  const d0 = await page.eval('var c = Store.driveConfig(); return { u:c.url, e:c.enabled, n:c.count, log:Store.driveLog().length, p:!!Store.drivePending() };');
+  ok(d0.u === '' && d0.n === 0 && d0.log === 0 && !d0.p, 'السحابة: غير مربوطة افتراضيًا (بلا رابط أو سجل)', JSON.stringify(d0));
+
+  await page.eval('Store.saveDriveConfig({ url: ' + JSON.stringify(OK) + ', enabled: true, auto: true }); return true;');
+  ok(await page.eval('return Store.driveConfigured() && Store.driveConfig().auto;'), 'السحابة: الربط يُحفظ ويُفعّل الرفع التلقائي');
+
+  const t1 = await waitEval('window.__ct = null; App.cloud.test(function (e, r) { window.__ct = e ? ("E:" + e.message) : JSON.stringify(r); }); return true;', 'window.__ct');
+  ok(/__TEST__/.test(String(t1)), 'السحابة: «اختبر الاتصال» ينجح ويعيد رابط المجلد', String(t1).slice(0, 90));
+  const h1 = hits().filter((x) => x.payload && x.payload.test === true);
+  ok(h1.length >= 1 && h1[h1.length - 1].url === '/__cloud', 'السحابة: وصل طلب الاختبار إلى النقطة فعلًا', 'hits=' + hits().length);
+
+  const up = await waitEval('window.__up = null; App.backupNow(true); return true;', 'window.__up && window.__up.name');
+  await B.sleep(600);
+  const log1 = await page.eval('var l = Store.driveLog(); var c = Store.driveConfig(); return { ok:l[0].ok, note:l[0].note, name:l[0].name, size:l[0].size, cnt:c.count, folder:c.folder };');
+  const sent = hits().filter((x) => x.payload && x.payload.data && x.payload.data.length > 500);
+  ok(log1.ok && sent.length >= 1, 'السحابة: تنزيل النسخة يرفعها تلقائيًا إلى درايف', JSON.stringify({ note: log1.note, size: log1.size }));
+  ok(sent.length >= 1 && sent[sent.length - 1].payload.data.length === log1.size, 'السحابة: المحتوى المرفوع هو النسخة نفسها (الحجم مطابق)');
+  ok(/__TEST__/.test(String(log1.folder)) && log1.cnt >= 1, 'السحابة: يُسجّل رابط المجلد وعدد النسخ المرفوعة', String(log1.folder).slice(0, 60));
+
+  /* فشل الرفع: النقطة تُعيد 500 → سجل بخطأ + محاولة no-cors لا تُظهر نجاحًا كاذبًا */
+  await page.eval('Store.saveDriveConfig({ url: ' + JSON.stringify(BAD) + ' }); return true;');
+  const t2 = await waitEval('window.__ct2 = null; App.cloud.test(function (e, r) { window.__ct2 = e ? ("E:" + e.message) : "OK"; }); return true;', 'window.__ct2');
+  ok(/^E:/.test(String(t2)), 'السحابة: الرابط المعطوب يُرفَض في الاختبار برسالة واضحة', String(t2).slice(0, 70));
+  await page.eval('window.__up2 = null; App.cloud.upload("{}", "bad.json", function (e) { window.__up2 = e ? "E" : "OK"; }); return true;');
+  await B.sleep(1200);
+  const log2 = await page.eval('var l = Store.driveLog(); var c = Store.driveConfig(); return { ok:l[0].ok, note:l[0].note, err:c.lastError };');
+  ok(log2.ok === false && /HTTP|تعذّر|ردّ/.test(log2.note + ' ' + log2.err), 'السحابة: فشل الرفع يُسجّل خطأً صريحًا', log2.note);
+
+  /* الطابور: نسخة معلّقة تُحفظ ثم تُرفع عند عودة الاتصال */
+  await page.eval('Store.saveDriveConfig({ url: ' + JSON.stringify(OK) + ' }); Store.saveDrivePending({ text: JSON.stringify({ a: 1 }), name: "pending.json" }); return true;');
+  ok(await page.eval('var p = Store.drivePending(); return !!p && p.name === "pending.json";'), 'السحابة: النسخة المعلّقة تُحفظ في الطابور');
+  await page.eval('window.__rp = null; App.cloud.retryPending(); return true;');
+  await B.sleep(1200);
+  const rq = await page.eval('return { p:!!Store.drivePending(), last:Store.driveLog()[0].name };');
+  ok(rq.p === false && rq.last === 'pending.json', 'السحابة: الطابور يُفرَّغ ويُرفع عند عودة الاتصال', JSON.stringify(rq));
+
+  /* لوحة الإعداد ظاهرة فعلًا في وحدة «بيانات تابعني» (بدخول المشرف العام) */
+  await loginAsRaw(page, base, OWNER.username, OWNER.password);
+  await B.sleep(500);
+  await page.eval('App.go("platform"); return true;');
+  await B.sleep(900);
+  const panel = await page.eval('var v = document.querySelector("#view"); if (!v) return { none: true }; var t = v.innerText;' +
+    'return { cloud:t.indexOf("الحفظ السحابي") > -1, drive:t.indexOf("Google Drive") > -1, log:t.indexOf("آخر عمليات الرفع") > -1, sched:t.indexOf("موعد النسخة الاحتياطية") > -1 };');
+  ok(panel.cloud && panel.drive && panel.log && panel.sched, 'السحابة: اللوحة (الحالة · السجل · زر الربط) ظاهرة للمشرف العام', JSON.stringify(panel));
+  await page.eval('Store.saveDriveConfig({ url: "", enabled: false }); return true;');
+  ok(await page.eval('return !Store.driveConfigured();'), 'السحابة: فصل الربط يُوقف الرفع التلقائي');
   return res;
 }
 

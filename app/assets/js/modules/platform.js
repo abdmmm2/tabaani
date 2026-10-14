@@ -183,6 +183,56 @@
           h('div', { class: 'callout tip', text: 'النسخة تحتوي كل شيء (المدارس · الطلاب · الحضور · المخالفات · الاستئذان · الحسابات · الإعدادات). خذها قبل أي تصفير أو قبل تغيير الجهاز.' })
         ]));
 
+        /* ---------------- الحفظ السحابي في Google Drive ---------------- */
+        var dc = S.driveConfig();
+        var dlog = S.driveLog();
+        var logTbl = h('table', { class: 'dt' }, [
+          h('caption', { text: 'آخر عمليات الرفع' }),
+          h('thead', {}, [h('tr', {}, [
+            h('th', { text: 'الوقت' }), h('th', { text: 'الملف' }), h('th', { text: 'الحجم' }), h('th', { text: 'النتيجة' })
+          ])]),
+          h('tbody', {}, dlog.slice(0, 10).map(function (e) {
+            return h('tr', {}, [
+              h('td', { text: UI.fmtDateTime(e.at) }),
+              h('td', { dir: 'ltr', text: e.name }),
+              h('td', { text: (e.size / 1024).toFixed(0) + ' ك.ب' }),
+              h('td', {}, [UI.badge(e.note, e.ok ? 'mint' : 'terra')])
+            ]);
+          }).concat(dlog.length ? [] : [h('tr', {}, [h('td', { colspan: 4, class: 'table-empty', text: 'لا عمليات رفع بعد.' })])]))
+        ]);
+        var pend = S.drivePending();
+        host.appendChild(UI.panel('الحفظ السحابي في Google Drive',
+          'اربطه مرة واحدة، وبعدها كل نسخة احتياطية تُرفع تلقائيًا إلى مجلد «' + App.cloud.folderName + '» في درايفك (يحتفظ بآخر ١٢ نسخة).',
+          [
+            h('button', { class: 'btn btn-primary', type: 'button', text: dc.url ? 'تعديل الربط / اختبار' : 'إعداد الربط', onClick: function () { App.cloud.wizard(draw); } }),
+            h('button', { class: 'btn btn-outline', type: 'button', text: 'ارفع آخر نسخة الآن', onClick: function () {
+              if (!S.driveConfigured()) { UI.toast('اربط Google Drive أولًا', 'warn'); return; }
+              var pl = App.backupPayload();
+              UI.toast('جارٍ الرفع…', 'ok');
+              App.cloud.upload(pl.text, pl.name, function (err, res, e) {
+                UI.toast(err ? ('تعذّر الرفع: ' + err.message) : '✓ ' + e.note, err ? 'bad' : 'ok');
+                draw();
+              });
+            } }),
+            dc.folder ? h('a', { class: 'btn btn-outline', href: dc.folder, target: '_blank', rel: 'noopener', text: 'افتح مجلد النسخ في درايف' }) : null,
+            dc.url ? h('button', { class: 'btn btn-outline', type: 'button', text: 'افصل الربط', onClick: function () {
+              UI.confirm('فصل الربط؟ ستتوقّف الرفوعات التلقائية (النسخ المحلية كما هي).', { ok: 'افصل', danger: true }).then(function (ok) {
+                if (!ok) return;
+                S.saveDriveConfig({ url: '', enabled: false }); UI.toast('فُصل الربط', 'ok'); draw();
+              });
+            } }) : null
+          ], [
+            h('div', { class: 'stat-row' }, [
+              UI.statCard('حالة الربط', dc.url ? (dc.enabled ? 'مربوط ومفعّل' : 'مربوط (متوقّف)') : 'غير مربوط',
+                dc.url ? (dc.folder ? 'المجلد: ' + App.cloud.folderName : 'اضغط «اختبار» للتأكد') : 'اضغط «إعداد الربط» — خمس دقائق', dc.url ? 'mint' : 'amber'),
+              UI.statCard('أُرفعت', String(dc.count) + ' نسخة', dc.lastOk ? 'آخر رفع: ' + UI.fmtDateTime(dc.lastOk) : 'لا رفع بعد', 'gold')
+            ]),
+            dc.lastError ? h('div', { class: 'callout warn', text: 'آخر خطأ: ' + dc.lastError }) : null,
+            pend ? h('div', { class: 'callout warn', text: 'توجد نسخة معلّقة (لم يُتِح الإنترنت رفعها) — تُرفع تلقائيًا عند عودة الاتصال.' }) : null,
+            logTbl,
+            h('div', { class: 'callout info', text: 'الحفظ السحابي إضافة فوق نسختك المحلية: تبقى المنصة تعمل بلا إنترنت، وتُرفع النسخة عند توفّره.' })
+          ]));
+
         /* ---------------- موعد النسخة الأسبوعية ---------------- */
         var bs = S.backupSchedule();
         function hourLabel(h) { return h < 12 ? (h + ' صباحًا') : (h === 12 ? '١٢ ظهرًا' : ((h - 12) + ' مساءً')); }
