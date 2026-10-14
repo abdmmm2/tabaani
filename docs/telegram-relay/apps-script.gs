@@ -9,9 +9,8 @@
  *
  *  خطوات التشغيل (٥ دقائق):
  *   ١) افتح https://script.google.com ← مشروع جديد ← الصق هذا الملف كاملًا في Code.gs.
- *   ٢) عدّل السطرين في الدالة setup: الرمز من @BotFather + مفتاح سري من اختيارك.
- *   ٣) اختر دالة setup من القائمة العلوية ← Run ← اسمح بالصلاحيات عند الطلب.
- *      (هذه الخطوة تحفظ الإعدادات وتُشغّل الرد الآلي كل دقيقة.)
+ *   ٢) عدّل السطرين في أعلى الملف: TOKEN_INLINE و KEY_INLINE.
+ *   ٣) (اختياري) لأجل الردود الآلية: اختر دالة setup ← Run ← اسمح بالصلاحيات.
  *   ٤) Deploy ← New deployment ← Web app
  *         Execute as: Me     ·     Who has access: Anyone
  *      ثم انسخ الرابط المنتهي بـ /exec.
@@ -25,13 +24,23 @@
  */
 
 /* ------------------------------------------------------------------ الإعداد */
+/* ⚠️ ضع رمز البوت والمفتاح السري هنا مباشرة (أو من setup) — والعمل لا يحتاج تشغيل أي دالة */
+var TOKEN_INLINE = 'ضع-رمز-البوت-هنا';            // مثال: 1234567890:AAH…  (من @BotFather)
+var KEY_INLINE   = 'ضع-مفتاحا-سريا-من-اختيارك';   // مثال: TBN-sultan-2026-9f3a
+
+function token_() {
+  return PropertiesService.getScriptProperties().getProperty('TELEGRAM_TOKEN') || TOKEN_INLINE || '';
+}
+function key_() {
+  return PropertiesService.getScriptProperties().getProperty('RELAY_KEY') || KEY_INLINE || '';
+}
+
+/* اختياري: يحفظ الإعدادات ويُشغّل الردود الآلية (/id · /start · /help) كل دقيقة */
 function setup() {
-  var TOKEN = 'ضع-رمز-البوت-هنا';            // مثال: 1234567890:AAH…  (من @BotFather)
-  var KEY   = 'ضع-مفتاحا-سريا-من-اختيارك';   // مثال: TBN-sultan-2026-9f3a
   var props = PropertiesService.getScriptProperties();
-  props.setProperties({ TELEGRAM_TOKEN: TOKEN, RELAY_KEY: KEY });
+  props.setProperties({ TELEGRAM_TOKEN: token_(), RELAY_KEY: key_() });
   installTrigger();
-  Logger.log('تم حفظ الإعدادات وتشغيل الرد الآلي ✓  — الآن Deploy ← New deployment ← Web app');
+  Logger.log('تم حفظ الإعدادات وتشغيل الرد الآلي ✓ — الآن Deploy ← New deployment ← Web app');
 }
 
 function installTrigger() {
@@ -46,9 +55,8 @@ function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     var props = PropertiesService.getScriptProperties();
-    var token = props.getProperty('TELEGRAM_TOKEN');
-    var key = props.getProperty('RELAY_KEY');
-    if (!token) return out({ ok: false, error: 'لم يُضبط رمز البوت — شغّل الدالة setup' });
+    var token = token_(), key = key_();
+    if (!token) return out({ ok: false, error: 'لم يُضبط رمز البوت' });
     if (key && String(body.key || '') !== key) return out({ ok: false, error: 'مفتاح الوسيط غير صحيح' });
     if (!body.chat_id) return out({ ok: false, error: 'لا يوجد معرّف مجموعة (chat id)' });
     var r = tg(token, 'sendMessage', {
@@ -64,19 +72,19 @@ function doPost(e) {
 function doGet(e) {
   var p = (e && e.parameter) || {};
   var props = PropertiesService.getScriptProperties();
-  var key = props.getProperty('RELAY_KEY');
+  var key = key_();
   if (p.key && key && String(p.key) !== key) return out({ ok: false, error: 'مفتاح غير صحيح' });
   if (p.action === 'chats') {
     var all = JSON.parse(props.getProperty('CHATS') || '{}');
     return out({ ok: true, chats: Object.keys(all).map(function (k) { return all[k]; }) });
   }
-  return out({ ok: true, app: 'tabaani-telegram-relay', ready: !!props.getProperty('TELEGRAM_TOKEN') });
+  return out({ ok: true, app: 'tabaani-telegram-relay', ready: !!token_() });
 }
 
 /* ------------------------------------------------------- الرد الآلي (كل دقيقة) */
 function poll() {
   var props = PropertiesService.getScriptProperties();
-  var token = props.getProperty('TELEGRAM_TOKEN');
+  var token = token_();
   if (!token) return;
   var last = Number(props.getProperty('LAST_UPDATE_ID') || 0);
   var url = 'https://api.telegram.org/bot' + token + '/getUpdates?limit=50&timeout=0&offset=' + (last + 1) +
