@@ -621,6 +621,104 @@
     },
     otpClear: function () { if (db.settings) delete db.settings.otp; save(); },
 
+    /* ===================== التحقق بمرحلتين عند الدخول =====================
+       المرحلة الأولى: اسم المستخدم وكلمة المرور.
+       المرحلة الثانية: رمز من ٦ أرقام يُرسل إلى **المحادثة الشخصية** للمستخدم على تلقرام.
+       يخضع له كل موظف ربط محادثته الشخصية (ولا يخضع الطلاب).
+       ==================================================================== */
+    twoFactorConfig: function () {
+      var t = (db.settings && db.settings.twoFactor) || {};
+      var n = function (v, d) { var x = parseInt(v, 10); return (x && x > 0) ? x : d; };
+      return {
+        enabled: t.enabled !== false,     /* مفعّل افتراضيًا */
+        enforce: !!t.enforce,             /* إلزام كل الموظفين حتى بلا محادثة مربوطة */
+        ttl: n(t.ttl, 5),                 /* دقائق صلاحية الرمز */
+        attempts: n(t.attempts, 5)        /* أقصى عدد محاولات */
+      };
+    },
+    saveTwoFactorConfig: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.twoFactor = Object.assign({}, store.twoFactorConfig(), patch || {});
+      save(); return store.twoFactorConfig();
+    },
+    /** هل يخضع هذا المستخدم للتحقق بمرحلتين؟ وما حالته؟ */
+    twoFactorFor: function (userId) {
+      var u = (userId && typeof userId === 'object') ? userId : store.user(userId);
+      if (!u) return { applies: false, blocked: false, reason: 'مستخدم غير معروف' };
+      if (u.role === 'student') return { applies: false, blocked: false, reason: 'الطلاب لا يخضعون للتحقق بمرحلتين' };
+      var c = store.twoFactorConfig();
+      if (!c.enabled) return { applies: false, blocked: false, reason: 'التحقق بمرحلتين مُعطَّل من الإعدادات' };
+      var chat = String(u.telegramChatId || '').trim();
+      if (chat) return { applies: true, blocked: false, chat: chat };
+      if (c.enforce) {
+        return { applies: false, blocked: true,
+          reason: 'حسابك يتطلّب تحقّقًا بمرحلتين، ولم تُربط محادثة تلقرام خاصة بعد — راجع مدير المدرسة.' };
+      }
+      return { applies: false, blocked: false, reason: 'لا توجد محادثة تلقرام شخصية مربوطة بهذا الحساب' };
+    },
+    loginOtpPending: function () { return (db.settings && db.settings.login2fa) || null; },
+    loginOtpClear: function () { if (db.settings) delete db.settings.login2fa; save(); },
+    /** يُنشئ رمز دخول ويرسله إلى المحادثة الشخصية للمستخدم (+ قيد في سجل تلقرام) */
+    loginOtpSend: function (userId) {
+      var u = store.user(userId);
+      if (!u) return Promise.resolve({ ok: false, error: 'مستخدم غير معروف' });
+      var chat = String(u.telegramChatId || '').trim();
+      if (!chat) return Promise.resolve({ ok: false, error: 'لا توجد محادثة تلقرام شخصية مربوطة بهذا الحساب' });
+      var c = store.twoFactorConfig();
+      var code = String(Math.floor(100000 + Math.random() * 900000));
+      var text = '\uD83D\uDD10 رمز الدخول — منصة تابعني\n' +
+        'الرمز: ' + code + '\n' +
+        'صالح ' + c.ttl + ' دقائق — لا تشاركه مع أحد.\n' +
+        (u.name ? 'الحساب: ' + u.name + ' (' + store.roleLabel(u.role) + ')' : '');
+      var rec = {
+        userId: u.id, code: code, at: now(),
+        expires: new Date(Date.now() + c.ttl * 60000).toISOString(),
+        attempts: 0, max: c.attempts, channel: 'telegram',
+        sentTo: chat, delivered: false, error: ''
+      };
+      if (!db.settings) db.settings = {};
+      db.settings.login2fa = rec;
+      var log = {
+        id: uid('tg'), to: u.role, toName: u.name, chat: chat, private: true,
+        schoolId: u.schoolId || store.session.schoolId, text: text, at: now(),
+        status: 'queued', via: 'queued', error: ''
+      };
+      db.telegram.unshift(log);
+      if (db.telegram.length > 200) db.telegram.length = 200;
+      save();
+      /* الإرسال الفعلي غير مُفعّل ⇒ يُعرض الرمز للمعاينة (كما في تدفقات النموذج الأخرى) */
+      if (!store.telegramSendable()) {
+        rec.error = 'الإرسال الفعلي إلى تلقرام غير مُفعّل (وضع المحاكاة)';
+        log.error = rec.error;
+        save();
+        return Promise.resolve({ ok: false, error: rec.error, sentTo: chat, simCode: code });
+      }
+      return store.telegramSendTo(chat, text).then(function (r) {
+        rec.delivered = !!r.ok;
+        rec.error = r.ok ? '' : (r.detail || '');
+        log.status = r.ok ? 'sent' : 'failed';
+        log.via = store.telegramConfig().mode;
+        log.error = rec.error; log.sentAt = now();
+        save();
+        return { ok: !!r.ok, error: rec.error, sentTo: chat, simCode: r.ok ? null : code };
+      });
+    },
+    /** يتحقق من رمز الدخول: يخصّ نفس المستخدم · ساري · ضمن المحاولات · يُستهلك مرة واحدة */
+    loginOtpVerify: function (userId, code) {
+      var rec = (db.settings && db.settings.login2fa) || null;
+      if (!rec) return { ok: false, error: 'لا يوجد رمز مُرسل — اطلب رمزًا جديدًا' };
+      if (rec.userId !== userId) return { ok: false, error: 'الرمز لا يخصّ هذا الحساب — اطلب رمزًا جديدًا' };
+      if (new Date(rec.expires).getTime() < Date.now()) return { ok: false, error: 'انتهت صلاحية الرمز — اطلب رمزًا جديدًا' };
+      rec.attempts = (rec.attempts || 0) + 1;
+      if (rec.attempts > (rec.max || 5)) return { ok: false, error: 'محاولات كثيرة — اطلب رمزًا جديدًا' };
+      if (String(code || '').trim() !== String(rec.code)) {
+        save();
+        return { ok: false, error: 'الرمز غير صحيح (' + rec.attempts + '/' + (rec.max || 5) + ')' };
+      }
+      store.loginOtpClear();
+      return { ok: true };
+    },
+
     /** قيمة آمنة للعرض في الرسائل: لا تُظهر undefined أبدًا */
     safe: function (x, dflt) {
       if (x === undefined || x === null || x === '' || (typeof x === 'number' && isNaN(x))) return dflt === undefined ? '—' : dflt;
@@ -1017,7 +1115,11 @@
       return { ok: true };
     },
 
-    logout: function () { store.session = { userId: null, role: null, schoolId: null, name: '' }; try { sessionStorage.removeItem('tabaani-session'); } catch (e) {} },
+    logout: function () {
+      store.session = { userId: null, role: null, schoolId: null, name: '' };
+      try { sessionStorage.removeItem('tabaani-session'); } catch (e) {}
+      store.loginOtpClear();   /* لا يبقى رمز دخول معلّق بعد الخروج */
+    },
 
     /* ------------------------------------------------ جدول الحصص والإغلاق */
     periodsOf: function (schoolId) { return store.list('periods', { schoolId: schoolId }).sort(function (a, b) { return a.index - b.index; }); },

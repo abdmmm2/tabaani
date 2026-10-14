@@ -170,6 +170,11 @@ async function main() {
 
       report.push({ role: role, modules: info.shown.length + '/' + info.accessible.length, note: errs.length ? errs.length + ' خطأ' : 'سليم' });
     }
+
+    /* --------------------------- التحقق بمرحلتين (2FA) --------------------------- */
+    const tfRes = await twoFactorSuite(page, site.url);
+    tfRes.forEach((r) => check(r.ok, r.m, r.d));
+    report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
   } finally {
     if (page) page.close();
     chrome.close();
@@ -178,9 +183,9 @@ async function main() {
 
   /* --------------------------------- التقرير --------------------------------- */
   console.log('\n══ فحص الأدوار والعزل (roles-e2e) ══\n');
-  const w = Math.max(...report.map((r) => (ROLE_NAME[r.role] || r.role).length), 14);
+  const w = Math.max(...report.map((r) => (r.label || ROLE_NAME[r.role] || r.role).length), 14);
   report.forEach((r) => {
-    const name = (ROLE_NAME[r.role] || r.role).padEnd(w, ' ');
+    const name = (r.label || ROLE_NAME[r.role] || r.role).padEnd(w, ' ');
     console.log('  ' + (r.note === 'سليم' ? '✓' : '✗') + '  ' + name + '  وحدات: ' + String(r.modules).padEnd(6) + ' ' + r.note);
   });
   console.log('\n  الأدوار المفحوصة: ' + report.length + ' · أخطاء: ' + fails.length);
@@ -210,4 +215,75 @@ async function ensureLoggedOut(page) {
     'if (b) b.click(); return true;'
   );
   await B.sleep(300);
+}
+
+/** فحص التحقق بمرحلتين: من أين تُطلب المرحلة الثانية ومتى تُحجب */
+async function twoFactorSuite(page, base) {
+  const res = [];
+  const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
+  const shellOn = () => page.eval('return !!document.querySelector(".side-nav a[data-mod]");');
+  const tfOn = () => page.eval('return !!document.querySelector("[name=otpCode]");');
+
+  async function loginAs(u, pw) {
+    /* تنقّل جديد دائمًا: يضمن الوصول لشاشة الدخول سواء كنّا في المنصة أو على شاشة التحقق */
+    await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
+    await B.goto(page, base + '/index.html', '!!window.Store');
+    await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
+    await page.eval(
+      'document.querySelector("[name=username]").value=' + JSON.stringify(u) + ';' +
+      'document.querySelector("[name=password]").value=' + JSON.stringify(pw) + ';' +
+      'document.querySelector("form button[type=submit]").click(); return true;');
+    await B.sleep(700);
+  }
+  const typeCode = (c) => page.eval(
+    'document.querySelector("[name=otpCode]").value=' + JSON.stringify(c) + ';' +
+    'document.querySelector("form button[type=submit]").click(); return true;');
+
+  const acc = await page.eval(
+    'var t = Store.list("users").filter(function (u) { return u.role === "teacher" && u.username; })[0];' +
+    'return { id: t.id, uname: t.username, pw: t.password };');
+
+  /* موظف بلا محادثة: لا مرحلة ثانية */
+  await page.eval('Store.saveTwoFactorConfig({ enabled: true, enforce: false });' +
+    'Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
+  await loginAs(acc.uname, acc.pw);
+  ok(await shellOn(page) && !(await tfOn(page)), '2FA: موظف بلا محادثة يدخل بكلمة المرور فقط');
+
+  /* بعد ربط المحادثة: تُطلب المرحلة الثانية */
+  await page.eval('Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', "555000111"); return true;');
+  await loginAs(acc.uname, acc.pw);
+  ok(await tfOn(page) && !(await shellOn(page)), '2FA: بعد ربط المحادثة تُطلب مرحلة ثانية قبل الدخول');
+
+  /* رمز خاطئ يُرفض، ثم الصحيح يمنح الدخول، ثم لا يُعاد استعماله */
+  const code = await page.eval('return (Store.loginOtpPending() || {}).code;');
+  await typeCode('000000');
+  await B.sleep(350);
+  ok(!(await shellOn(page)), '2FA: الرمز الخاطئ لا يمنح الدخول');
+  await typeCode(code);
+  await B.sleep(550);
+  ok(await shellOn(page), '2FA: الرمز الصحيح يمنح الدخول');
+  ok(!(await page.eval('return !!Store.loginOtpPending();')), '2FA: الرمز يُستهلك بعد استخدام واحد');
+
+  /* الرمز المنتهي لا يُقبل */
+  await loginAs(acc.uname, acc.pw);
+  await page.eval('var r = Store.loginOtpPending(); r.expires = new Date(Date.now() - 60000).toISOString(); Store.save(); return true;');
+  const c2 = await page.eval('return (Store.loginOtpPending() || {}).code;');
+  await typeCode(c2);
+  await B.sleep(350);
+  ok(!(await shellOn(page)), '2FA: الرمز المنتهي لا يمنح الدخول');
+
+  /* وضع الإلزام يحجب من لا محادثة له */
+  await page.eval('Store.saveTwoFactorConfig({ enforce: true }); Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
+  await loginAs(acc.uname, acc.pw);
+  ok(!(await shellOn(page)) && !(await tfOn(page)), '2FA: الإلزام يمنع دخول موظف بلا محادثة');
+
+  /* الطالب لا يخضع للتحقق */
+  const stu = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "student" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password };');
+  await loginAs(stu.uname, stu.pw);
+  ok(await shellOn(page), '2FA: الطالب يدخل بلا مرحلة ثانية');
+
+  /* إرجاع الإعدادات الافتراضية */
+  await page.eval('Store.saveTwoFactorConfig({ enabled: true, enforce: false }); return true;');
+  return res;
 }

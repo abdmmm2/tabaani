@@ -257,6 +257,68 @@
         h('p', { class: 'muted mt-3', text: 'ملاحظة: النموذج الحالي يُسجّل الرسائل بدل الإرسال حتى يربطها الخادم بالتوكن عبر متغيّر بيئة؛ استبدل <TOKEN> و<CHAT_ID> بالقيم الفعلية عند الاختبار.' })
       ]));
 
+      /* ------------------------------------------- التحقق بمرحلتين (2FA) */
+      var tfSlot = h('div');
+
+      function drawTwoFactor() {
+        clear(tfSlot);
+        var c = S.twoFactorConfig();
+        var staff = S.list('users').filter(function (u) { return u.role !== 'student' && u.status === 'active'; });
+        var linked = staff.filter(function (u) { return String(u.telegramChatId || '').trim(); });
+        var unlinked = staff.filter(function (u) { return !String(u.telegramChatId || '').trim(); });
+
+        function toggle(label, checked, onChange, help) {
+          var cb = h('input', { type: 'checkbox', checked: !!checked });
+          cb.addEventListener('change', function () { onChange(cb.checked); drawTwoFactor(); });
+          return h('label', { class: 'checkline' }, [cb, h('span', { text: label }),
+            help ? h('span', { class: 'muted', text: ' — ' + help }) : null]);
+        }
+        function numField(label, key, value, min, max, help) {
+          var f = UI.field({ name: key, label: label, type: 'number', value: value, min: min,
+            half: true, help: help, onChange: function () {
+              var v = parseInt(f.input.value, 10);
+              if (!v || v < min || v > max) { f.input.value = S.twoFactorConfig()[key]; return; }
+              S.saveTwoFactorConfig((function () { var o = {}; o[key] = v; return o; })());
+              UI.toast('حُفظ الإعداد', 'ok');
+            } });
+          return f;
+        }
+
+        var ttl = numField('صلاحية الرمز (دقائق)', 'ttl', c.ttl, 1, 60, 'يُرفض الرمز بعد انتهائها.');
+        var att = numField('أقصى عدد محاولات', 'attempts', c.attempts, 1, 10, 'ثم يلزم رمز جديد.');
+
+        tfSlot.appendChild(UI.panel('التحقق بمرحلتين عند الدخول',
+          'كلمة المرور أوّلًا، ثم رمز من ٦ أرقام يُرسل إلى محادثة الموظف الشخصية على تلقرام.', null, [
+          h('div', { class: 'stat-row' }, [
+            UI.statCard('موظفون نشطون', String(staff.length)),
+            UI.statCard('لديهم محادثة مربوطة', String(linked.length), 'سيُلزمون بالرمز', linked.length ? 'gold' : null),
+            UI.statCard('بلا محادثة', String(unlinked.length), c.enforce ? 'لا يستطيعون الدخول' : 'يدخلون بكلمة المرور فقط')
+          ]),
+          h('div', { class: 'stack-sm', style: { marginTop: '12px' } }, [
+            toggle('تشغيل التحقق بمرحلتين', c.enabled, function (v) {
+              S.saveTwoFactorConfig({ enabled: v });
+              UI.toast(v ? 'فُعّل التحقق بمرحلتين' : 'أُوقف التحقق بمرحلتين', v ? 'ok' : 'warn');
+            }, 'يُطبَّق على من ربط محادثته الشخصية'),
+            toggle('إلزام كل الموظفين', c.enforce, function (v) {
+              S.saveTwoFactorConfig({ enforce: v });
+              UI.toast(v ? 'صار التحقق إلزاميًا لكل الموظفين' : 'صار التحقق اختياريًا لمن ربط محادثته', v ? 'warn' : 'ok');
+            }, 'يمنع دخول من لم يربط محادثة — احرص على ربط المدير لنفسه أولًا')
+          ]),
+          h('div', { class: 'form-grid', style: { marginTop: '10px' } }, [ttl.wrap, att.wrap]),
+          h('div', { class: 'callout', style: { marginTop: '10px' } }, [
+            h('strong', { text: 'لتفعيل التحقق لكل موظف: ' }),
+            h('span', { text: 'اربط محادثته الشخصية (chat_id). يُضبط من «الموظفون والحسابات» عند مدير المدرسة، أو من «الرسائل الخاصة ← ربط تلقرام» عند الموظف نفسه.' }),
+            unlinked.length ? h('div', { class: 'muted', style: { marginTop: '6px' },
+              text: 'بلا محادثة حتى الآن (' + unlinked.length + '): ' + unlinked.slice(0, 6).map(function (u) { return u.name; }).join('، ') + (unlinked.length > 6 ? '…' : '') }) : null
+          ]),
+          h('p', { class: 'muted mt-3', style: { fontSize: 'var(--fs-xs)' },
+            text: 'الرمز يُستهلك مرة واحدة، وينتهي بعد المدة أعلاه، ويُقطع بعد المحاولات المحدّدة. ولا يخضع الطلاب لهذه المرحلة. وكل رمز يُقيَّد في «سجل تلقرام» موسومًا بـ«خاصة».' })
+        ]));
+      }
+
+      view.appendChild(tfSlot);
+      drawTwoFactor();
+
       /* ------------------------------------------------------- أول رسم */
       drawUsers();
       refresh();

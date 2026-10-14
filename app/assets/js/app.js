@@ -270,9 +270,16 @@
         e.preventDefault();
         var res = S.authenticate(user.input.value, pass.input.value);
         if (!res.ok) { err.hidden = false; err.textContent = res.error; return; }
+        /* المرحلة الأولى نجحت ← قد يُطلب رمز التحقق بمرحلتين */
+        var tf = S.twoFactorFor(res.user);
+        if (tf.blocked) { err.hidden = false; err.textContent = tf.reason; return; }
         err.hidden = true;
-        App.enter(res.user.id);
-        if (res.user.mustChange) App.firstLoginPassword(res.user);
+        function afterAuth() {
+          App.enter(res.user.id);
+          if (res.user.mustChange) App.firstLoginPassword(res.user);
+        }
+        if (tf.applies) { App.twoFactorScreen(res.user, afterAuth); return; }
+        afterAuth();
       } }, [
         user.wrap, pass.wrap, err,
         h('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit', text: 'تسجيل الدخول' }),
@@ -294,6 +301,70 @@
         h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'أدوات البيانات (إعادة بيانات العرض · البدء من الصفر · النسخة الاحتياطية) صارت داخل المنصة: حساب المشرف العام ← «بيانات المنصة».' })
       ]);
       App.authShell('الدخول إلى المنصة', 'سجّل دخولك لمتابعة خدماتك بحسب دورك.', box);
+    },
+
+    /** المرحلة الثانية: التحقق برمز يُرسل إلى تلقرام المستخدم الخاص */
+    twoFactorScreen: function (user, onDone) {
+      var ttl = S.twoFactorConfig().ttl;
+      var status = h('div', { class: 'muted-block', text: 'يُرسل رمز التحقق إلى محادثتك الخاصة على تلقرام…' });
+      var codeF = UI.field({
+        name: 'otpCode', label: 'رمز التحقق (٦ أرقام)', required: true, dir: 'ltr',
+        placeholder: '______', autocomplete: 'one-time-code'
+      });
+      var err = h('p', { class: 'hint hint-error', hidden: true });
+      var resend = h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إعادة إرسال الرمز',
+        onClick: function () { send(true); } });
+
+      function mask(v) { return String(v || '').replace(/.(?=.{4})/g, '•'); }
+
+      function send(isResend) {
+        resend.disabled = true;
+        setTimeout(function () { resend.disabled = false; }, 30000);
+        status.textContent = 'يُرسل…';
+        S.loginOtpSend(user.id).then(function (r) {
+          clear(status);
+          var to = r.sentTo ? ' (' + mask(r.sentTo) + ')' : '';
+          if (r.ok) {
+            status.appendChild(h('div', { class: 'callout tip', style: { marginTop: '0' } }, [
+              h('strong', { text: (isResend ? 'أُعيد إرسال الرمز ' : 'أُرسل الرمز ') + '✓ ' }),
+              h('span', { text: 'إلى محادثتك الخاصة على تلقرام' + to + ' — صالح ' + ttl + ' دقائق.' })
+            ]));
+          } else {
+            status.appendChild(h('div', { class: 'callout', style: { marginTop: '0', borderInlineStartColor: 'var(--amber-500)' } }, [
+              h('strong', { text: 'تعذّر الإرسال فعليًا: ' }),
+              h('span', { text: r.error || 'خطأ غير معروف' }),
+              r.simCode ? h('div', { style: { marginTop: '6px' } }, [
+                h('span', { text: 'رمز المعاينة (يظهر لأن الإرسال غير مُفعّل — في الإنتاج يُرسل لتلقرام فقط): ' }),
+                h('code', { text: r.simCode })
+              ]) : null
+            ]));
+          }
+        });
+      }
+
+      var form = h('form', { class: 'stack', onsubmit: function (e) {
+        e.preventDefault();
+        var v = S.loginOtpVerify(user.id, codeF.input.value);
+        if (!v.ok) { err.hidden = false; err.textContent = v.error; return; }
+        err.hidden = true;
+        UI.toast('تم التحقق ✓', 'ok');
+        onDone();
+      } }, [
+        h('div', { class: 'muted-block', style: { marginBottom: '12px' } }, [
+          h('strong', { text: 'مرحلة ثانية مطلوبة ' }),
+          h('span', { text: '— أدخل الرمز المُرسل إلى حساب ' + (user.name || '') + ' على تلقرام.' })
+        ]),
+        status, codeF.wrap, err,
+        h('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit', text: 'تحقق ودخول' }),
+        h('div', { class: 'between' }, [
+          resend,
+          h('button', { class: 'btn-link', type: 'button', text: 'رجوع لتسجيل الدخول',
+            onClick: function () { S.loginOtpClear(); App.login(); } })
+        ])
+      ]);
+
+      App.authShell('التحقق بمرحلتين', 'خطوة أمان إضافية لحماية حسابك.', h('div', { class: 'stack' }, [form]));
+      send(false);
     },
 
     /** شاشة تسجيل حساب جديد */
