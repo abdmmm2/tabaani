@@ -298,6 +298,10 @@
           h('code', { text: 'Tabaani@2026' }),
           h('span', { text: ' — ثم أنشئ بقية الحسابات أو دع الموظفين يسجّلون من «إنشاء حساب جديد».' })
         ]),
+        h('div', { class: 'muted-block' }, [
+          h('strong', { text: 'التحقق بمرحلتين: ' }),
+          h('span', { text: 'حسابات الموظفين تطلب رمزًا بعد كلمة المرور يُرسل إلى محادثة تلقرام الخاصة. وفي بيانات العرض يظهر الرمز على الشاشة كـ«رمز معاينة» لأن الإرسال الفعلي غير مُفعّل.' })
+        ]),
         h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'أدوات البيانات (إعادة بيانات العرض · البدء من الصفر · النسخة الاحتياطية) صارت داخل المنصة: حساب المشرف العام ← «بيانات المنصة».' })
       ]);
       App.authShell('الدخول إلى المنصة', 'سجّل دخولك لمتابعة خدماتك بحسب دورك.', box);
@@ -753,7 +757,12 @@
         stats('المناطق التعليمية', S.regions.length);
         stats('المدن المتاحة', S.regions.reduce(function (a, r) { return a + r.cities.length; }, 0));
         stats('إجمالي المستخدمين', S.list('users').length, null, 'gold');
+        var stAll = S.studentAccountStats();
+        stats('حسابات الطلاب', String(stAll.total),
+          stAll.total ? (stAll.suspended ? stAll.suspended + ' موقوفة من الدخول' : 'كلها نشطة') : 'لا حسابات',
+          stAll.suspended ? 'gold' : null);
         action('إضافة مدرسة', 'schools', 'btn-primary');
+        action(stAll.suspended ? 'حسابات الطلاب: تفعيل الدخول' : 'حسابات الطلاب: إيقاف الدخول', 'users');
       }
       if (role === 'principal') {
         var teachersN = S.usersByRole('teacher', schoolId).length;

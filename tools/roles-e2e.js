@@ -91,6 +91,7 @@ async function main() {
       );
       void logged;
 
+      await completeOtp(page);   /* كل الحسابات عدا الطلاب: كلمة المرور + رمز */
       let entered = true;
       try { await B.waitFor(page, '!!document.querySelector(".side-nav a[data-mod]")', 8000); }
       catch (e) { entered = false; }
@@ -175,6 +176,11 @@ async function main() {
     const tfRes = await twoFactorSuite(page, site.url);
     tfRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
+
+    /* ------------------ إيقاف/تفعيل حسابات الطلاب (لوحة المشرف العام) ------------------ */
+    const stRes = await studentCtlSuite(page, site.url);
+    stRes.forEach((r) => check(r.ok, r.m, r.d));
+    report.push({ role: 'studentCtl', modules: String(stRes.filter((r) => r.ok).length) + '/' + stRes.length, note: stRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'حسابات الطلاب (عام)' });
   } finally {
     if (page) page.close();
     chrome.close();
@@ -206,6 +212,20 @@ main().catch((e) => {
 });
 
 /* ------------------------------------------------------------------- مساعدات */
+/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة المنصة في بيانات العرض) */
+async function completeOtp(page) {
+  await B.sleep(450);
+  const onOtp = await page.eval('return !!document.querySelector("[name=otpCode]");').catch(() => false);
+  if (!onOtp) return false;
+  const code = await page.eval('return (Store.loginOtpPending() || {}).code;');
+  if (!code) return false;
+  await page.eval(
+    'document.querySelector("[name=otpCode]").value=' + JSON.stringify(code) + ';' +
+    'document.querySelector("form button[type=submit]").click(); return true;');
+  await B.sleep(500);
+  return true;
+}
+
 async function ensureLoggedOut(page) {
   const inShell = await page.eval('return !!document.querySelector(".side-nav");').catch(() => false);
   if (!inShell) return;
@@ -215,6 +235,49 @@ async function ensureLoggedOut(page) {
     'if (b) b.click(); return true;'
   );
   await B.sleep(300);
+}
+
+/** فحص إيقاف/تفعيل كل حسابات الطلاب من لوحة المشرف العام */
+async function studentCtlSuite(page, base) {
+  const res = [];
+  const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
+  const shellOn = () => page.eval('return !!document.querySelector(".side-nav a[data-mod]");');
+  const sup = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "super" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password };');
+  const stu = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "student" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password };');
+
+  /* إيقاف الكل */
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  ok(await shellOn(), 'حسابات الطلاب: المشرف العام يدخل (لا يُحجب)');
+  const before = await page.eval('return Store.studentAccountStats();');
+  const r1 = await page.eval('return Store.setStudentAccounts("suspend", {});');
+  ok(r1.ok && r1.changed === before.active, 'حسابات الطلاب: «إيقاف كل الطلاب» يوقف النشط كله', r1.changed + '/' + r1.total);
+
+  /* الطالب يُمنع */
+  await loginAsRaw(page, base, stu.uname, stu.pw);
+  ok(!(await shellOn()), 'حسابات الطلاب: الطالب الموقوف لا يدخل');
+
+  /* تفعيل الكل */
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  const r2 = await page.eval('return Store.setStudentAccounts("activate", {});');
+  ok(r2.ok && r2.changed === before.total, 'حسابات الطلاب: «تفعيل كل الطلاب» يُعيدهم', r2.changed + '/' + r2.total);
+  await loginAsRaw(page, base, stu.uname, stu.pw);
+  ok(await shellOn(), 'حسابات الطلاب: الطالب يعود للدخول بعد التفعيل');
+  return res;
+}
+
+/** دخول مباشر (بلا خطوات إضافية) */
+async function loginAsRaw(page, base, u, pw) {
+  await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
+  await B.goto(page, base + '/index.html', '!!window.Store');
+  await B.waitFor(page, '!!document.querySelector("form [name=username]")', 10000);
+  await page.eval(
+    'document.querySelector("[name=username]").value=' + JSON.stringify(u) + ';' +
+    'document.querySelector("[name=password]").value=' + JSON.stringify(pw) + ';' +
+    'document.querySelector("form button[type=submit]").click(); return true;');
+  await B.sleep(650);
+  await completeOtp(page);
 }
 
 /** فحص التحقق بمرحلتين: من أين تُطلب المرحلة الثانية ومتى تُحجب */

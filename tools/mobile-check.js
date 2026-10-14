@@ -91,6 +91,7 @@ async function main() {
         'document.querySelector("[name=password]").value = ' + JSON.stringify(acc.p) + ';' +
         'var b = document.querySelector("form button[type=submit]"); if (b) b.click(); return true;'
       );
+      await completeOtp(page);
       let ok = true;
       try { await B.waitFor(page, '!!document.querySelector(".side-nav a[data-mod]")', 8000); }
       catch (e) { ok = false; }
@@ -183,4 +184,18 @@ async function ensureLoggedOut(page) {
     '  return x.textContent.trim() === "خروج"; })[0]; if (b) b.click(); return true;'
   );
   await B.sleep(300);
+}
+
+/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة المنصة في بيانات العرض) */
+async function completeOtp(page) {
+  await B.sleep(450);
+  const onOtp = await page.eval('return !!document.querySelector("[name=otpCode]");').catch(() => false);
+  if (!onOtp) return false;
+  const code = await page.eval('return (Store.loginOtpPending() || {}).code;');
+  if (!code) return false;
+  await page.eval(
+    'document.querySelector("[name=otpCode]").value=' + JSON.stringify(code) + ';' +
+    'document.querySelector("form button[type=submit]").click(); return true;');
+  await B.sleep(500);
+  return true;
 }

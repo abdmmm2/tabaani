@@ -137,6 +137,8 @@
         id: 'u-' + role + '-' + i, schoolId: school.id, role: role, name: name,
         nationalId: nationalId(i + role.length), phone: phone(i + 3 * role.length),
         email: role + i + '@sultan.edu.sa', status: 'active', telegram: phone(i + 3 * role.length),
+        /* محادثة تلقرام تجريبية (حتى يعمل التحقق بمرحلتين في العرض) — تُستبدل بالمعرّف الحقيقي عند التسليم */
+        telegramChatId: String(500000000 + i * 1371 + role.length * 1013),
         createdAt: now(), canLogin: true
       };
       db.users.push(u); return u;
@@ -219,6 +221,7 @@
       id: 'u-guard-1', schoolId: school.id, role: 'guard', name: 'فهد بن سالم الحربي',
       username: 'guard', password: DEFAULT_PASS,
       email: 'guard@tabaani.com', phone: '+966500001234', telegram: '+966500001234',
+      telegramChatId: String(700000000 + 4321),
       status: 'active', createdAt: now(), canLogin: true
     });
 
@@ -630,8 +633,8 @@
       var t = (db.settings && db.settings.twoFactor) || {};
       var n = function (v, d) { var x = parseInt(v, 10); return (x && x > 0) ? x : d; };
       return {
-        enabled: t.enabled !== false,     /* مفعّل افتراضيًا */
-        enforce: !!t.enforce,             /* إلزام كل الموظفين حتى بلا محادثة مربوطة */
+        enabled: t.enabled !== false,     /* مفعّل */
+        enforce: t.enforce !== false,     /* إلزام كل الموظفين افتراضيًا (كل الحسابات عدا الطلاب) */
         ttl: n(t.ttl, 5),                 /* دقائق صلاحية الرمز */
         attempts: n(t.attempts, 5)        /* أقصى عدد محاولات */
       };
@@ -651,6 +654,10 @@
       var chat = String(u.telegramChatId || '').trim();
       if (chat) return { applies: true, blocked: false, chat: chat };
       if (c.enforce) {
+        /* بوتقة أمان: لا يُحجب المشرف العام أبدًا — وإلا تعذّر إصلاح المنصة */
+        if (u.role === 'super' || u.owner) {
+          return { applies: false, blocked: false, reason: 'حساب المشرف العام — لا يُحجب (مسار الاسترجاع)' };
+        }
         return { applies: false, blocked: true,
           reason: 'حسابك يتطلّب تحقّقًا بمرحلتين، ولم تُربط محادثة تلقرام خاصة بعد — راجع مدير المدرسة.' };
       }
@@ -1072,17 +1079,39 @@
           studentName: st.name || u.name
         });
       }).filter(function (u) {
+        if (opts.schoolId && u.schoolId !== opts.schoolId) return false;
         if (opts.classId && u.classId !== opts.classId) return false;
         if (opts.status && u.status !== opts.status) return false;
         return true;
       }).sort(function (a, b) { return String(a.className).localeCompare(String(b.className)) || a.name.localeCompare(b.name); });
     },
-    /** إيقاف/تفعيل حسابات الطلاب — جماعيًا (لكل المدرسة أو لصف) أو لمجموعة محدّدة */
+    /** إحصاء حسابات الطلاب على مستوى المنصّة (لكل المدارس) + تفصيل لكل مدرسة */
+    studentAccountStats: function (schoolId) {
+      var all = store.studentAccounts(schoolId ? { schoolId: schoolId } : {});
+      var count = function (st) { return all.filter(function (u) { return u.status === st; }).length; };
+      var bySchool = store.list('schools').map(function (sc) {
+        var rows = all.filter(function (u) { return u.schoolId === sc.id; });
+        return {
+          schoolId: sc.id, name: sc.name, total: rows.length,
+          active: rows.filter(function (u) { return u.status === 'active'; }).length,
+          suspended: rows.filter(function (u) { return u.status === 'suspended'; }).length,
+          pending: rows.filter(function (u) { return u.status === 'pending'; }).length
+        };
+      });
+      var homeless = all.filter(function (u) { return !u.schoolId; }).length;
+      return {
+        scope: schoolId ? 'school' : 'platform',
+        total: all.length, active: count('active'), suspended: count('suspended'), pending: count('pending'),
+        bySchool: bySchool, withoutSchool: homeless
+      };
+    },
+    /** إيقاف/تفعيل حسابات الطلاب — جماعيًا (لوحة المشرف العام: كل المنصة أو مدرسة محدّدة · أو لصف) */
     setStudentAccounts: function (action, opts) {
       opts = opts || {};
       var targets = opts.ids && opts.ids.length
         ? store.list('users').filter(function (u) { return u.role === 'student' && opts.ids.indexOf(u.id) > -1; })
-        : store.studentAccounts({ classId: opts.classId }).map(function (a) { return store.user(a.id); }).filter(Boolean);
+        : store.studentAccounts({ classId: opts.classId, schoolId: opts.schoolId })
+            .map(function (a) { return store.user(a.id); }).filter(Boolean);
       var activate = action === 'activate';
       var changed = 0;
       targets.forEach(function (u) {
@@ -1095,13 +1124,21 @@
         }
       });
       save();
+      var sc = opts.schoolId ? (store.school(opts.schoolId) || {}) : null;
+      var scopeLabel = opts.classId ? ('الصف: ' + ((store.klass(opts.classId) || {}).name || ''))
+        : (sc ? ('مدرسة: ' + (sc.name || '')) : 'كل مدارس المنصّة');
       store.notify({
         kind: 'account',
         title: (activate ? 'تفعيل ' : 'إيقاف ') + changed + ' حساب طالب',
-        body: (opts.classId ? ('الصف: ' + ((store.klass(opts.classId) || {}).name || '')) : 'كل المدرسة'),
-        to: ['principal', 'deputy']
+        body: scopeLabel,
+        to: ['principal', 'deputy', 'super']
       });
-      return { ok: true, action: action, changed: changed, total: targets.length };
+      (db.audit = db.audit || []).unshift({
+        id: uid('au'), at: now(), action: activate ? 'students_activated' : 'students_suspended',
+        by: store.session.name || '', text: (activate ? 'تفعيل ' : 'إيقاف ') + changed + ' حساب طالب — ' + scopeLabel
+      });
+      save();
+      return { ok: true, action: action, changed: changed, total: targets.length, scope: scopeLabel };
     },
 
     /** تغيير كلمة المرور من داخل الحساب */

@@ -137,6 +137,77 @@
       }
 
       /* --------------------------------- الرسم --------------------------------- */
+      /* ============ التحكم العام بحسابات الطلاب (إيقاف/تفعيل كل الطلاب) ============ */
+      var studentsCtlSlot = h('div');
+
+      function drawStudentsCtl() {
+        clear(studentsCtlSlot);
+        var st = S.studentAccountStats();
+
+        function run(action, opts, label) {
+          opts = opts || {};
+          UI.confirm((action === 'activate' ? 'تفعيل' : 'إيقاف') + ' ' + label + '؟',
+            { ok: action === 'activate' ? 'تفعيل الكل' : 'إيقاف الكل', danger: action !== 'activate' })
+            .then(function (yes) {
+              if (!yes) return;
+              var r = S.setStudentAccounts(action, opts);
+              UI.toast((action === 'activate' ? 'فُعّل ' : 'أُوقف ') + r.changed + ' من ' + r.total + ' حسابًا', r.changed ? 'ok' : 'warn');
+              drawStudentsCtl();
+            });
+        }
+
+        var allOff = st.total > 0 && st.active === 0;
+        var kidsWord = S.isGirls() ? 'الطالبات' : 'الطلاب';
+
+        var schoolRows = st.bySchool.filter(function (s) { return s.total > 0; }).map(function (s) {
+          return h('tr', {}, [
+            h('td', {}, [h('strong', { style: { fontWeight: '500' }, text: s.name })]),
+            h('td', { text: String(s.total) }),
+            h('td', {}, [UI.badge(String(s.active), s.active ? 'mint' : 'ink')]),
+            h('td', {}, [UI.badge(String(s.suspended), s.suspended ? 'amber' : 'ink')]),
+            h('td', {}, [
+              h('button', { class: 'mini-btn is-primary', type: 'button', text: 'تفعيل المدرسة',
+                onClick: function () { run('activate', { schoolId: s.schoolId }, 'كل ' + kidsWord + ' في ' + s.name); } }),
+              h('button', { class: 'mini-btn', type: 'button', text: 'إيقاف المدرسة',
+                onClick: function () { run('suspend', { schoolId: s.schoolId }, 'كل ' + kidsWord + ' في ' + s.name); } })
+            ])
+          ]);
+        });
+
+        studentsCtlSlot.appendChild(UI.panel(
+          'حسابات الطلاب — التحكم العام',
+          'إيقاف/تفعيل دخول ' + kidsWord + ' إلى المنصة لكل مدارس المنصّة بضغطة واحدة.', [
+            h('button', { class: 'btn btn-primary', type: 'button', text: allOff ? 'تفعيل كل ' + kidsWord : 'إيقاف كل ' + kidsWord + ' (المنصة كلها)',
+              onClick: function () { run(allOff ? 'activate' : 'suspend', {}, 'كل ' + kidsWord + ' في كل المدارس'); } }),
+            h('button', { class: 'btn btn-outline', type: 'button', text: 'تفعيل الكل',
+              onClick: function () { run('activate', {}, 'كل ' + kidsWord + ' في كل المدارس'); } }),
+            h('button', { class: 'btn btn-soft', type: 'button', text: 'تصدير CSV', onClick: function () {
+              var rows = S.studentAccounts({});
+              UI.downloadCsv(rows.map(function (r) {
+                return { 'المدرسة': schoolName(r.schoolId), 'الطالب': r.studentName || r.name, 'الفصل': r.className,
+                  'اسم المستخدم': r.username, 'الحالة': (S.userStatuses[r.status] || r.status) };
+              }), 'حسابات-الطلاب-كل-المدارس.csv');
+            } })
+          ], [
+            h('div', { class: 'stat-row' }, [
+              UI.statCard('إجمالي حسابات ' + kidsWord, String(st.total), st.bySchool.filter(function (s) { return s.total; }).length + ' مدرسة'),
+              UI.statCard('نشطة', String(st.active), 'تستطيع الدخول', st.active ? 'gold' : null),
+              UI.statCard('موقوفة', String(st.suspended), st.suspended ? 'لا تستطيع الدخول' : 'لا موقوف', st.suspended ? 'gold' : null)
+            ]),
+            allOff && st.total ? h('div', { class: 'callout', style: { marginTop: '10px', borderInlineStartColor: 'var(--amber-500)' } },
+              [h('strong', { text: 'تنبيه: ' }), h('span', { text: 'كل حسابات ' + kidsWord + ' موقوفة حاليًا — لن يستطيع أي طالب الدخول.' })]) : null,
+            schoolRows.length ? h('div', { class: 'tbl-wrap', style: { marginTop: '12px' } }, [
+              h('table', { class: 'dt' }, [
+                h('thead', {}, [h('tr', {}, [h('th', { text: 'المدرسة' }), h('th', { text: 'الحسابات' }),
+                  h('th', { text: 'نشطة' }), h('th', { text: 'موقوفة' }), h('th', { text: 'تحكم' })])]),
+                h('tbody', {}, schoolRows)
+              ])
+            ]) : UI.empty('لا توجد حسابات طلاب بعد.'),
+            h('p', { class: 'muted', style: { marginTop: '10px', fontSize: 'var(--fs-xs)' },
+              text: 'الحساب الموقوف لا يستطيع الدخول ويعرض له: «الحساب موقوف — راجع مدير المدرسة». يُسجّل كل تغيير في سجل التدقيق ويُرسل إشعارًا لمدير المدرسة والوكيل.' })
+          ]));
+      }
+
       function draw() {
         var all = S.usersQuery({});
         var users = S.usersQuery(state);
@@ -282,6 +353,8 @@
 
       draw();
       view.appendChild(host);
+      view.appendChild(studentsCtlSlot);
+      drawStudentsCtl();
     }
   });
 })();
