@@ -565,6 +565,11 @@
     resetDem: function () { return reset(); },
     reset: reset,
     uid: uid, now: now,
+    /** قيمة آمنة للعرض في الرسائل: لا تُظهر undefined أبدًا */
+    safe: function (x, dflt) {
+      if (x === undefined || x === null || x === '' || (typeof x === 'number' && isNaN(x))) return dflt === undefined ? '—' : dflt;
+      return String(x);
+    },
 
     /* ------------------------- التهيئة الأولى (بلا أي كلمة مرور في الكود) ------------------------- */
     needsSetup: function () { return !!(store.db.meta && store.db.meta.needsSetup); },
@@ -1136,7 +1141,7 @@
         var rec = {
           id: uid('tg'), to: m.to, toName: chat ? chat.name : m.to, chat: chat ? chat.telegram : '',
           schoolId: (chat && chat.schoolId) || store.session.schoolId,
-          text: m.text, at: now(), status: ready ? 'sending' : 'queued'
+          text: m.text, at: now(), status: ready ? 'sending' : 'queued', via: ready ? store.telegramConfig().mode : 'queued'
         };
         db.telegram.unshift(rec);
         if (ready) {
@@ -1162,10 +1167,10 @@
         status: 'guidance_pending', createdAt: now(), guidance: null, action: null,
         timeline: [{ at: now(), by: store.session.name, text: 'تسجيل المخالفة من المعلم' }]
       }, data));
-      store.notify({ kind: 'violation', ref: v.id, title: 'مخالفة سلوكية جديدة — ' + v.type, body: (store.student(v.studentId) || {}).name + ' · ' + v.description, to: ['guidance', 'deputy'] });
+      store.notify({ kind: 'violation', ref: v.id, title: 'مخالفة سلوكية جديدة — ' + store.safe(v.type), body: store.safe((store.student(v.studentId) || {}).name) + ' · ' + store.safe(v.description || v.note, 'بلا وصف'), to: ['guidance', 'deputy'] });
       store.tg([
-        { to: 'guidance', text: '⚠️ مخالفة سلوكية جديدة\n' + (store.student(v.studentId) || {}).name + ' — ' + v.type + '\n' + v.description },
-        { to: 'deputy', text: '⚠️ مخالفة سلوكية جديدة\n' + (store.student(v.studentId) || {}).name + ' — ' + v.type + '\n' + v.description }
+        { to: 'guidance', text: '⚠️ مخالفة سلوكية جديدة\n' + store.safe((store.student(v.studentId) || {}).name) + ' — ' + store.safe(v.type) + '\n' + store.safe(v.description || v.note, 'بلا وصف') },
+        { to: 'deputy', text: '⚠️ مخالفة سلوكية جديدة\n' + store.safe((store.student(v.studentId) || {}).name) + ' — ' + store.safe(v.type) + '\n' + store.safe(v.description || v.note, 'بلا وصف') }
       ]);
       return v;
     },
@@ -1208,7 +1213,7 @@
         status: 'deputy_pending', createdAt: now(), granted: null, exitNo: ''
       }, data));
       store.notify({ kind: 'permission', ref: p.id, title: 'طلب استئذان جديد ' + p.number, body: 'من التوجيه والإرشاد · ' + ((store.student(p.studentId) || {}).name), to: ['deputy'] });
-      store.tg({ to: 'deputy', text: '🕐 طلب استئذان جديد ' + p.number + '\n' + ((store.student(p.studentId) || {}).name) + '\nالسبب: ' + p.reason });
+      store.tg({ to: 'deputy', text: '🕐 طلب استئذان جديد ' + store.safe(p.number) + '\n' + store.safe((store.student(p.studentId) || {}).name) + '\nالسبب: ' + store.safe(p.reason, 'غير مذكور') });
       return p;
     },
     grantPermission: function (permissionId, via) {
@@ -1435,7 +1440,7 @@
     createActivityRequest: function (data) {
       var r = store.insert('activityReqs', Object.assign({ id: uid('ar'), status: 'pending', createdAt: now(), note: '' }, data));
       store.notify({ kind: 'activity', ref: r.id, title: 'طلب مشاركة في نشاط', body: ((store.student(r.studentId) || {}).name) + ' — ' + ((store.find('activities', r.activityId) || {}).title), to: ['teacher'] });
-      store.tg({ to: 'teacher', text: '🎯 طلب مشاركة في نشاط\nالطالب: ' + ((store.student(r.studentId) || {}).name) + '\nالمدة خارج الصف: ' + r.duration + ' دقيقة\nالسبب: ' + r.reason });
+      store.tg({ to: 'teacher', text: '🎯 طلب مشاركة في نشاط\nالطالب: ' + store.safe((store.student(r.studentId) || {}).name) + '\nالمدة خارج الصف: ' + store.safe(r.duration) + ' دقيقة\nالسبب: ' + store.safe(r.reason, 'غير مذكور') });
       return r;
     },
     decideActivityRequest: function (reqId, decision, note) {
@@ -1656,9 +1661,9 @@
         to: ['principal', 'deputy', 'guidance', 'guard']
       });
       store.tg([
-        { to: 'principal', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' (' + exit.className + ') — ' + exit.time + '\nالسبب: ' + exit.reason + '\nالحارس: ' + exit.guardName + '\nالتصريح: ' + exit.code },
+        { to: 'principal', text: '🚪 إذن خروج منتهٍ: ' + store.safe(exit.studentName) + ' (' + store.safe(exit.className) + ') — ' + store.safe(exit.time) + '\nالسبب: ' + store.safe(exit.reason, 'غير مذكور') + '\nالحارس: ' + store.safe(exit.guardName) + '\nالتصريح: ' + store.safe(exit.code) },
         { to: 'deputy', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' — ' + exit.time },
-        { to: 'guidance', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' — ' + exit.reason }
+        { to: 'guidance', text: '🚪 إذن خروج منتهٍ: ' + store.safe(exit.studentName) + ' — ' + store.safe(exit.reason, 'غير مذكور') }
       ]);
       (db.audit = db.audit || []).unshift({ id: uid('au'), at: exit.at, action: 'exit_logged', by: guard.name, text: 'خروج ' + exit.studentName + ' بالتصريح ' + exit.code });
       return { ok: true, exit: exit, permit: p };
