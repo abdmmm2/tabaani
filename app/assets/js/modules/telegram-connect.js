@@ -77,12 +77,38 @@
         var chF = UI.field({ name: 'chatId', label: 'معرّف المجموعة (chat id)', dir: 'ltr', value: cfg.chatId, half: true,
           placeholder: '-1001234567890', help: 'أضف @userinfobot للمجموعة ليخبرك بالمعرّف.' });
         slot.appendChild(h('div', { class: 'form-grid' }, [tkF.wrap, chF.wrap]));
+        var found = h('div');
         slot.appendChild(h('div', { class: 'panel-actions' }, [
           h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'حفظ بيانات البوت', onClick: function () {
             save({ botToken: tkF.input.value.trim(), chatId: chF.input.value.trim() }, 'حُفظت بيانات البوت');
             draw();
+          } }),
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'اجلب المجموعات تلقائيًا', onClick: function () {
+            S.saveTelegramConfig({ botToken: tkF.input.value.trim() });
+            clear(found);
+            found.appendChild(h('p', { class: 'muted', text: 'يُقرأ من تلقرام…' }));
+            S.telegramFindChats().then(function (r) {
+              clear(found);
+              if (!r.ok) { found.appendChild(h('p', { class: 'muted', text: 'تعذّر الجلب: ' + (r.error || '') })); return; }
+              if (!r.chats.length) {
+                found.appendChild(h('p', { class: 'muted', html: 'لم يصل البوت لأي محادثة بعد — أضِف البوت إلى مجموعة المدرسة واكتب فيها أي رسالة (مثال: «تجربة») ثم اضغط الزر مرة أخرى.' }));
+                return;
+              }
+              r.chats.forEach(function (ch) {
+                found.appendChild(h('div', { class: 'cluster', style: { marginTop: '6px' } }, [
+                  h('span', { text: (ch.type === 'group' || ch.type === 'supergroup' ? 'مجموعة' : (ch.type === 'channel' ? 'قناة' : 'محادثة فردية')) + ': ' + ch.title }),
+                  h('code', { dir: 'ltr', text: String(ch.id) }),
+                  h('button', { class: 'mini-btn is-primary', type: 'button', text: 'استخدم هذا', onClick: function () {
+                    chF.input.value = String(ch.id);
+                    save({ chatId: String(ch.id) }, 'حُفظ معرّف المحادثة');
+                    draw();
+                  } })
+                ]));
+              });
+            });
           } })
         ]));
+        slot.appendChild(found);
       }
 
       /* جدول المدارس عند تشغيل الإعداد المستقل */

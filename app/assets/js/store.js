@@ -1052,6 +1052,37 @@
       }
       return Promise.resolve({ ok: false, detail: 'لم يُضبط الإرسال بعد (الوضع: محاكاة)' });
     },
+    /** جلب المحادثات التي وصلها البوت (مجموعات/أفراد) لاختيار معرّف المجموعة بلا أدوات خارجية */
+    telegramFindChats: function () {
+      var c = store.telegramConfig();
+      var token = c.botToken;
+      if (!token) return Promise.resolve({ ok: false, error: 'أدخل رمز البوت أولًا' });
+      return fetch('https://api.telegram.org/bot' + token + '/getUpdates?limit=100&allowed_updates=' +
+        encodeURIComponent(JSON.stringify(['message', 'channel_post', 'my_chat_member', 'edited_message'])))
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) return { ok: false, error: j.description || 'تعذّر القراءة' };
+          var map = {};
+          (j.result || []).forEach(function (u) {
+            ['message', 'channel_post', 'my_chat_member', 'edited_message'].forEach(function (k) {
+              var m = u[k]; if (!m || !m.chat) return;
+              var ch = m.chat;
+              map[ch.id] = { id: ch.id, type: ch.type, title: ch.title || ch.first_name || ch.username || String(ch.id) };
+            });
+          });
+          var list = Object.keys(map).map(function (k) { return map[k]; });
+          return { ok: true, chats: list };
+        })
+        .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
+    },
+    telegramBotInfo: function () {
+      var c = store.telegramConfig();
+      if (!c.botToken) return Promise.resolve({ ok: false, error: 'لا يوجد رمز' });
+      return fetch('https://api.telegram.org/bot' + c.botToken + '/getMe')
+        .then(function (r) { return r.json(); })
+        .then(function (j) { return j.ok ? { ok: true, bot: j.result } : { ok: false, error: j.description }; })
+        .catch(function (e) { return { ok: false, error: String((e && e.message) || e) }; });
+    },
     telegramTest: function (text) {
       return store.telegramSend(text || 'رسالة تجريبية من منصة تابعني — الإرسال يعمل ✓', null).then(function (r) {
         store.saveTelegramConfig({ lastTest: now(), lastTestOk: r.ok, lastTestMsg: r.detail || '' });
