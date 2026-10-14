@@ -311,3 +311,12 @@
 .promo-code { margin-top: 12px; }
 .promo-code summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); }
 .promo-code pre { max-height: 280px; overflow: auto; background: #14100A; color: #EBCB74; padding: 12px; border-radius: var(--r-sm); font-size: 11px; direction: ltr; text-align: left; }
+
+/* ------------------------------------------------ إذن الخروج (حارس البوابة) */
+.gate-stage { position: relative; background: #14100A; border-radius: var(--r-md); overflow: hidden; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+.gate-video { width: 100%; max-height: 320px; display: block; background: #14100A; object-fit: cover; }
+.gate-frame { position: absolute; inset: 12%; border: 3px solid var(--brand-500); border-radius: 14px; box-shadow: 0 0 0 9999px rgba(20,16,10,.45); display: grid; align-items: end; justify-items: center; }
+.gate-frame span { background: rgba(206,148,51,.92); color: var(--on-gold); font-size: var(--fs-xs); font-weight: 700; border-radius: 999px; padding: 4px 12px; margin-bottom: -14px; }
+.gate-card { background: var(--brand-50); border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px; }
+.barcode-wrap { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.barcode-wrap .barcode { height: 46px; width: auto; max-width: 100%; }

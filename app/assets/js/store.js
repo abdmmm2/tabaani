@@ -63,6 +63,7 @@
     { id: 'volunteer', name: 'مسؤول ساعات التطوع', nameF: 'مسؤولة ساعات التطوع', desc: 'البرامج التطوعية وتسجيل الطلاب' },
     { id: 'activity', name: 'مسؤول النشاط الطلابي', nameF: 'مسؤولة النشاط الطلابي', desc: 'الأنشطة وطلبات المشاركة' },
     { id: 'absence_monitor', name: 'مراقب الغياب', nameF: 'مراقبة الغياب', desc: 'متابعة غياب الطلاب — تُضاف خصائصه لاحقًا' },
+    { id: 'guard', name: 'حارس البوابة', nameF: 'حارسة البوابة', desc: 'مسح تصاريح الخروج بالكاميرا وتسجيل خروج الطلاب بوقته وسببه' },
     { id: 'student', name: 'طالب', nameF: 'طالبة', desc: 'طلبات النشاط والتطوع والاستئذان' }
   ];
 
@@ -108,7 +109,7 @@
       periods: [], sessions: [], violations: [], permissions: [],
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
-      reports: [], telegram: [], audit: [], notif: [],
+      reports: [], telegram: [], audit: [], notif: [], exits: [],
       educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
@@ -209,6 +210,14 @@
       id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف المنصة — الإدارة العامة',
       username: 'admin', password: DEFAULT_PASS,
       email: 'admin@tabaani.com', phone: '+966500000000', telegram: '+966500000000',
+      status: 'active', createdAt: now(), canLogin: true
+    });
+
+    /* حارس البوابة (لتجربة إذن الخروج) */
+    db.users.push({
+      id: 'u-guard-1', schoolId: school.id, role: 'guard', name: 'فهد بن سالم الحربي',
+      username: 'guard', password: DEFAULT_PASS,
+      email: 'guard@tabaani.com', phone: '+966500001234', telegram: '+966500001234',
       status: 'active', createdAt: now(), canLogin: true
     });
 
@@ -521,7 +530,7 @@
     ['schools', 'classes', 'students', 'assignments', 'transfers', 'periods', 'sessions',
      'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
      'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans',
-     'reports', 'telegram', 'audit', 'notif', 'subjects'].forEach(function (k) { d[k] = []; });
+     'reports', 'telegram', 'audit', 'notif', 'subjects', 'exits'].forEach(function (k) { d[k] = []; });
     d.users = supers;
     d.letterhead = null;
     d.settings = Object.assign({}, d.settings, { deprivationBySubject: {}, activeTermId: null });
@@ -1401,6 +1410,74 @@
 
     /* ------------------------------- تنبيهات الجوال ------------------------------- */
     canNotify: function () { return typeof Notification !== 'undefined'; },
+    /* ===================== إذن الخروج (حارس البوابة) ===================== */
+    /* يبحث عن التصريح برقمه: EX-20260001 أو P-2026-0001 أو رقم التقرير */
+    findPermitByCode: function (code) {
+      var c = String(code || '').trim().toUpperCase().replace(/\s+/g, '');
+      if (!c) return null;
+      var perms = store.list('permissions');
+      var digits = c.replace(/\D/g, '');
+      return perms.filter(function (p) {
+        var ex = String(p.exitNo || '').toUpperCase().replace(/\s+/g, '');
+        var no = String(p.number || '').toUpperCase().replace(/\s+/g, '');
+        if (ex && ex === c) return true;
+        if (no && no === c) return true;
+        if (digits && ex && ex.replace(/\D/g, '') === digits) return true;
+        return false;
+      })[0] || null;
+    },
+    /* يسجّل خروج الطالب باسم الحارس بالتاريخ والوقت والسبب */
+    logExit: function (data) {
+      var d = data || {};
+      var p = d.permissionId ? store.list('permissions').filter(function (x) { return x.id === d.permissionId; })[0] : store.findPermitByCode(d.code);
+      if (!p) return { ok: false, error: 'تصريح غير معروف — تأكد من الرقم أو امسح الباركود مرة أخرى' };
+      if (!p.granted) return { ok: false, error: 'هذا الطلب لم يُمنح بعد — لا يمكن تسجيل الخروج' };
+      if (p.exited) return { ok: false, error: 'سبق تسجيل خروج هذا التصريح (' + (p.exited.at || '').slice(11, 16) + ')' };
+      var st = store.student(p.studentId) || {};
+      var cls = store.klass(p.classId) || {};
+      var guard = store.user(d.guardId || store.session.userId) || { name: store.session.name, id: store.session.userId };
+      var at = new Date();
+      var exit = {
+        id: uid('ex'), schoolId: p.schoolId, permissionId: p.id, code: p.exitNo || p.number, number: p.number,
+        studentId: p.studentId, studentName: st.name || '', classId: p.classId, className: cls.name || '',
+        reason: String(d.reason || p.reason || '').trim(), note: String(d.note || '').trim(),
+        gate: d.gate || 'البوابة الرئيسية', guardId: guard.id, guardName: guard.name || '',
+        date: at.toISOString().slice(0, 10), time: at.toTimeString().slice(0, 5), at: at.toISOString()
+      };
+      db.exits.unshift(exit);
+      p.exited = { at: exit.at, by: exit.guardName, guardId: exit.guardId, reason: exit.reason };
+      p.status = 'exited';
+      save();
+      /* نسخ إلى حسابات: مدير المدرسة · وكيل شؤون الطلاب · التوجيه والإرشاد */
+      store.notify({
+        kind: 'exit', ref: exit.id, title: 'إذن خروج منتهٍ — ' + exit.studentName,
+        body: exit.className + ' · ' + exit.time + ' · ' + exit.reason + ' · الحارس: ' + exit.guardName,
+        to: ['principal', 'deputy', 'guidance', 'guard']
+      });
+      store.tg([
+        { to: 'principal', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' (' + exit.className + ') — ' + exit.time + '\nالسبب: ' + exit.reason + '\nالحارس: ' + exit.guardName + '\nالتصريح: ' + exit.code },
+        { to: 'deputy', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' — ' + exit.time },
+        { to: 'guidance', text: '🚪 إذن خروج منتهٍ: ' + exit.studentName + ' — ' + exit.reason }
+      ]);
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: exit.at, action: 'exit_logged', by: guard.name, text: 'خروج ' + exit.studentName + ' بالتصريح ' + exit.code });
+      return { ok: true, exit: exit, permit: p };
+    },
+    exitsLog: function (f) {
+      f = f || {};
+      return (store.db.exits || []).filter(function (e) {
+        if (f.schoolId && e.schoolId !== f.schoolId) return false;
+        if (f.date && e.date !== f.date) return false;
+        if (f.from && e.date < f.from) return false;
+        if (f.to && e.date > f.to) return false;
+        if (f.studentId && e.studentId !== f.studentId) return false;
+        if (f.guardId && e.guardId !== f.guardId) return false;
+        return true;
+      }).sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
+    },
+    exitsToday: function () { return store.exitsLog({ date: new Date().toISOString().slice(0, 10) }); },
+    pendingExits: function () {   /* تصاريح ممنوحة ولم يُسجَّل خروجها بعد */
+      return store.list('permissions').filter(function (p) { return p.granted && !p.exited; });
+    },
     notifyPermission: function () { return store.canNotify() ? Notification.permission : 'unsupported'; },
     requestNotifyPermission: function () {
       if (!store.canNotify()) return Promise.resolve('unsupported');
