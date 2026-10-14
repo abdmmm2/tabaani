@@ -31,9 +31,19 @@
      واجهة الحارس: كاميرا + إدخال يدوي + سجل اليوم
      ========================================================================== */
   function renderGuard(view) {
-    var state = { scanning: false, stream: null, found: null, reason: '', gate: 'البوابة الرئيسية' };
+    var GATE_KEY = 'tabaani-gate-name';
+    var GATES = ['البوابة الرئيسية', 'بوابة الطلاب', 'البوابة الشرقية', 'البوابة الغربية'];
+    var state = {
+      scanning: false, stream: null, busy: false, result: null, scans: 0,
+      gate: (function () { try { return localStorage.getItem(GATE_KEY) || GATES[0]; } catch (e) { return GATES[0]; } })(),
+      ignore: '', ignoreUntil: 0, timer: null, manualOpen: false
+    };
     var host = h('div');
+    var video = h('video', { class: 'gate-video', playsinline: '', autoplay: '', muted: '' });
+    var canvas = document.createElement('canvas');
+    canvas.style.display = 'none';
     function redraw() { clear(host); draw(); }
+    function meName() { return (S.session && S.session.name) || 'حارس البوابة'; }
 
     function stopCam() {
       state.scanning = false;
@@ -53,35 +63,71 @@
       if (navigator.vibrate) { try { navigator.vibrate(ok ? 90 : [60, 60, 60]); } catch (e) {} }
     }
 
-    function onCode(txt) {
-      var code = codeFromText(txt);
-      var p = S.findPermitByCode(code);
-      if (!p) { beep(false); UI.toast('باركود غير معروف: ' + code, 'bad'); return; }
-      if (!p.granted) { beep(false); UI.toast('هذا الطلب لم يُمنح بعد (بانتظار الوكيل)', 'warn'); return; }
-      if (p.exited) { beep(false); UI.toast('سبق استخدام هذا التصريح — خرج ' + (p.exited.at || '').slice(11, 16) + ' (مرة واحدة فقط)', 'warn'); return; }
-      var pst = S.permitState(p);
-      if (pst.state === 'expired') { beep(false); UI.toast('انتهت صلاحية التصريح — مدته ' + pst.minutes + ' دقيقة من وقت المنح', 'bad'); return; }
-      beep(true);
-      state.found = p;
-      state.reason = p.reason || '';
-      stopCam();
-      redraw();
+    /* ---------- تلقائي: يُسجَّل فور قراءة الرمز، بلا أي زر أو تأكيد ---------- */
+    function fail(title, code, msg) {
+      state.ignore = code; state.ignoreUntil = Date.now() + 8000;   /* لا نكرّر نفس التنبيه */
+      beep(false);
+      state.result = { ok: false, title: title, code: code, msg: msg };
+      hold(3000);
     }
+    function hold(ms) {
+      state.busy = true;
+      if (state.timer) clearTimeout(state.timer);
+      redraw();
+      state.timer = setTimeout(function () {
+        state.result = null; state.busy = false;
+        redraw();
+      }, ms);
+    }
+    function onCode(txt) {
+      if (state.busy) return;
+      var code = codeFromText(txt);
+      if (!code) return;
+      var p = S.findPermitByCode(code);
+      if (!p) return fail('باركود غير معروف', code, 'هذا الرمز لا يخص أي تصريح خروج في النظام.');
+      if (!p.granted) return fail('طلب لم يُمنح بعد', code, 'الطلب ما زال بانتظار موافقة وكيل شؤون الطلاب.');
+      if (p.exited) return fail('التصريح مُستخدم من قبل', code, 'سُجّل خروجه في ' + String(p.exited.at || '').slice(11, 16) + ' — التصريح يُستخدم مرة واحدة.');
+      var pst = S.permitState(p);
+      if (pst.state === 'expired') return fail('انتهت صلاحية التصريح', code, 'مدته ' + pst.minutes + ' دقيقة من وقت المنح — يلزم تصريح جديد من الوكيل.');
+
+      var r = S.logExit({ permissionId: p.id, reason: p.reason || '', gate: state.gate });
+      if (!r.ok) return fail('تعذّر التسجيل', code, r.error);
+      state.scans++;
+      state.ignore = code; state.ignoreUntil = Date.now() + 60000;  /* يتجاهل نفس التصريح دقيقة */
+      state.result = {
+        ok: true, name: r.exit.studentName, cls: r.exit.className, time: r.exit.time,
+        gate: r.exit.gate, code: r.exit.code, reason: r.exit.reason || '—'
+      };
+      beep(true);
+      hold(3200);
+    }
+    window.__gateScan = onCode;   /* منفذ للفحص الآلي */
 
     function draw() {
       var today = S.exitsToday();
       var pending = S.pendingExits();
 
+      /* ------- شريط الحارس ------- */
+      host.appendChild(h('div', { class: 'gate-id' }, [
+        h('div', { class: 'gate-id-who' }, [
+          h('span', { class: 'gate-dot', text: '' }),
+          h('strong', { text: 'الحارس: ' + meName() }),
+          h('span', { class: 'muted', text: ' · الحساب المسجّل الآن' })
+        ]),
+        h('span', { class: 'gate-count', text: 'مسح هذه الجلسة: ' + state.scans })
+      ]));
+
       host.appendChild(h('div', { class: 'stat-row' }, [
         UI.statCard('خروج اليوم', String(today.length), 'طالب', today.length ? 'gold' : null),
-        UI.statCard('تصاريح ممنوحة', String(pending.length), 'لم يُسجَّل خروجها بعد'),
+        UI.statCard('تصاريح جاهزة', String(pending.length), 'لم تُسجَّل خروجها بعد'),
         UI.statCard('إجمالي السجل', String(S.exitsLog().length), 'منذ البداية')
       ]));
 
-      /* ------- لوحة المسح ------- */
-      var video = h('video', { class: 'gate-video', playsinline: '', autoplay: '', muted: '' });
-      var canvas = document.createElement('canvas');
-      canvas.style.display = 'none';
+      /* ------- المسح ------- */
+      if (state.stream && video.srcObject !== state.stream) {
+        video.srcObject = state.stream;
+        video.play().catch(function () {});
+      }
 
       function startScan() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -92,82 +138,81 @@
             state.stream = stream; state.scanning = true;
             video.srcObject = stream;
             video.play().catch(function () {});
-            scanLoop();
             redraw();
+            scanLoop();
           })
           .catch(function () {
-            UI.toast('تعذّر فتح الكاميرا (صلاحية أو http) — أدخل رقم التصريح يدويًا', 'bad');
+            UI.toast('تعذّر فتح الكاميرا (صلاحية أو اتصال غير آمن) — أدخل رقم التصريح يدويًا', 'bad');
           });
       }
 
       function scanLoop() {
         if (!state.scanning) return;
         if (!window.jsQR) { UI.toast('محرّك قراءة الباركود لم يُحمّل', 'bad'); return; }
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        if (!state.busy && video.readyState === video.HAVE_ENOUGH_DATA) {
           canvas.width = video.videoWidth; canvas.height = video.videoHeight;
           var ctx = canvas.getContext('2d');
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           try {
             var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
             var res = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-            if (res && res.data) { onCode(res.data); return; }
+            if (res && res.data) {
+              var same = (res.data === state.ignore && Date.now() < state.ignoreUntil);
+              if (!same) { state.ignore = res.data; onCode(res.data); }
+            }
           } catch (e) {}
         }
         requestAnimationFrame(scanLoop);
       }
 
-      var manual = UI.field({ name: 'exitCode', label: 'أو أدخل رقم التصريح يدويًا', placeholder: 'EX-20260001', dir: 'ltr' });
+      var gateF = UI.field({
+        name: 'exitGate', label: 'البوابة', type: 'select', value: state.gate, options: GATES, half: true, dir: 'rtl',
+        onChange: function () {
+          state.gate = gateF.input.value;
+          try { localStorage.setItem(GATE_KEY, state.gate); } catch (e) {}
+        }
+      });
 
-      host.appendChild(UI.panel('تسجيل إذن خروج', 'امسح باركود التصريح بكاميرا الجوال — أو اكتب رقمه.', [
-        state.scanning
+      var scanPanel = UI.panel('مسح إذن خروج',
+        state.scanning ? 'وضع المسح التلقائي: وجّه الباركود داخل الإطار — يُسجَّل الخروج فورًا بلا أي زر.' : 'اضغط «مسح إذن خروج» لتفتح الكاميرا، ثم وجّه الباركود — التسجيل تلقائي.',
+        [state.scanning
           ? h('button', { class: 'btn btn-danger', type: 'button', text: 'إيقاف الكاميرا', onClick: function () { stopCam(); redraw(); } })
-          : h('button', { class: 'btn btn-primary', type: 'button', text: 'تشغيل الكاميرا والمسح', onClick: startScan })
-      ], [
-        h('div', { class: 'gate-stage' }, [
-          video,
-          state.scanning ? h('div', { class: 'gate-frame' }, [h('span', { text: 'وجّه الباركود داخل الإطار' })]) : null
-        ]),
-        h('div', { class: 'cluster', style: { marginTop: '12px' } }, [
-          manual.wrap,
-          h('button', { class: 'btn btn-outline', type: 'button', text: 'تسجيل بالرقم', onClick: function () {
-            if (!manual.input.value.trim()) { UI.toast('اكتب رقم التصريح', 'warn'); return; }
-            onCode(manual.input.value);
-          } })
-        ])
-      ]));
+          : h('button', { class: 'btn btn-primary btn-scan', type: 'button', text: 'مسح إذن خروج', onClick: function () {
+              if (state.timer) clearTimeout(state.timer);
+              state.busy = false; state.result = null;
+              startScan();
+            } })],
+        [
+          h('div', { class: 'gate-stage' }, [
+            video,
+            state.scanning ? h('div', { class: 'gate-frame' }, [
+              h('span', { text: 'وجّه الباركود داخل الإطار' }),
+              h('span', { class: 'gate-auto', text: 'تلقائي' })
+            ]) : null
+          ]),
 
-      /* ------- بطاقة التصريح بعد المسح ------- */
-      if (state.found) {
-        var p = state.found, st = S.student(p.studentId) || {}, cls = S.klass(p.classId) || {};
-        var reasonF = UI.field({ name: 'exitReason', label: 'سبب الخروج', type: 'textarea', rows: 2, value: state.reason });
-        var gateF = UI.field({ name: 'exitGate', label: 'البوابة', type: 'select', value: state.gate,
-          options: ['البوابة الرئيسية', 'بوابة الطلاب', 'البوابة الشرقية', 'البوابة الغربية'] });
-        host.appendChild(UI.panel('تأكيد خروج: ' + (st.name || ''), 'التصريح ' + (p.exitNo || '') + ' · ' + (cls.name || ''),
-          [h('button', { class: 'btn btn-soft', type: 'button', text: 'إلغاء', onClick: function () { state.found = null; redraw(); } })], [
-          h('div', { class: 'grid-2-app' }, [
-            h('div', {}, [reasonF.wrap, gateF.wrap]),
-            h('div', { class: 'gate-card' }, [
-              h('div', { class: 'barcode-wrap', html: UI.barcodeSvg(p.exitNo || p.number, { height: 40, module: 2 }) }),
-              h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' }, text: 'التصريح: ' + (p.exitNo || p.number) + ' · مُنح بواسطة: ' + ((p.granted && p.granted.by) || '—') }),
-              h('div', { class: 'callout tip', style: { marginTop: '8px' },
-                text: 'الصلاحية: ' + S.permitExpiryLabel(p) + ' · يُستخدم مرة واحدة فقط ثم يُلغى تلقائيًا.' })
+          /* بطاقة النتيجة: تظهر وتُغلق تلقائيًا ثم يعود للمسح */
+          state.result ? renderResult(state.result) : null,
+
+          h('div', { class: 'grid-gate' }, [
+            gateF.wrap,
+            h('div', { class: 'gate-hint' }, [
+              h('div', { class: 'callout tip', text: 'المسح يعمل فقط داخل حساب الحارس — كل تسجيل يُحفظ تلقائيًا باسمك ووقتك والبوابة، ويُرسل إشعار للمدير والوكيل والتوجيه.' })
             ])
           ]),
-          h('div', { class: 'panel-actions' }, [
-            h('button', { class: 'btn btn-primary', type: 'button', text: 'تسجيل الخروج الآن', onClick: function () {
-              var r = S.logExit({ permissionId: p.id, reason: reasonF.input.value, gate: gateF.input.value });
-              if (!r.ok) { UI.toast(r.error, 'bad'); return; }
-              UI.toast('سُجّل خروج ' + r.exit.studentName + ' — ' + r.exit.time, 'ok');
-              state.found = null; redraw();
-            } })
-          ])
-        ]));
-      }
+
+          /* الإدخال اليدوي: بديل عند عدم توفر الكاميرا */
+          h('div', { class: 'manual-toggle' }, [
+            h('button', { class: 'link-btn', type: 'button', text: (state.manualOpen ? '− إخفاء الإدخال اليدوي' : '+ إدخال الرقم يدويًا'), onClick: function () { state.manualOpen = !state.manualOpen; redraw(); } })
+          ]),
+          state.manualOpen ? manualRow() : null
+        ]);
+      host.appendChild(scanPanel);
 
       /* ------- سجل اليوم ------- */
       var rows = today.map(function (e) {
         return { student: e.studentName, cls: e.className, code: e.code, time: e.time, reason: e.reason, gate: e.gate, guard: e.guardName };
-      });
+      }).reverse();
       host.appendChild(UI.panel('سجل خروج اليوم (' + rows.length + ')', null, null, [
         rows.length ? UI.table({
           cols: [{ key: 'student', label: 'الطالب' }, { key: 'cls', label: 'الفصل' }, { key: 'code', label: 'التصريح' },
@@ -175,6 +220,42 @@
           rows: rows
         }) : UI.empty('لا خروج مسجّل اليوم.')
       ]));
+    }
+
+    /* نتيجة المسح — تُغلق تلقائيًا */
+    function renderResult(r) {
+      if (!r.ok) {
+        return h('div', { class: 'gate-res bad' }, [
+          h('div', { class: 'gate-res-icon', html: '&#10007;' }),
+          h('div', { class: 'gate-res-body' }, [
+            h('div', { class: 'gate-res-title', text: r.title }),
+            h('div', { class: 'gate-res-sub', text: r.msg }),
+            h('div', { class: 'gate-res-code', text: 'الرمز: ' + r.code })
+          ])
+        ]);
+      }
+      return h('div', { class: 'gate-res ok' }, [
+        h('div', { class: 'gate-res-icon', html: '&#10003;' }),
+        h('div', { class: 'gate-res-body' }, [
+          h('div', { class: 'gate-res-title', text: r.name }),
+          h('div', { class: 'gate-res-sub', text: r.cls + ' · تصريح ' + r.code }),
+          h('div', { class: 'gate-res-meta', text: 'سُجّل الخروج تلقائيًا · ' + r.gate + ' · ' + r.time }),
+          h('div', { class: 'gate-res-auto', text: 'حُفظ في السجل وأُرسل إشعار للمدير والوكيل والتوجيه ✓ — يتحضّر للمسح التالي…' })
+        ])
+      ]);
+    }
+
+    function manualRow() {
+      var f = UI.field({ name: 'exitCode', label: 'رقم التصريح', placeholder: 'EX-20260001', dir: 'ltr', half: true });
+      return h('div', { class: 'manual-row' }, [
+        f.wrap,
+        h('button', { class: 'btn btn-outline', type: 'button', text: 'تسجيل تلقائي بالرقم', onClick: function () {
+          if (!f.input.value.trim()) { UI.toast('اكتب رقم التصريح', 'warn'); return; }
+          if (state.timer) clearTimeout(state.timer);
+          state.busy = false; state.result = null;
+          onCode(f.input.value);
+        } })
+      ]);
     }
 
     draw();
