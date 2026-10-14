@@ -747,7 +747,11 @@
       if (email && store.list('users').some(function (u) { return (u.email || '').toLowerCase() === email.toLowerCase(); })) {
         return { ok: false, error: 'البريد مستخدم من قبل' };
       }
-      if (data.demo) { db = seed(); db.users = db.users.filter(function (u) { return u.role !== 'super'; }); }
+      /* بيانات العرض: يحتفظ بها كما هي، ومعها حساب المشرف العام التجريبي (من الحزمة) إن اختاره المستخدم */
+      if (data.demo) {
+        db = seed();
+        if (!data.withDemoAdmin) db.users = db.users.filter(function (u) { return u.role !== 'super'; });
+      }
       else { db = emptyDb(); }                          /* مدرسة حقيقية: بلا بيانات تجريبية ولا حسابات */
       var u = store.insert('users', {
         id: 'u-super-owner', schoolId: null, role: 'super', owner: true,

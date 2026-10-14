@@ -689,10 +689,19 @@
         return box;
       }
       var cards = h('div', { class: 'setup-modes' });
+      /* خيار ظاهر (لا باب خلفي): إضافة حساب المشرف العام التجريبي في بيانات العرض */
+      var demoAdminCb = h('input', { type: 'checkbox', checked: true });
+      var adminRow = h('label', { class: 'checkline', style: { marginTop: '10px' } }, [
+        demoAdminCb,
+        h('span', { text: 'أضف حساب المشرف العام التجريبي ' }),
+        h('code', { text: 'admin' }),
+        h('span', { class: 'muted', text: ' — بكلمة المرور الموحّدة للعرض، ليسهل تجربة دور المشرف العام. أوقفه إن كنت ستشارك المنصة مع أحد.' })
+      ]);
       function draw() {
         clear(cards);
         cards.appendChild(modeCard(true, 'بيانات عرض تجريبية', 'مدرسة كاملة وأدوار وطلاب جاهزون — للتجربة والعرض على العملاء.'));
         cards.appendChild(modeCard(false, 'مدرسة حقيقية — ابدأ من الصفر', 'بلا أي بيانات: تُنشئ مدرستك وحساباتك بنفسك.'));
+        adminRow.hidden = !mode.demo;
       }
       draw();
       var err = h('p', { class: 'form-error', hidden: true });
@@ -702,6 +711,7 @@
         h('p', { class: 'muted', text: 'هذه الشاشة تظهر مرة واحدة فقط عند أول تشغيل — لا توجد أي كلمة مرور مكتوبة داخل المنصة، وأنت من يُنشئ حسابك بنفسك.' })
       ]));
       panel.appendChild(cards);
+      panel.appendChild(adminRow);
       panel.appendChild(h('div', { class: 'form-grid' }, [nameF.wrap, userF.wrap, mailF.wrap, p1.wrap, p2.wrap]));
       panel.appendChild(err);
       panel.appendChild(h('button', { class: 'btn btn-primary btn-lg', type: 'button', text: 'إنشاء الحساب والبدء', onClick: function () {
@@ -711,7 +721,7 @@
         if (p1.input.value.length < 8) { err.hidden = false; err.textContent = 'كلمة المرور ٨ أحرف على الأقل'; return; }
         if (p1.input.value !== p2.input.value) { err.hidden = false; err.textContent = 'كلمتا المرور غير متطابقتين'; return; }
         var r = S.setupOwner({ name: nameF.input.value, username: userF.input.value, email: mailF.input.value,
-          password: p1.input.value, demo: mode.demo });
+          password: p1.input.value, demo: mode.demo, withDemoAdmin: mode.demo && demoAdminCb.checked });
         if (!r.ok) { err.hidden = false; err.textContent = r.error; return; }
         UI.toast('أُنشئ حساب المشرف العام ✓', 'ok');
         App._doEnter(r.user.id);
@@ -761,8 +771,33 @@
         stats('حسابات الطلاب', String(stAll.total),
           stAll.total ? (stAll.suspended ? stAll.suspended + ' موقوفة من الدخول' : 'كلها نشطة') : 'لا حسابات',
           stAll.suspended ? 'gold' : null);
+        /* زر واحد مباشر: إيقاف/تفعيل كل طلاب المنصّة من اللوحة نفسها */
+        var allOff = stAll.total > 0 && stAll.active === 0;
+        view.appendChild(h('div', { class: 'panel' }, [
+          h('h3', { class: 'panel-title', text: 'حسابات الطلاب — دخول المنصة' }),
+          h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
+            text: allOff
+              ? 'كل حسابات الطلاب موقوفة حاليًا — لا يستطيع أي طالب الدخول.'
+              : 'أوقف دخول كل الطلاب في كل المدارس بضغطة واحدة، ثم فعّلهم متى شئت.' }),
+          h('div', { class: 'cluster' }, [
+            h('button', {
+              class: 'btn ' + (allOff ? 'btn-primary' : 'btn-danger') + ' btn-sm', type: 'button',
+              text: allOff ? 'تفعيل كل الطلاب' : 'إيقاف كل الطلاب',
+              onClick: function () {
+                var act = allOff ? 'activate' : 'suspend';
+                UI.confirm((allOff ? 'تفعيل' : 'إيقاف') + ' دخول كل الطلاب في كل المدارس؟',
+                  { ok: allOff ? 'تفعيل الكل' : 'إيقاف الكل', danger: !allOff }).then(function (yes) {
+                  if (!yes) return;
+                  var r = S.setStudentAccounts(act, {});
+                  UI.toast((allOff ? 'فُعّل ' : 'أُوقف ') + r.changed + ' من ' + r.total + ' حسابًا', r.changed ? 'ok' : 'warn');
+                  App.route();
+                });
+              }
+            }),
+            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحكم بمدرسة محدّدة', onClick: function () { App.go('users'); } })
+          ])
+        ]));
         action('إضافة مدرسة', 'schools', 'btn-primary');
-        action(stAll.suspended ? 'حسابات الطلاب: تفعيل الدخول' : 'حسابات الطلاب: إيقاف الدخول', 'users');
       }
       if (role === 'principal') {
         var teachersN = S.usersByRole('teacher', schoolId).length;
