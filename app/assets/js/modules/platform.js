@@ -49,6 +49,58 @@
           ])
         ]));
 
+        /* ---------------- الباقات والاشتراكات (كلاسيك · برو) ---------------- */
+        var ls = S.licenseStats(), fees = ls.fees;
+        var feeIn = {
+          setup: h('input', { class: 'input', type: 'number', min: '0', step: '50', value: String(fees.setupFee), style: { width: '130px' } }),
+          classic: h('input', { class: 'input', type: 'number', min: '0', step: '50', value: String(fees.classic), style: { width: '130px' } }),
+          pro: h('input', { class: 'input', type: 'number', min: '0', step: '50', value: String(fees.pro), style: { width: '130px' } })
+        };
+        host.appendChild(UI.panel('الباقات والرسوم',
+          'باقتان: «تابعني كلاسيك» — المنصة كاملة بلا تلقرام · «تابعني برو» — كل الخدمات مع تلقرام. ويُدفع رسم تأسيس وتهيئة مرة واحدة عند البدء.',
+          [
+            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'حفظ الرسوم', onClick: function () {
+              S.savePlanFees({ setupFee: feeIn.setup.value, classic: feeIn.classic.value, pro: feeIn.pro.value });
+              UI.toast('حُفظت الرسوم ✓', 'ok'); draw();
+            } })
+          ], [
+            h('div', { class: 'stat-row' }, [
+              UI.statCard('مدارس على «برو»', String(ls.pro), ls.total ? 'من ' + ls.total + ' مدرسة' : 'لا مدارس'),
+              UI.statCard('مدارس على «كلاسيك»', String(ls.classic)),
+              UI.statCard('اشتراكات موقوفة', String(ls.suspended),
+                ls.suspendedFees ? ls.suspendedFees + ' بسبب عدم السداد' : 'لا إيقاف بسبب الرسوم',
+                ls.suspended ? 'gold' : null),
+              UI.statCard('التحصيل السنوي المتوقّع', String(ls.annualExpected) + ' ر.س',
+                ls.setupExpected ? 'ومتأخّر تأسيس: ' + ls.setupExpected + ' ر.س' : 'رسوم التأسيس مسدَّدة')
+            ]),
+            h('div', { class: 'form-grid mt-3' }, [
+              h('div', { class: 'field' }, [h('label', { text: 'رسم التأسيس والتهيئة (مرة واحدة)' }), feeIn.setup]),
+              h('div', { class: 'field' }, [h('label', { text: 'اشتراك «تابعني كلاسيك» السنوي' }), feeIn.classic]),
+              h('div', { class: 'field' }, [h('label', { text: 'اشتراك «تابعني برو» السنوي' }), feeIn.pro])
+            ]),
+            h('p', { class: 'lic-note', text: 'الإيقاف بيد المشرف العام وحده: عدم سداد الرسوم السنوية أو مشكلة تشغيلية — ويُرفع عند السداد أو القرار.' }),
+            ls.rows.length ? UI.table({
+              cols: [
+                { label: 'المدرسة', render: function (r) { return h('strong', { text: r.name }); } },
+                { label: 'الباقة', render: function (r) { return S.planDef(r.plan).name; } },
+                { label: 'الاشتراك', render: function (r) { return UI.badge(r.label, r.tone); } },
+                { label: 'السريان حتى', render: function (r) {
+                    return r.paidUntil ? (r.paidUntil + (r.daysLeft !== null ? ' (' + r.daysLeft + ' يومًا)' : '')) : 'لا سداد مسجَّل';
+                  } },
+                { label: 'السنوي', render: function (r) { return r.annual + ' ر.س'; } },
+                { label: 'إجراءات', class: 'row-actions', render: function (r) {
+                    var btns = [h('button', { class: 'mini-btn is-primary', type: 'button', text: 'سداد سنة',
+                      onClick: function () { App.payFlow(r.schoolId); } })];
+                    btns.push(r.suspended
+                      ? h('button', { class: 'mini-btn', type: 'button', text: 'رفع الإيقاف', onClick: function () { App.activateFlow(r.schoolId); } })
+                      : h('button', { class: 'mini-btn', type: 'button', text: 'إيقاف', onClick: function () { App.suspendDialog(r.schoolId, draw); } }));
+                    btns.push(h('button', { class: 'mini-btn', type: 'button', text: 'تفاصيل', onClick: function () { App.licenseDialog(r.schoolId, draw); } }));
+                    return h('div', { class: 'cluster', style: { gap: '6px' } }, btns);
+                  } }
+              ], rows: ls.rows
+            }) : UI.empty('لا مدارس بعد — أسّس أول مدرسة من «المناطق والمدن والمدارس».')
+          ]));
+
         /* ---------------- إعادة بيانات العرض التجريبية ---------------- */
         host.appendChild(UI.panel('إعادة بيانات العرض التجريبية', 'ترجّع المنصة إلى بيئة عرض جاهزة: مدرسة و٦ معلمين و٤ فصول و٤٨ طالبًا و٤٢ يومًا من سجل التحضير.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'إعادة بيانات العرض التجريبية', onClick: function () {

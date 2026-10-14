@@ -177,6 +177,11 @@ async function main() {
     tfRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
 
+    /* ------------------ الباقات والاشتراكات: كلاسيك · برو · الإيقاف ------------------ */
+    const licRes = await licenseSuite(page, site.url);
+    licRes.forEach((r) => check(r.ok, r.m, r.d));
+    report.push({ role: 'license', modules: String(licRes.filter((r) => r.ok).length) + '/' + licRes.length, note: licRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'الباقات والاشتراكات' });
+
     /* ------------------ إيقاف/تفعيل حسابات الطلاب (لوحة المشرف العام) ------------------ */
     const stRes = await studentCtlSuite(page, site.url);
     stRes.forEach((r) => check(r.ok, r.m, r.d));
@@ -264,6 +269,133 @@ async function studentCtlSuite(page, base) {
   ok(r2.ok && r2.changed === before.total, 'حسابات الطلاب: «تفعيل كل الطلاب» يُعيدهم', r2.changed + '/' + r2.total);
   await loginAsRaw(page, base, stu.uname, stu.pw);
   ok(await shellOn(), 'حسابات الطلاب: الطالب يعود للدخول بعد التفعيل');
+  return res;
+}
+
+/** فحص الباقات والاشتراكات: كلاسيك · برو، الرسوم، والإيقاف بسبب عدم السداد */
+async function licenseSuite(page, base) {
+  const res = [];
+  const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
+  const shellOn = () => page.eval('return !!document.querySelector(".side-nav a[data-mod]");');
+  const clickText = (sel, txt) => 'var b=Array.prototype.filter.call(document.querySelectorAll(' +
+    JSON.stringify(sel) + '),function(x){return (x.textContent||"").trim()===' + JSON.stringify(txt) +
+    ';})[0]; if(!b) return false; b.click(); return true;';
+  const sup = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "super" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password };');
+  const prin = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "principal" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password, id: s.id };');
+  const stu = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "student" && u.username; })[0];' +
+    'return { uname: s.username, pw: s.password };');
+  const sch = await page.eval('var s = Store.list("schools")[0]; return { id: s.id, name: s.name, plan: s.plan };');
+
+  /* الباقات والرسوم الافتراضية */
+  const fees = await page.eval('return Store.planFees();');
+  ok(fees.setupFee === 1000 && fees.classic === 1000 && fees.pro === 1500,
+    'الرسوم: تأسيس ١٠٠٠ · كلاسيك ١٠٠٠ · برو ١٥٠٠', JSON.stringify(fees));
+  const plans = await page.eval('return Store.PLANS.map(function (p) { return p.id; });');
+  ok(plans.length === 2 && plans.join() === 'classic,pro', 'باقتان فقط: كلاسيك وبرو', plans.join(','));
+  const L0 = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  ok(L0.plan === 'pro' && L0.state === 'active' && L0.daysLeft > 300, 'مدرسة العرض على «برو» سارية سنة',
+    JSON.stringify({ plan: L0.plan, state: L0.state, days: L0.daysLeft }));
+
+  /* لوحة المشرف العام */
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  ok(await shellOn(), 'باقات: المشرف العام يدخل');
+  const dash = await page.eval('var t=document.querySelector("#view").innerText;' +
+    'return { lic:t.indexOf("الباقة والاشتراك — هذه المدرسة")>-1, pay:t.indexOf("تسجيل السداد")>-1,' +
+    ' off:t.indexOf("إيقاف المدرسة")>-1, stat:t.indexOf("اشتراكات موقوفة")>-1 };');
+  ok(dash.lic && dash.pay && dash.off, 'اللوحة: بطاقة الباقة والاشتراك مع أزرار السداد والإيقاف', JSON.stringify(dash));
+  ok(dash.stat, 'اللوحة: إحصاء الاشتراكات الموقوفة/المتأخّرة');
+
+  /* الإيقاف بسبب عدم سداد الرسوم — من الواجهة نفسها */
+  await page.eval(clickText('#view button', 'إيقاف المدرسة (رسوم / مشكلة)'));
+  await B.sleep(400);
+  const dlg = await page.eval('var m=document.querySelector(".modal"); if(!m) return null;' +
+    'return { t:m.innerText.indexOf("عدم سداد الرسوم السنوية")>-1, warn:m.innerText.indexOf("سيتوقف دخول كل حسابات المدرسة")>-1 };');
+  ok(dlg && dlg.t, 'نافذة الإيقاف: سبب «عدم سداد الرسوم السنوية»');
+  ok(dlg && dlg.warn, 'نافذة الإيقاف: تنبيه بأن كل حسابات المدرسة ستتوقف');
+  await page.eval(clickText('.modal button', 'إيقاف الدخول'));
+  await B.sleep(700);
+  const L1 = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  ok(L1.blocked && L1.reason === 'fees' && /رسوم/.test(L1.label), 'الإيقاف سُجّل بسبب الرسوم',
+    JSON.stringify({ blocked: L1.blocked, reason: L1.reason }));
+  const aud1 = await page.eval('return (Store.db.audit || [])[0] || {};');
+  ok(aud1.action === 'school_suspended', 'الإيقاف مقيّد في سجل التدقيق', aud1.action || 'لا قيد');
+  const banner = await page.eval('var t=document.querySelector("#view").innerText;' +
+    'return { bad:t.indexOf("مدارس موقوفة")>-1, act:t.indexOf("رفع الإيقاف")>-1 };');
+  ok(banner.bad && banner.act, 'اللوحة تُظهر تنبيه المدارس الموقوفة مع رفع الإيقاف', JSON.stringify(banner));
+
+  /* الأثر: لا يدخل أحد من المدرسة — والمشرف العام يدخل دائمًا */
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  ok(!(await shellOn()), 'الإيقاف: قائد المدرسة لا يدخل');
+  const msg = await page.eval('return (document.querySelector(".hint-error")||{}).textContent||"";');
+  ok(/الاشتراك السنوي غير مسدَّد/.test(msg), 'رسالة الإيقاف تشرح السبب (الرسوم)', msg.slice(0, 60));
+  await loginAsRaw(page, base, stu.uname, stu.pw);
+  ok(!(await shellOn()), 'الإيقاف: الطالب لا يدخل كذلك');
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  ok(await shellOn(), 'الإيقاف: المشرف العام لا يُحجب أبدًا (مسار الاسترجاع)');
+
+  /* السداد يمدّد سنة ويرفع إيقاف الرسوم تلقائيًا */
+  const pay = await page.eval('return Store.recordPayment(' + JSON.stringify(sch.id) + ', {kind:"annual"});');
+  ok(pay.ok && pay.state.blocked === false, 'تسجيل السداد يرفع إيقاف الرسوم تلقائيًا',
+    JSON.stringify({ amount: pay.amount, until: pay.state.paidUntil }));
+  ok((await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ').daysLeft;')) > 300,
+    'السريان مُدّد سنة كاملة');
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  ok(await shellOn(), 'عاد الدخول بعد السداد');
+
+  /* التحويل إلى «كلاسيك»: يتوقف تلقرام والتحقق بمرحلتين */
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  await page.eval('App.licenseDialog(' + JSON.stringify(sch.id) + '); return true;');
+  await B.sleep(500);
+  ok(await page.eval(clickText('.modal button', 'التحويل إلى «كلاسيك»')), 'نافذة الباقة: زر التحويل إلى «كلاسيك»');
+  await B.sleep(600);
+  const L3 = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  ok(L3.plan === 'classic' && L3.annual === 1000 && L3.telegram === false,
+    'الباقة «كلاسيك»: ١٠٠٠ ر.س وتلقرام غير مشمول', JSON.stringify({ plan: L3.plan, annual: L3.annual }));
+  await page.eval(clickText('.modal button', 'إغلاق'));
+  await B.sleep(300);
+
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  const nav = await page.eval('return Array.prototype.map.call(document.querySelectorAll(".side-nav a[data-mod]"),' +
+    'function (a) { return a.getAttribute("data-mod"); });');
+  ok(nav.indexOf('telegram') === -1, 'قائمة قائد المدرسة بلا «سجل تلقرام» في الكلاسيك', nav.join(','));
+  ok(nav.indexOf('messages') > -1, 'الرسائل الخاصة باقية (المنصة تعمل بلا تلقرام)');
+  const tgOut = await page.eval('return Store.telegramSend("تجربة").then(function (r) { return r; });');
+  ok(tgOut && tgOut.ok === false && tgOut.pro === false, 'إرسال تلقرام مرفوض في الكلاسيك مع بيان السبب',
+    JSON.stringify(tgOut));
+  const tfC = await page.eval('return Store.twoFactorFor(' + JSON.stringify(prin.id) + ');');
+  ok(tfC.applies === false && /برو/.test(tfC.reason || ''), 'التحقق بمرحلتين لا ينطبق في الكلاسيك', tfC.reason);
+  await page.eval('location.hash="#/messages"; return true;');
+  await B.sleep(600);
+  ok(await page.eval('return document.querySelector("#view").innerText.indexOf("متاح في باقة «تابعني برو»")>-1;'),
+    'صفحة الرسائل تُبيّن أن ربط تلقرام في «برو»');
+  await page.eval('location.hash="#/dashboard"; return true;');
+  await B.sleep(600);
+  const pHint = await page.eval('var t=document.querySelector("#view").innerText;' +
+    'return { name:t.indexOf("تابعني كلاسيك")>-1, up:t.indexOf("الترقية إلى «تابعني برو»")>-1, panel:t.indexOf("الباقة والاشتراك")>-1 };');
+  ok(pHint.name && pHint.up && pHint.panel, 'لوحة قائد المدرسة تُظهر باقته ومزايا الترقية', JSON.stringify(pHint));
+
+  /* إيقاف بسبب تشغيلي: السداد وحده لا يرفعه */
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  const r3 = await page.eval('return Store.suspendSchool(' + JSON.stringify(sch.id) + ', "issue", "تجاوز حد الاستخدام");');
+  ok(r3.ok && r3.state.reason === 'issue', 'إيقاف بسبب مشكلة تشغيلية');
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  const msg2 = await page.eval('return (document.querySelector(".hint-error")||{}).textContent||"";');
+  ok(/موقوف من إدارة المنصة/.test(msg2), 'رسالة الإيقاف التشغيلي تختلف عن رسالة الرسوم', msg2.slice(0, 60));
+  await loginAsRaw(page, base, sup.uname, sup.pw);
+  const pay2 = await page.eval('return Store.recordPayment(' + JSON.stringify(sch.id) + ', {kind:"annual"});');
+  ok(pay2.state.blocked === true, 'السداد وحده لا يرفع الإيقاف التشغيلي (قرار المشرف)',
+    JSON.stringify({ state: pay2.state.state }));
+  await page.eval('return Store.activateSchool(' + JSON.stringify(sch.id) + ');');
+  await loginAsRaw(page, base, prin.uname, prin.pw);
+  ok(await shellOn(), 'رفع الإيقاف يدويًا يُعيد الدخول');
+
+  /* إعادة مدرسة العرض إلى «برو» حتى لا تتأثّر بقية الفحوص */
+  await page.eval('try { Store.logout(); } catch (e) {} return true;');
+  await B.goto(page, base + '/index.html', '!!window.Store');
+  await page.eval('return Store.setPlan(' + JSON.stringify(sch.id) + ', "pro").ok;');
+  await page.eval('return Store.activateSchool(' + JSON.stringify(sch.id) + ').ok;');
   return res;
 }
 

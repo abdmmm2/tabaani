@@ -193,6 +193,13 @@
         var pToggle = h('input', { type: 'checkbox' });
         pToggle.addEventListener('change', function () { pstate.create = pToggle.checked; pBlock.hidden = !pToggle.checked; });
 
+        /* الباقة والرسوم عند التأسيس */
+        var fees0 = S.planFees();
+        var planSel = UI.field({ name: 'plan', label: 'باقة المدرسة', type: 'select', half: true,
+          options: S.PLANS.map(function (pl) {
+            return { value: pl.id, label: pl.name + ' — ' + (pl.id === 'pro' ? fees0.pro : fees0.classic) + ' ر.س سنويًا · ' + pl.tagline };
+          }), value: 'classic' });
+        var setupCb = h('input', { type: 'checkbox', checked: true });
         var fm = UI.formModal({
           title: 'إضافة مدرسة وتأسيسها', wide: true, submitLabel: 'تأسيس المدرسة',
           intro: 'الحقول المعلَّمة بـ * إلزامية. تُحفظ المدرسة بالحالة «نشطة» مباشرة.',
@@ -207,6 +214,8 @@
               city: d.city, address: d.address, location: d.location, phone: d.phone, email: d.email,
               stages: stages, status: 'established', logo: '', createdBy: S.session.userId
             });
+            /* الباقة والاشتراك: رسم التأسيس ثم سنة أولى إن سُدّدا */
+            S.initLicense(school.id, { plan: planSel.input.value, setupPaid: setupCb.checked });
             if (pstate.create) {
               S.insert('users', {
                 schoolId: school.id, role: 'principal', name: pName.input.value.trim(),
@@ -228,6 +237,15 @@
         fm.body.appendChild(picker.el);
         fm.body.appendChild(h('label', { class: 'checkbox mt-3' }, [pToggle, h('span', { text: 'إنشاء حساب مدير المدرسة الآن' })]));
         fm.body.appendChild(pBlock);
+        fm.body.appendChild(h('div', { class: 'form-grid mt-3' }, [
+          planSel.wrap,
+          h('label', { class: 'checkline', style: { marginTop: '26px' } }, [
+            setupCb,
+            h('span', { text: 'سُدّد رسم التأسيس ' }),
+            h('strong', { text: S.planFees().setupFee + ' ر.س' }),
+            h('span', { class: 'muted', text: ' + الاشتراك السنوي (يُسجَّل لاحقًا)' })
+          ])
+        ]));
 
         var regionEl = fm.box.querySelector('[name="regionId"]');
         var cityEl = fm.box.querySelector('[name="city"]');
@@ -302,12 +320,13 @@
             sections: [{
               heading: 'بيانات المدارس',
               table: {
-                cols: ['م', 'اسم المدرسة', 'المنطقة', 'المدينة', 'المراحل', 'مدير المدرسة', 'الحالة'],
+                cols: ['م', 'اسم المدرسة', 'المنطقة', 'المدينة', 'المراحل', 'مدير المدرسة', 'الحالة', 'الباقة', 'الاشتراك حتى'],
                 rows: schools.map(function (s, i) {
                   var p = S.list('users', { schoolId: s.id, role: 'principal' })[0];
                   return [i + 1, s.name, regionName(s), s.city || '—',
                     (s.stages || []).map(function (id) { return S.stageName(id); }).join(' · '),
-                    p ? p.name : '—', s.status === 'established' ? 'نشطة' : 'موقوفة'];
+                    p ? p.name : '—', s.status === 'established' ? 'نشطة' : 'موقوفة',
+                    S.planDef(S.planOf(s.id)).short, (S.licenseState(s.id) || {}).paidUntil || '—'];
                 })
               }
             }],
@@ -346,6 +365,17 @@
                 return UI.badge(s.status === 'established' ? 'نشطة' : 'موقوفة', s.status === 'established' ? 'mint' : 'amber');
               }
             },
+            { label: 'الباقة', render: function (s) { return App.licenseBadge(s.id); } },
+            {
+              label: 'الاشتراك', render: function (s) {
+                var st = S.licenseState(s.id);
+                if (!st) return '—';
+                return h('div', { style: { fontSize: 'var(--fs-xs)', lineHeight: '1.7' } }, [
+                  h('div', { text: st.annual + ' ر.س سنويًا' }),
+                  h('div', { class: 'muted', text: st.paidUntil ? ('حتى ' + st.paidUntil + (st.daysLeft !== null ? ' (' + st.daysLeft + ' يومًا)' : '')) : 'لا سداد مسجَّل' })
+                ]);
+              }
+            },
             {
               label: 'تبديل الجنس', render: function (s) {
                 return h('button', {
@@ -363,6 +393,22 @@
                     });
                   }
                 });
+              }
+            },
+            {
+              label: 'الباقة والاشتراك', render: function (s) {
+                var st = S.licenseState(s.id);
+                var btn = h('button', { class: 'mini-btn is-primary', type: 'button', text: 'إدارة',
+                  onClick: function () { App.licenseDialog(s.id, draw); } });
+                if (st && st.blocked) {
+                  return h('div', { class: 'cluster', style: { gap: '6px' } }, [
+                    btn, h('button', { class: 'mini-btn', type: 'button', text: 'رفع الإيقاف',
+                      onClick: function () { App.activateFlow(s.id); } })
+                  ]);
+                }
+                return h('div', { class: 'cluster', style: { gap: '6px' } }, [
+                  btn, h('button', { class: 'mini-btn', type: 'button', text: 'سداد', onClick: function () { App.payFlow(s.id); } })
+                ]);
               }
             },
             { label: 'إجراءات', render: function (s) { return actions(s); } }

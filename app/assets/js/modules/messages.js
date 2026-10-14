@@ -129,7 +129,12 @@
             drawTelegram();
           });
         }
-        tgSlot.appendChild(UI.panel('ربط تلقرام (رسائل خاصة)', 'لتصلك أذون دخول الفصل والرسائل الخاصة على جوالك وحدك، لا في مجموعة المدرسة.', [
+        if (!S.isPro()) {
+        tgSlot.appendChild(h('div', { class: 'plan-hint', style: { marginBottom: '12px' } }, [
+          h('span', { html: '&#9733;', style: { color: 'var(--amber-600)' } }),
+          h('span', { text: 'ربط المحادثة الشخصية وتلقي الرسائل على تلقرام متاح في باقة «تابعني برو» — أما الرسائل داخل المنصة فتعمل في باقتك الحالية كما هي.' })
+        ]));
+      } else tgSlot.appendChild(UI.panel('ربط تلقرام (رسائل خاصة)', 'لتصلك أذون دخول الفصل والرسائل الخاصة على جوالك وحدك، لا في مجموعة المدرسة.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ', onClick: save }),
           h('button', { class: 'btn btn-soft', type: 'button', text: 'إرسال رسالة تجريبية', onClick: test })
         ], [

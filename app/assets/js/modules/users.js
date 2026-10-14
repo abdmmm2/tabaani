@@ -43,6 +43,12 @@
           status: UI.field({ name: 'uStatus', label: 'حالة الحساب', type: 'select', half: true,
             options: Object.keys(S.userStatuses).map(function (k) { return { value: k, label: S.userStatuses[k] }; }), value: cur.status || 'active' })
         };
+        /* تلقرام: مشمول في باقة «برو» — نُعطّل الحقل في الكلاسيك بدل إخفائه */
+        if (!S.isPro()) {
+          f.tgChat.input.disabled = true;
+          f.tgChat.input.placeholder = 'متاح في باقة «تابعني برو»';
+          f.tgChat.wrap.appendChild(h('div', { class: 'lic-note', text: 'باقتك الحالية «كلاسيك» — ربط محادثة تلقرام الشخصية يُفعَّل بعد الترقية إلى «برو».' }));
+        }
         var mustChange = h('input', { type: 'checkbox', checked: cur.mustChange !== false });
         var generated = null;
 

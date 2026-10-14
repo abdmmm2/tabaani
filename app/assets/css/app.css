@@ -421,3 +421,44 @@
 .dash-corner .panel { max-width: 460px; width: 100%; }
 .danger-panel { border: 1.5px dashed #C4562F; background: #FFF9F6; }
 .danger-panel .panel-title { color: #8B3A1E; }
+
+/* ===========================================================================
+   الباقات والاشتراكات — شارات الحالة، شارة الباقة، وبطاقة الترخيص
+   (الذهبي دائمًا على نصّ غامق — قاعدة العلامة)
+   =========================================================================== */
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 600;
+        border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.chip-plain { color: var(--text-muted); background: var(--bg-soft); }
+.chip-ok    { color: var(--mint-600); background: var(--mint-100); border-color: transparent; }
+.chip-warn, .chip-amber { color: var(--amber-700); background: var(--amber-100); border-color: transparent; }
+.chip-danger { color: #8E2A1D; background: #FBE6E2; border-color: transparent; }
+.chip-brand { color: var(--brand-700); background: var(--brand-100); border-color: transparent; }
+
+.plan-wrap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--fs-xs);
+             border-radius: 999px; padding: 3px 11px; border: 1px solid transparent; white-space: nowrap; }
+.plan-classic { background: var(--bg-soft); color: var(--text-strong); border-color: var(--border-strong); }
+.plan-pro { background: var(--grad-brand); color: var(--on-gold); }
+.plan-chip .pc-mrk { font-size: 11px; }
+
+/* شارة الباقة في الشريط الجانبي */
+.side-school .plan-chip { margin-top: 8px; }
+
+.lic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.lic-row { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px; }
+.lic-row .lr-k { display: block; font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: 4px; }
+.lic-row .lr-v { font-weight: 700; font-family: var(--font-display); }
+.lic-note { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 8px; }
+.lic-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px;
+              border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-soft); }
+.lic-banner.is-danger { border-color: #E7B9B1; background: #FBE6E2; }
+.lic-banner.is-warn { border-color: #EBD3A8; background: var(--amber-50); }
+.lic-banner.is-ok { border-color: #BFE3D3; background: var(--mint-100); }
+.plan-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.plan-card { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px; background: var(--card); }
+.plan-card.is-on { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(201, 127, 44, .14); }
+.plan-card h4 { font-family: var(--font-display); margin: 0 0 4px; }
+.plan-card .pc-price { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; }
+.plan-card ul { margin: 10px 0 0; padding-inline-start: 18px; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.9; }
+.plan-hint { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--text-muted);
+             background: var(--amber-50); border: 1px solid #EBD3A8; border-radius: var(--r-md); padding: 8px 11px; }

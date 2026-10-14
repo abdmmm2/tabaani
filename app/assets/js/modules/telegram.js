@@ -19,6 +19,7 @@
   App.register({
     id: 'telegram',
     label: 'سجل تلقرام',
+    pro: true,
     icon: '&#9992;&#65039;',
     roles: ['principal', 'deputy', 'guidance'],
     render: function (view) {

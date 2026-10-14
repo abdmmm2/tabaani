@@ -15,7 +15,12 @@
       if (App.order.indexOf(mod.id) === -1) App.order.push(mod.id);
     },
     go: function (id) { location.hash = '#/' + id; },
-    can: function (mod) { return !mod.roles || mod.roles.indexOf(S.session.role) > -1; },
+    can: function (mod) {
+      if (!mod) return false;
+      if (mod.roles && mod.roles.indexOf(S.session.role) === -1) return false;
+      if (mod.pro && !S.isPro()) return false;     /* وحدات تلقرام: مشمولة في باقة «تابعني برو» فقط */
+      return true;
+    },
 
     /* --------------------------------------------------------- شارات العدّ */
     badgeFor: function (id) {
@@ -56,6 +61,211 @@
       });
     },
 
+
+    /* ====================== الباقات والاشتراكات (كلاسيك · برو) ====================== */
+    /** شارة الباقة + حالة الاشتراك */
+    licenseBadge: function (schoolId) {
+      var st = S.licenseState(schoolId);
+      if (!st) return h('span', { class: 'muted', text: '—' });
+      return h('span', { class: 'plan-wrap' }, [
+        h('span', { class: 'plan-chip plan-' + st.plan, title: st.planName + ' · ' + st.annual + ' ر.س سنويًا' }, [
+          h('span', { class: 'pc-mrk', html: st.plan === 'pro' ? '&#9733;' : '&#9679;' }),
+          h('span', { text: st.planShort })
+        ]),
+        UI.badge(st.label, st.tone)
+      ]);
+    },
+    _licRow: function (k, v) {
+      return h('div', { class: 'lic-row' }, [
+        h('span', { class: 'lr-k', text: k }), h('span', { class: 'lr-v', text: String(v) })
+      ]);
+    },
+    _licTone: function (st) { return st.blocked ? 'danger' : (st.overdue ? 'danger' : (st.soon ? 'warn' : 'ok')); },
+    _licLine: function (st) {
+      var when = st.paidUntil
+        ? ('مسدَّد حتى ' + st.paidUntil + (st.daysLeft !== null ? ' (' + st.daysLeft + ' يومًا)' : ''))
+        : 'لا يوجد سداد مسجَّل';
+      var head = st.blocked ? 'دخول المدرسة موقوف' : (st.overdue ? 'الاشتراك متأخّر' : (st.soon ? 'ينتهي الاشتراك قريبًا' : 'الاشتراك ساري'));
+      return h('span', { class: 'muted', text: '· ' + when + ' · ' + st.annual + ' ر.س سنويًا — ' + head });
+    },
+    /** تسجيل سداد سنة كاملة */
+    payFlow: function (schoolId, years) {
+      var sc = S.school(schoolId) || {}, st = S.licenseState(schoolId);
+      if (!st) return;
+      var y = years || 1;
+      UI.confirm('تسجيل سداد الاشتراك السنوي لباقة «' + st.planName + '» — ' + sc.name + '؟\n' +
+        'المبلغ: ' + (st.annual * y) + ' ر.س · السريان حتى: ' + (st.paidUntil ? 'بعد تمديد سنة من ' + st.paidUntil : 'سنة من اليوم') +
+        (st.blocked && st.reason === 'fees' ? '\nويُرفع الإيقاف تلقائيًا بعد السداد.' : ''),
+        { ok: 'تسجيل السداد', danger: false }).then(function (yes) {
+        if (!yes) return;
+        var r = S.recordPayment(schoolId, { kind: 'annual', years: y });
+        if (!r.ok) { UI.toast(r.error, 'warn'); return; }
+        UI.toast('سُجّل سداد ' + r.amount + ' ر.س — سارية حتى ' + r.state.paidUntil, 'ok');
+        App.route();
+      });
+    },
+    /** رفع الإيقاف */
+    activateFlow: function (schoolId) {
+      var sc = S.school(schoolId) || {};
+      UI.confirm('رفع الإيقاف عن ' + sc.name + ' وعودة الدخول لكل حساباتها؟', { ok: 'رفع الإيقاف' }).then(function (yes) {
+        if (!yes) return;
+        var r = S.activateSchool(schoolId);
+        if (!r.ok) { UI.toast(r.error, 'warn'); return; }
+        UI.toast('رُفع الإيقاف عن ' + sc.name + ' ✓', 'ok');
+        App.route();
+      });
+    },
+    /** نافذة الإيقاف: السبب + ملاحظة (قرار المشرف العام) */
+    suspendDialog: function (schoolId, onDone) {
+      var sc = S.school(schoolId) || {};
+      var reason = 'fees';
+      var note = h('textarea', { class: 'input', rows: '2', placeholder: 'ملاحظة (اختيارية) — تُسجَّل في سجل التدقيق وتُرسل لإدارة المدرسة' });
+      var opts = [
+        { v: 'fees', t: 'عدم سداد الرسوم السنوية', d: 'الاشتراك السنوي غير مسدَّد — ويُرفع الإيقاف تلقائيًا عند تسجيل السداد.' },
+        { v: 'issue', t: 'مشكلة تشغيلية', d: 'خلل أو مخالفة في الاستخدام — يُرفع بقرار من إدارة المنصة.' },
+        { v: 'other', t: 'سبب آخر', d: 'يُوضَّح في الملاحظة.' }
+      ];
+      var box = h('div', { class: 'stack' });
+      opts.forEach(function (o) {
+        var radio = h('input', { type: 'radio', name: 'suspendReason' });
+        radio.checked = (o.v === reason);
+        radio.addEventListener('change', function () { reason = o.v; });
+        box.appendChild(h('label', { class: 'setup-card' + (o.v === reason ? ' is-on' : ''), onClick: function () { reason = o.v; redraw(); } }, [
+          radio, h('div', {}, [h('strong', { text: o.t }), h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: o.d })])
+        ]));
+      });
+      function redraw() {
+        clear(box);
+        opts.forEach(function (o) {
+          var radio = h('input', { type: 'radio', name: 'suspendReason' });
+          radio.checked = (o.v === reason);
+          radio.addEventListener('change', function () { reason = o.v; redraw(); });
+          box.appendChild(h('label', { class: 'setup-card' + (o.v === reason ? ' is-on' : ''), onClick: function () { reason = o.v; redraw(); } }, [
+            radio, h('div', {}, [h('strong', { text: o.t }), h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: o.d })])
+          ]));
+        });
+      }
+      redraw();
+      var dlg = UI.modal({
+        title: 'إيقاف دخول مدرسة: ' + sc.name,
+        body: [
+          h('div', { class: 'lic-banner is-danger' }, [
+            h('strong', { text: 'سيتوقف دخول كل حسابات المدرسة فورًا' }),
+            h('span', { class: 'muted', text: '— المدير والوكلاء والمعلمون والطلاب.' }),
+            h('span', { text: 'حسابك كمشرف عام لا يتأثّر.' })
+          ]),
+          box, note
+        ],
+        actions: [
+          { label: 'إيقاف الدخول', class: 'btn-danger', onClick: function (close) {
+              var r = S.suspendSchool(schoolId, reason, note.value);
+              if (!r.ok) { UI.toast(r.error, 'warn'); return; }
+              UI.toast('أُوقف دخول ' + sc.name + ' — لا يستطيع أي حساب من المدرسة الدخول', 'warn');
+              close(); onDone && onDone(); App.route();
+            } },
+          { label: 'إلغاء' }
+        ]
+      });
+      return dlg;
+    },
+    /** نافذة الترخيص الكاملة: العرض + السداد + الباقة + الإيقاف */
+    licenseDialog: function (schoolId, onDone) {
+      var sc = S.school(schoolId) || {}, st = S.licenseState(schoolId);
+      if (!st) return;
+      var close0 = function () { if (dlg) dlg.close(); };
+      var rebuild = function () { close0(); App.licenseDialog(schoolId, onDone); };
+      var fees = S.planFees();
+      var dlg = UI.modal({
+        title: 'الباقة والاشتراك — ' + sc.name, wide: true,
+        body: [
+          h('div', { class: 'lic-banner is-' + App._licTone(st) }, [App.licenseBadge(schoolId), App._licLine(st)]),
+          h('div', { class: 'lic-grid' }, [
+            App._licRow('الباقة', st.planName),
+            App._licRow('الاشتراك السنوي', st.annual + ' ر.س'),
+            App._licRow('رسم التأسيس والتهيئة', st.setupFee + ' ر.س — ' + (st.setupPaid ? 'مسدَّد' : 'غير مسدَّد')),
+            App._licRow('السريان حتى', st.paidUntil || '—'),
+            App._licRow('آخر سداد', st.lastPaymentAt ? UI.fmtDate(st.lastPaymentAt) : '—'),
+            App._licRow('تلقرام', st.telegram ? 'مشمول (برو)' : 'غير مشمول (كلاسيك)')
+          ]),
+          st.note ? h('p', { class: 'lic-note', text: 'ملاحظة الإيقاف: ' + st.note + (st.suspendedAt ? ' — ' + UI.fmtDate(st.suspendedAt) : '') }) : null,
+          h('div', { class: 'plan-cards' }, S.PLANS.map(function (pl) {
+            var on = st.plan === pl.id;
+            return h('div', { class: 'plan-card' + (on ? ' is-on' : '') }, [
+              h('h4', { text: pl.name }),
+              h('div', { class: 'pc-price nums', text: (pl.id === 'pro' ? fees.pro : fees.classic) + ' ر.س' }),
+              h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'سنويًا · ' + pl.tagline }),
+              h('ul', {}, pl.features.map(function (f) { return h('li', { text: f }); })),
+              h('button', { class: 'btn ' + (on ? 'btn-outline' : 'btn-primary') + ' btn-sm', type: 'button', disabled: on,
+                text: on ? ('الباقة الحالية (' + pl.short + ')') : ('التحويل إلى «' + pl.short + '»'),
+                onClick: function () {
+                  var r = S.setPlan(schoolId, pl.id);
+                  if (!r.ok) { UI.toast(r.error, 'warn'); return; }
+                  UI.toast('باقة ' + sc.name + ' ← ' + pl.name, 'ok');
+                  rebuild(); onDone && onDone();
+                } })
+            ]);
+          })),
+          h('p', { class: 'lic-note', text: 'السداد يُسجَّل يدويًا بعد التحصيل (تحويل بنكي أو نقدًا). رسم التأسيس ' + fees.setupFee + ' ر.س مرة واحدة عند تهيئة المنصة للمدرسة.' })
+        ],
+        actions: [
+          { label: 'تسجيل السداد (+سنة)', class: 'btn-primary', onClick: function (close) { close(); App.payFlow(schoolId); } },
+          st.setupPaid ? null : { label: 'تسجيل رسم التأسيس', class: 'btn-outline', onClick: function (close) {
+              var r = S.recordPayment(schoolId, { kind: 'setup' });
+              UI.toast('سُجّل رسم التأسيس ' + r.amount + ' ر.س', 'ok'); close(); App.route();
+            } },
+          st.blocked ? { label: 'رفع الإيقاف', class: 'btn-outline', onClick: function (close) { close(); App.activateFlow(schoolId); } }
+                     : { label: 'إيقاف الدخول', class: 'btn-danger', onClick: function (close) { close(); App.suspendDialog(schoolId, onDone); } },
+          { label: 'إغلاق' }
+        ].filter(Boolean)
+      });
+      return dlg;
+    },
+    /** بطاقة الباقة والاشتراك لقائد المدرسة (مع دعوة الترقية لباقة برو) */
+    schoolLicensePanel: function (schoolId) {
+      var st = S.licenseState(schoolId);
+      if (!st) return h('span');
+      var pro = S.planDef('pro'), fees = S.planFees();
+      var body = [
+        h('div', { class: 'panel-head' }, [
+          h('div', {}, [
+            h('h3', { text: 'الباقة والاشتراك' }),
+            h('p', { class: 'muted', text: st.planName + ' — ' + pro.tagline })
+          ]),
+          App.licenseBadge(schoolId)
+        ]),
+        h('div', { class: 'panel-body stack', style: { gap: '10px' } }, [
+          h('div', { class: 'lic-grid' }, [
+            App._licRow('الباقة الحالية', st.planName),
+            App._licRow('الاشتراك السنوي', st.annual + ' ر.س'),
+            App._licRow('السريان حتى', st.paidUntil || 'لم يُسجَّل سداد بعد'),
+            App._licRow('رسم التأسيس', st.setupPaid ? 'مسدَّد ✓' : 'غير مسدَّد')
+          ]),
+          st.blocked
+            ? h('div', { class: 'lic-banner is-danger' }, [
+                h('strong', { text: 'دخول المدرسة موقوف' }),
+                h('span', { class: 'muted', text: st.reason === 'fees' ? '— الاشتراك السنوي غير مسدَّد. تواصل مع إدارة منصة تابعني.' : '— قرار من إدارة المنصة. ' + (st.note || '') })
+              ])
+            : null,
+          (!st.blocked && (st.overdue || st.soon))
+            ? h('div', { class: 'lic-banner ' + (st.overdue ? 'is-danger' : 'is-warn') }, [
+                h('strong', { text: st.overdue ? 'الاشتراك متأخّر' : 'الاشتراك ينتهي قريبًا' }),
+                h('span', { class: 'muted', text: st.paidUntil ? '— السريان حتى ' + st.paidUntil + (st.daysLeft !== null ? ' (' + st.daysLeft + ' يومًا)' : '') : '' })
+              ])
+            : null,
+          !st.telegram
+            ? h('div', { class: 'plan-hint' }, [
+                h('span', { html: '&#9733;', style: { color: 'var(--amber-600)' } }),
+                h('span', { text: 'باقتك الحالية «تابعني كلاسيك»: المنصة كاملة بلا تلقرام. الترقية إلى «تابعني برو» تضيف إشعارات تلقرام الفورية والمعلمين وأولياء الأمور، والرسائل الخاصة، والتحقق بمرحلتين — ' + (fees.pro - fees.classic) + ' ر.س فرقًا في السنة (الإجمالي ' + fees.pro + ' ر.س). تواصل مع إدارة المنصة.' })
+              ])
+            : h('div', { class: 'lic-banner is-ok' }, [
+                h('strong', { text: 'باقة «تابعني برو»' }),
+                h('span', { class: 'muted', text: '— تشمل تلقرام: الإشعارات الفورية، الرسائل الخاصة، والتحقق بمرحلتين.' })
+              ])
+        ])
+      ];
+      return h('section', { class: 'panel', style: { marginTop: '14px' } }, body);
+    },
+
     /* ------------------------------------------------------------- القشرة */
     shell: function () {
       var root = document.getElementById('app');
@@ -84,7 +294,8 @@
       ]));
       sidebar.appendChild(h('div', { class: 'side-school' }, [
         h('strong', { text: school ? school.name : 'مدرسة' }),
-        h('span', { text: school ? [school.city, school.code].filter(Boolean).join(' · ') : '' })
+        h('span', { text: school ? [school.city, school.code].filter(Boolean).join(' · ') : '' }),
+        school ? App.licenseBadge(school.id) : null
       ]));
 
       /* خلفية القائمة المنسدلة على الجوال */
@@ -119,8 +330,8 @@
       topbar.appendChild(h('div', { class: 'topbar-actions' }, [
         h('button', { class: 'icon-btn', type: 'button', title: 'الإشعارات', onClick: function () { App.openInbox(); } },
           [h('span', { html: '&#128276;' }), unread ? h('span', { class: 'count', style: { position: 'absolute', transform: 'translate(10px,-10px)', background: 'var(--amber-500)', color: 'var(--on-gold)', borderRadius: '999px', fontSize: '10px', padding: '1px 6px', fontWeight: '700' }, text: String(unread) }) : null]),
-        h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'سجل رسائل تلقرام', onClick: function () { App.openTelegram(); } },
-          [h('span', { html: '&#9992;&#65039;' })]),
+        S.isPro() ? h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'سجل رسائل تلقرام', onClick: function () { App.openTelegram(); } },
+          [h('span', { html: '&#9992;&#65039;' })]) : null,
         h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'تغيير كلمة المرور', onClick: App.openChangePassword },
           [h('span', { html: '&#128273;' })]),
         h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'خروج', onClick: App.logout })
@@ -712,6 +923,39 @@
       ]));
       panel.appendChild(cards);
       panel.appendChild(adminRow);
+
+      /* الباقة والرسوم — افتراض للمدارس التي تُضاف لاحقًا */
+      var plan = { id: 'classic' };
+      var planBox = h('div', { class: 'plan-cards', style: { marginTop: '14px' } });
+      var setupPaid = h('input', { type: 'checkbox', checked: true });
+      function drawPlans() {
+        clear(planBox);
+        S.PLANS.forEach(function (pl) {
+          var fee = pl.id === 'pro' ? S.planFees().pro : S.planFees().classic;
+          planBox.appendChild(h('div', {
+            class: 'plan-card' + (plan.id === pl.id ? ' is-on' : ''), style: { cursor: 'pointer' },
+            onClick: function () { plan.id = pl.id; drawPlans(); }
+          }, [
+            h('h4', { text: pl.name }),
+            h('div', { class: 'pc-price nums', text: fee + ' ر.س' }),
+            h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'سنويًا · ' + pl.tagline }),
+            h('ul', {}, pl.features.slice(0, 3).map(function (f) { return h('li', { text: f }); }))
+          ]));
+        });
+      }
+      drawPlans();
+      panel.appendChild(h('div', { style: { marginTop: '16px' } }, [
+        h('strong', { text: 'الباقة والرسوم' }),
+        h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)', margin: '4px 0 0' },
+          text: 'الباقة الافتراضية للمدرسة — يمكن تغييرها لكل مدرسة لاحقًا من: المناطق والمدن والمدارس. ومدرسة العرض التجريبي تأتي على باقة «برو» لتجربة كل الخدمات.' })
+      ]));
+      panel.appendChild(planBox);
+      panel.appendChild(h('label', { class: 'checkline', style: { marginTop: '10px' } }, [
+        setupPaid,
+        h('span', { text: 'تم سداد رسم التأسيس والتهيئة ' }),
+        h('strong', { text: '1000 ر.س' }),
+        h('span', { class: 'muted', text: ' — مرة واحدة عند تهيئة المنصة للمدرسة.' })
+      ]));
       panel.appendChild(h('div', { class: 'form-grid' }, [nameF.wrap, userF.wrap, mailF.wrap, p1.wrap, p2.wrap]));
       panel.appendChild(err);
       panel.appendChild(h('button', { class: 'btn btn-primary btn-lg', type: 'button', text: 'إنشاء الحساب والبدء', onClick: function () {
@@ -721,7 +965,8 @@
         if (p1.input.value.length < 8) { err.hidden = false; err.textContent = 'كلمة المرور ٨ أحرف على الأقل'; return; }
         if (p1.input.value !== p2.input.value) { err.hidden = false; err.textContent = 'كلمتا المرور غير متطابقتين'; return; }
         var r = S.setupOwner({ name: nameF.input.value, username: userF.input.value, email: mailF.input.value,
-          password: p1.input.value, demo: mode.demo, withDemoAdmin: mode.demo && demoAdminCb.checked });
+          password: p1.input.value, demo: mode.demo, withDemoAdmin: mode.demo && demoAdminCb.checked,
+          plan: plan.id, setupPaid: setupPaid.checked });
         if (!r.ok) { err.hidden = false; err.textContent = r.error; return; }
         UI.toast('أُنشئ حساب المشرف العام ✓', 'ok');
         App._doEnter(r.user.id);
@@ -771,6 +1016,10 @@
         stats('حسابات الطلاب', String(stAll.total),
           stAll.total ? (stAll.suspended ? stAll.suspended + ' موقوفة من الدخول' : 'كلها نشطة') : 'لا حسابات',
           stAll.suspended ? 'gold' : null);
+        var licAll = S.licenseStats();
+        stats('اشتراكات موقوفة / متأخّرة', String(licAll.suspended + licAll.overdue),
+          licAll.total ? (licAll.pro + ' برو · ' + licAll.classic + ' كلاسيك') : 'لا مدارس',
+          (licAll.suspended || licAll.overdue) ? 'gold' : null);
         /* زر واحد مباشر: إيقاف/تفعيل كل طلاب المنصّة من اللوحة نفسها */
         var allOff = stAll.total > 0 && stAll.active === 0;
         /* اختيار مدرسة واحدة للتحكم المستقل من اللوحة */
@@ -839,7 +1088,49 @@
                   });
                 }
               })
-            ])
+            ]),
+            h('div', { style: { height: '1px', background: 'var(--border)', margin: '14px 0' } }),
+            h('h3', { class: 'panel-title', text: 'الباقة والاشتراك — هذه المدرسة' }),
+            (function () {
+              var st = S.licenseState(App._dashSchool);
+              if (!st) return h('span');
+              return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' } }, [
+                h('div', { class: 'lic-banner is-' + App._licTone(st) }, [App.licenseBadge(App._dashSchool), App._licLine(st)]),
+                h('div', { class: 'cluster' }, [
+                  h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تسجيل السداد (+سنة)',
+                    onClick: function () { App.payFlow(App._dashSchool); } }),
+                  st.blocked
+                    ? h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'رفع الإيقاف',
+                        onClick: function () { App.activateFlow(App._dashSchool); } })
+                    : h('button', { class: 'btn btn-danger btn-sm', type: 'button', text: 'إيقاف المدرسة (رسوم / مشكلة)',
+                        onClick: function () { App.suspendDialog(App._dashSchool); } }),
+                  h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'الباقة والتفاصيل',
+                    onClick: function () { App.licenseDialog(App._dashSchool); } })
+                ])
+              ]);
+            })()
+          ]));
+        }
+
+        /* مدارس موقوفة: تنبيه مباشر مع رفع الإيقاف */
+        var badSchools = licAll.rows.filter(function (r) { return r.suspended; });
+        if (badSchools.length) {
+          view.appendChild(h('div', { class: 'panel danger-panel', style: { marginTop: '12px' } }, [
+            h('h3', { class: 'panel-title', text: 'مدارس موقوفة (' + badSchools.length + ')' }),
+            h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 10px' },
+              text: 'دخول هذه المدارس موقوف حاليًا — لا يستطيع أي حساب منها الدخول (عدا المشرف العام).' }),
+            h('ul', { style: { margin: 0, paddingInlineStart: '18px', lineHeight: '2' } }, badSchools.map(function (r) {
+              return h('li', {}, [
+                h('strong', { text: r.name }),
+                h('span', { class: 'muted', text: ' — ' + r.label + ' · ' + r.planName + ' · ' + r.annual + ' ر.س سنويًا' }),
+                ' ',
+                h('button', { class: 'btn-link', type: 'button', text: 'رفع الإيقاف',
+                  onClick: function () { App.activateFlow(r.schoolId); } }),
+                ' ',
+                h('button', { class: 'btn-link', type: 'button', text: 'التفاصيل',
+                  onClick: function () { App._dashSchool = r.schoolId; App.licenseDialog(r.schoolId); } })
+              ]);
+            }))
           ]));
         }
         action('إضافة مدرسة', 'schools', 'btn-primary');
@@ -944,6 +1235,9 @@
       }
 
       view.appendChild(h('div', { class: 'stat-row' }, cards));
+
+      /* الباقة والاشتراك — لقائد المدرسة (معلوماته ومزايا الترقية) */
+      if (role === 'principal') view.appendChild(App.schoolLicensePanel(schoolId));
 
       /* طلبات الحسابات بانتظار الاعتماد (المدير) */
       if (role === 'principal' || role === 'deputy') {

@@ -323,6 +323,11 @@
           value: user ? user.telegramChatId || '' : '',
           help: 'اختياري — للرسائل الخاصة (مثل إذن دخول الفصل). اتركها فارغة ليصل التنبيه إلى مجموعة المدرسة.' });
 
+        if (!S.isPro()) {
+          tgChat.input.disabled = true;
+          tgChat.input.placeholder = 'متاح في باقة «تابعني برو»';
+          tgChat.wrap.appendChild(h('div', { class: 'lic-note', text: 'باقتك الحالية «كلاسيك» — ربط محادثة تلقرام الشخصية يُفعَّل بعد الترقية إلى «برو».' }));
+        }
         var teacherBox = teacherAssignSection(draft);
         teacherBox.hidden = !(user && user.role === 'teacher');
         role.input.addEventListener('change', function () { teacherBox.hidden = role.input.value !== 'teacher'; });

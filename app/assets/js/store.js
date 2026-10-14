@@ -129,6 +129,13 @@
       gender: 'boys',   /* boys = طلاب · girls = طالبات — يُحدَّد عند تسجيل المدرسة */
       logo: '', createdBy: 'super', createdAt: now(), status: 'established'
     };
+    /* ترخيص العرض: باقة «برو» سارية سنة كاملة (لتجربة تلقرام والتحقق بمرحلتين) */
+    school.plan = 'pro';
+    school.license = {
+      plan: 'pro', annual: 1500, setupFee: 1000, setupPaid: true, setupAt: now(), startedAt: now(),
+      paidUntil: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
+      lastPaymentAt: now(), status: 'active', reason: '', note: '', suspendedAt: ''
+    };
     db.schools.push(school);
 
     /* الحسابات */
@@ -649,6 +656,9 @@
       var u = (userId && typeof userId === 'object') ? userId : store.user(userId);
       if (!u) return { applies: false, blocked: false, reason: 'مستخدم غير معروف' };
       if (u.role === 'student') return { applies: false, blocked: false, reason: 'الطلاب لا يخضعون للتحقق بمرحلتين' };
+      if (u.schoolId && !store.isPro(u.schoolId)) {
+        return { applies: false, blocked: false, pro: false, reason: 'التحقق بمرحلتين يُرسل الرمز عبر تلقرام — متاح في باقة «تابعني برو»' };
+      }
       var c = store.twoFactorConfig();
       if (!c.enabled) return { applies: false, blocked: false, reason: 'التحقق بمرحلتين مُعطَّل من الإعدادات' };
       var chat = String(u.telegramChatId || '').trim();
@@ -758,7 +768,10 @@
         name: String(data.name || 'مشرف المنصة').trim(), username: uname, password: String(data.password),
         email: email, phone: '', telegram: '', status: 'active', createdAt: now(), canLogin: true, mustChange: false
       });
-      store.db.meta = Object.assign({}, store.db.meta, { needsSetup: false, setupAt: now(), demo: !!data.demo });
+      store.db.meta = Object.assign({}, store.db.meta, {
+        needsSetup: false, setupAt: now(), demo: !!data.demo,
+        setupPlan: { plan: data.plan === 'pro' ? 'pro' : 'classic', setupPaid: data.setupPaid !== false }
+      });
       save();
       /* في المدرسة الحقيقية: الوحدة الأساسية تعتمد على وجود مدرسة */
       if (!data.demo) store._pendingSetup = true;
@@ -935,6 +948,15 @@
       if (user.status === 'pending') return { ok: false, error: 'حسابك بانتظار اعتماد مدير المدرسة' };
       if (user.status === 'suspended' || user.status === 'disabled' || user.canLogin === false) {
         return { ok: false, error: 'الحساب موقوف — راجع مدير المدرسة' };
+      }
+      /* بوابة الترخيص: قرار المشرف العام يوقف دخول المدرسة كلها (عدا المشرف العام نفسه) */
+      if (user.schoolId) {
+        var lic = store.licenseState(user.schoolId);
+        if (lic && lic.blocked && user.role !== 'super') {
+          return { ok: false, error: lic.reason === 'fees'
+            ? 'دخول المدرسة موقوف — الاشتراك السنوي غير مسدَّد. تواصل مع إدارة منصة تابعني.'
+            : 'دخول المدرسة موقوف من إدارة المنصة — راجع مدير المدرسة.' };
+        }
       }
       if (user.password !== p) return { ok: false, error: 'كلمة المرور غير صحيحة' };
       return { ok: true, user: user };
@@ -1145,6 +1167,212 @@
       return { ok: true, action: action, changed: changed, total: targets.length, scope: scopeLabel };
     },
 
+    /* =====================================================================
+       الباقات والاشتراكات — «تابعني كلاسيك» و«تابعني برو»
+       ---------------------------------------------------------------------
+       • الباقة لكل مدرسة: كلاسيك = المنصة كاملة بلا تلقرام · برو = كل الخدمات.
+       • رسم تأسيس وتهيئة المنصة مرة واحدة، ثم اشتراك سنوي لكل باقة.
+       • الإيقاف بيد المشرف العام وحده: عدم سداد الرسوم السنوية أو مشكلة تشغيلية،
+         ولا يمسّ حساب المشرف العام نفسه أبدًا (مسار الاسترجاع).
+       ===================================================================== */
+    PLANS: [
+      { id: 'classic', name: 'تابعني كلاسيك', short: 'كلاسيك', telegram: false,
+        tagline: 'المنصة كاملة — بلا تلقرام',
+        features: ['وحدات المنصة كلها و١٠ أدوار', 'التحضير والمخالفات والاستئذان والمناوبة',
+                   'التقارير الرسمية بترويسة الوزارة وباركود التحقّق', 'يعمل بلا إنترنت · نسخ احتياطي'] },
+      { id: 'pro', name: 'تابعني برو', short: 'برو', telegram: true, best: true,
+        tagline: 'كل الخدمات + تلقرام',
+        features: ['كل ما في «تابعني كلاسيك»', 'إشعارات تلقرام الفورية للمعلم والوكيل والمدير',
+                   'الرسائل الخاصة وتنبيهات أولياء الأمور', 'التحقق بمرحلتين برمز تلقرام',
+                   'ربط محادثة تلقرام خاصة لكل مستخدم'] }
+    ],
+    /** الرسوم: رسم تأسيس + اشتراك سنوي لكل باقة (قابلة للتعديل من إدارة المنصة) */
+    planFees: function () {
+      var f = (db.settings && db.settings.planFees) || {};
+      var num = function (v, d) { var x = Number(v); return isFinite(x) && x >= 0 ? Math.round(x) : d; };
+      return { setupFee: num(f.setupFee, 1000), classic: num(f.classic, 1000), pro: num(f.pro, 1500) };
+    },
+    savePlanFees: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.planFees = Object.assign({}, store.planFees(), patch || {});
+      save(); return store.planFees();
+    },
+    planDef: function (id) { return store.PLANS.find(function (p) { return p.id === id; }) || store.PLANS[0]; },
+    planLabel: function (id) { return store.planDef(id).name; },
+    annualFee: function (planId) { var f = store.planFees(); return planId === 'pro' ? f.pro : f.classic; },
+    /** باقة المدرسة (الافتراضي: كلاسيك) */
+    planOf: function (schoolId) {
+      var sc = store.school(schoolId || store.session.schoolId);
+      var p = sc && (sc.plan || (sc.license && sc.license.plan));
+      return p === 'pro' ? 'pro' : 'classic';
+    },
+    /** هل المدرسة على باقة برو؟ — مشرف المنصة (بلا مدرسة) لا تُحجب عنه أدواته */
+    isPro: function (schoolId) {
+      var sid = schoolId || store.session.schoolId;
+      if (!sid) return true;
+      return store.planOf(sid) === 'pro';
+    },
+    /** ترخيص المدرسة — قيم موحّدة وافتراضات آمنة للمدارس القائمة */
+    license: function (schoolId) {
+      var sc = store.school(schoolId || store.session.schoolId);
+      if (!sc) return null;
+      var f = store.planFees(), L = sc.license || {};
+      var plan = (sc.plan === 'pro' || L.plan === 'pro') ? 'pro' : 'classic';
+      return {
+        plan: plan, annual: L.annual || store.annualFee(plan),
+        setupFee: L.setupFee === undefined ? f.setupFee : L.setupFee,
+        setupPaid: L.setupPaid !== false, setupAt: L.setupAt || '',
+        startedAt: L.startedAt || '', paidUntil: L.paidUntil || '', lastPaymentAt: L.lastPaymentAt || '',
+        status: L.status === 'suspended' ? 'suspended' : 'active',
+        reason: L.reason || '', note: L.note || '', suspendedAt: L.suspendedAt || ''
+      };
+    },
+    saveLicense: function (schoolId, patch) {
+      var sc = store.school(schoolId);
+      if (!sc) return null;
+      sc.license = Object.assign({}, store.license(schoolId), patch || {});
+      if (sc.license.plan) sc.plan = sc.license.plan;
+      save(); return sc.license;
+    },
+    /** حالة الترخيص للعرض: الحالة + الأيام المتبقية + هل الدخول محجوب */
+    licenseState: function (schoolId) {
+      var L = store.license(schoolId);
+      if (!L) return null;
+      var days = null;
+      if (L.paidUntil) days = Math.ceil((new Date(L.paidUntil).getTime() - Date.now()) / 864e5);
+      var overdue = days !== null && days < 0;
+      var soon = days !== null && days >= 0 && days <= 30;
+      var suspended = L.status === 'suspended';
+      var state = suspended ? 'suspended' : (overdue ? 'overdue' : (soon ? 'soon' : (L.paidUntil ? 'active' : 'unpaid')));
+      var labels = { suspended: (L.reason === 'fees' ? 'موقوفة — عدم سداد الرسوم' : 'موقوفة من إدارة المنصة'),
+                     overdue: 'متأخّرة السداد', soon: 'تنتهي قريبًا', active: 'سارية', unpaid: 'بانتظار أول سداد' };
+      return Object.assign({}, L, {
+        daysLeft: days, overdue: overdue, soon: soon, blocked: suspended,
+        state: state, label: labels[state],
+        tone: suspended ? 'danger' : (overdue ? 'danger' : (soon ? 'amber' : (state === 'active' ? 'mint' : 'plain'))),
+        planName: store.planDef(L.plan).name, planShort: store.planDef(L.plan).short,
+        telegram: store.planDef(L.plan).telegram
+      });
+    },
+    /** تهيئة ترخيص مدرسة جديدة (من اختيار التهيئة الأولى) */
+    initLicense: function (schoolId, opts) {
+      opts = opts || {};
+      var sc = store.school(schoolId);
+      if (!sc) return null;
+      var f = store.planFees();
+      var meta = (db.meta && db.meta.setupPlan) || {};
+      var plan = (opts.plan || meta.plan) === 'pro' ? 'pro' : 'classic';
+      var setupPaid = opts.setupPaid !== undefined ? !!opts.setupPaid : (meta.setupPaid !== false);
+      var until = new Date(); until.setFullYear(until.getFullYear() + 1);
+      sc.plan = plan;
+      sc.license = {
+        plan: plan, annual: store.annualFee(plan), setupFee: f.setupFee, setupPaid: setupPaid,
+        setupAt: setupPaid ? now() : '', startedAt: now(),
+        paidUntil: setupPaid ? until.toISOString().slice(0, 10) : '',
+        lastPaymentAt: setupPaid ? now() : '', status: 'active', reason: '', note: '', suspendedAt: ''
+      };
+      save(); return sc.license;
+    },
+    /** تسجيل سداد: رسم التأسيس (مرة) أو الاشتراك السنوي (يُمدّد من تاريخ السريان أو اليوم) */
+    recordPayment: function (schoolId, opts) {
+      opts = opts || {};
+      var L = store.license(schoolId), sc = store.school(schoolId);
+      if (!L) return { ok: false, error: 'مدرسة غير معروفة' };
+      var kind = opts.kind === 'setup' ? 'setup' : 'annual';
+      var years = Math.max(1, parseInt(opts.years, 10) || 1);
+      var patch, amount;
+      if (kind === 'setup') {
+        patch = { setupPaid: true, setupAt: now(), setupFee: L.setupFee };
+        amount = L.setupFee;
+      } else {
+        var base = (L.paidUntil && new Date(L.paidUntil).getTime() > Date.now()) ? new Date(L.paidUntil) : new Date();
+        base.setFullYear(base.getFullYear() + years);
+        amount = store.annualFee(L.plan) * years;
+        patch = { setupPaid: true, startedAt: L.startedAt || now(), paidUntil: base.toISOString().slice(0, 10),
+                  lastPaymentAt: now(), annual: store.annualFee(L.plan) };
+        /* السداد يُرفع به الإيقاف المفروض بسبب الرسوم تلقائيًا */
+        if (L.status === 'suspended' && L.reason === 'fees' && opts.unblock !== false) {
+          patch.status = 'active'; patch.reason = ''; patch.note = ''; patch.suspendedAt = '';
+        }
+      }
+      store.saveLicense(schoolId, patch);
+      var what = kind === 'setup' ? 'رسم التأسيس' : ('الاشتراك السنوي (' + years + ' سنة)');
+      store._licenseLog('payment_recorded', 'تسجيل سداد ' + what + ' — ' + (sc ? sc.name : '') + ' · ' + amount + ' ر.س',
+        { title: 'سداد مُسجَّل: ' + (sc ? sc.name : ''), body: what + ' — ' + amount + ' ر.س', schoolId: schoolId });
+      return { ok: true, kind: kind, amount: amount, license: store.license(schoolId), state: store.licenseState(schoolId) };
+    },
+    /** إيقاف دخول مدرسة (المشرف العام): عدم سداد الرسوم أو مشكلة تشغيلية */
+    suspendSchool: function (schoolId, reason, note) {
+      var sc = store.school(schoolId);
+      if (!sc) return { ok: false, error: 'مدرسة غير معروفة' };
+      var r = reason === 'fees' ? 'fees' : (reason === 'issue' ? 'issue' : 'other');
+      store.saveLicense(schoolId, { status: 'suspended', reason: r, note: String(note || ''), suspendedAt: now() });
+      var why = r === 'fees' ? 'عدم سداد الرسوم السنوية' : (r === 'issue' ? 'مشكلة تشغيلية' : 'سبب آخر');
+      store._licenseLog('school_suspended', 'إيقاف دخول ' + sc.name + ' — ' + why + (note ? ' (' + note + ')' : ''),
+        { title: 'إيقاف دخول المدرسة: ' + sc.name, body: why + (note ? ' — ' + note : '') + ' · تواصل مع إدارة المنصة', schoolId: schoolId });
+      return { ok: true, reason: r, state: store.licenseState(schoolId) };
+    },
+    /** رفع الإيقاف */
+    activateSchool: function (schoolId, note) {
+      var sc = store.school(schoolId);
+      if (!sc) return { ok: false, error: 'مدرسة غير معروفة' };
+      var L = store.license(schoolId);
+      store.saveLicense(schoolId, { status: 'active', reason: '', suspendedAt: '', note: String(note || '') });
+      store._licenseLog('school_activated', 'رفع الإيقاف عن ' + sc.name + (L.reason === 'fees' ? ' (بعد السداد)' : ''),
+        { title: 'عاد دخول المدرسة: ' + sc.name, body: 'رُفع الإيقاف — يمكن لجميع الحسابات الدخول.', schoolId: schoolId });
+      return { ok: true, state: store.licenseState(schoolId) };
+    },
+    /** تبديل الباقة (كلاسيك ⇄ برو) */
+    setPlan: function (schoolId, planId) {
+      var sc = store.school(schoolId);
+      if (!sc) return { ok: false, error: 'مدرسة غير معروفة' };
+      var plan = planId === 'pro' ? 'pro' : 'classic';
+      store.saveLicense(schoolId, { plan: plan, annual: store.annualFee(plan) });
+      sc.plan = plan; save();
+      var was = store.license(schoolId);
+      store._licenseLog('plan_changed', 'تغيير باقة ' + sc.name + ' إلى «' + store.planDef(plan).name + '» · ' +
+        was.annual + ' ر.س سنويًا',
+        { title: 'تغيّرت الباقة: ' + sc.name, body: 'الباقة الحالية «' + store.planDef(plan).name + '» — ' +
+          (store.planDef(plan).telegram ? 'كل الخدمات + تلقرام.' : 'المنصة كاملة بلا تلقرام.') + ' · الاشتراك السنوي ' + was.annual + ' ر.س',
+          schoolId: schoolId });
+      return { ok: true, plan: plan, license: store.license(schoolId) };
+    },
+    /** قيد في سجل التدقيق + إشعار موجَّه لصاحب الشأن (والمشرف العام) */
+    _licenseLog: function (action, text, opts) {
+      opts = opts || {};
+      (db.audit = db.audit || []).unshift({ id: uid('au'), at: now(), action: action, by: store.session.name || '', text: text });
+      var toUsers = store.list('users').filter(function (u) {
+        return u.schoolId === opts.schoolId && (u.role === 'principal' || u.role === 'deputy');
+      }).map(function (u) { return u.id; });
+      store.notify({ kind: 'account', title: opts.title || text, body: opts.body || '', toUsers: toUsers, to: ['super'] });
+      save();
+    },
+    /** إحصاء الترخيص: الباقات وحالات الاشتراك والتحصيل المتوقّع */
+    licenseStats: function () {
+      var fees = store.planFees();
+      var rows = store.list('schools').map(function (sc) {
+        var st = store.licenseState(sc.id);
+        return { schoolId: sc.id, name: sc.name, plan: st.plan, planName: st.planName, planShort: st.planShort,
+                 state: st.state, label: st.label, tone: st.tone, daysLeft: st.daysLeft, paidUntil: st.paidUntil,
+                 annual: st.annual, setupPaid: st.setupPaid, suspended: st.blocked, overdue: st.overdue,
+                 soon: st.soon, reason: st.reason, note: st.note, telegram: st.telegram };
+      });
+      var n = function (f) { return rows.filter(f).length; };
+      var active = rows.filter(function (r) { return !r.suspended; });
+      return {
+        rows: rows, total: rows.length, fees: fees,
+        pro: n(function (r) { return r.plan === 'pro'; }),
+        classic: n(function (r) { return r.plan === 'classic'; }),
+        suspended: n(function (r) { return r.suspended; }),
+        suspendedFees: n(function (r) { return r.suspended && r.reason === 'fees'; }),
+        overdue: n(function (r) { return r.overdue && !r.suspended; }),
+        soon: n(function (r) { return r.soon && !r.suspended; }),
+        unpaidSetup: n(function (r) { return !r.setupPaid; }),
+        annualExpected: active.reduce(function (a, r) { return a + (r.annual || 0); }, 0),
+        setupExpected: rows.reduce(function (a, r) { return a + (r.setupPaid ? 0 : fees.setupFee); }, 0)
+      };
+    },
+
     /** تغيير كلمة المرور من داخل الحساب */
     changePassword: function (userId, current, next, confirm) {
       var u = store.user(userId); if (!u) return { ok: false, error: 'الحساب غير موجود' };
@@ -1341,6 +1569,11 @@
     /** إرسال رسالة فعلية حسب الوضع المُعدّ — مع رجوع تلقائي للإرسال المباشر إن فشل الوسيط.
         chatOverride: محادثة بعينها (chat_id شخصي لمعلم) بدلًا من مجموعة المدرسة. */
     telegramSend: function (text, schoolId, chatOverride) {
+      var sid = schoolId || store.session.schoolId;
+      if (sid && !store.isPro(sid)) {
+        return Promise.resolve({ ok: false, pro: false,
+          error: 'تلقرام غير مشمول في باقة «تابعني كلاسيك» — رقّي المدرسة إلى «تابعني برو» لتفعيله' });
+      }
       var c = store.telegramConfig();
       var dest = store.telegramFor(schoolId);
       var chat = String(chatOverride || dest.chatId || '').trim();
