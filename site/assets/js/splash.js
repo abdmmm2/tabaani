@@ -1,8 +1,8 @@
 /* =============================================================================
    splash.js — الإعلان الافتتاحي (Splash) لموقع تابعني
    يقرأ الإعداد من (بهذا الترتيب):
-     1) localStorage['tabaani_promo_config']  ← ما يضبطه مشرف المنصة من لوحة التحكم
-        (يسري على هذا المتصفح مباشرة عند وجود الموقع والمنصة على نفس النطاق)
+     1) localStorage['tabaani_promo_config']  ← ما يضبطه مشرف تابعني من لوحة التحكم
+        (يسري على هذا المتصفح مباشرة عند وجود الموقع وتابعني على نفس النطاق)
      2) window.TABAANI_PROMO  من الملف site/assets/data/promo-config.js  ← للزوار
      3) الإعداد الافتراضي المدمج داخل هذا الملف
 
@@ -113,7 +113,7 @@
       +   '<button class="tb-splash-close" type="button" aria-label="إغلاق الإعلان">&times;</button>'
       +   imgTag
       +   '<div class="tb-splash-foot">'
-      +     '<span>' + esc(ad.title || 'تابعني — منصة الخدمات التعليمية') + '</span>'
+      +     '<span>' + esc(ad.title || 'تابعني — تابعني للخدمات الذكية') + '</span>'
       +     (ad.link ? '<a href="' + esc(ad.link) + '" target="_blank" rel="noopener">اعرف أكثر</a>' : '')
       +     '<button type="button" data-close>إغلاق</button>'
       +   '</div>'

@@ -21,7 +21,7 @@ const OVERFLOW_TOLERANCE = 1;   /* بكسل — يسمح بتدوير البكس
 const MIN_TAP = 40;             /* أقل ارتفاع مقبول لعنصر لمس */
 
 const ROLE_NAME = {
-  super: 'مشرف المنصة', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
+  super: 'مشرف تابعني', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
   guidance: 'التوجيه والإرشاد', teacher: 'معلم', teachers_deputy: 'وكيل شؤون المعلمين',
   volunteer: 'ساعات التطوع', activity: 'النشاط الطلابي', absence_monitor: 'مراقب الغياب',
   guard: 'حارس البوابة', student: 'طالب'
@@ -197,7 +197,7 @@ async function ensureLoggedOut(page) {
   await B.sleep(300);
 }
 
-/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة المنصة في بيانات العرض) */
+/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة تابعني في بيانات العرض) */
 async function completeOtp(page) {
   await B.sleep(450);
   const onOtp = await page.eval('return !!document.querySelector("[name=otpCode]");').catch(() => false);

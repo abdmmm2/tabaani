@@ -513,10 +513,10 @@
             '<div class="lh-code" style="margin-top:3px">رقم التقرير: <code>' + report.code + '</code></div></div>' : '') +
         '</div>' +
         '<div class="signs">' + signs + '</div>' +
-        '<div class="rp-note">هذا التقرير مُعدّ من منصة تابعني' + (lh.footerNote ? ' — ' + lh.footerNote : '') +
+        '<div class="rp-note">هذا التقرير مُعدّ من تابعني' + (lh.footerNote ? ' — ' + lh.footerNote : '') +
           (report.qrNote && report.qrNote !== lh.footerNote ? ' — ' + report.qrNote : '') + '</div>' +
       '</div>' +
-      '<div class="rp-page">منصة تابعني للخدمات التعليمية' + (report.code ? ' — ' + report.code : '') + '</div>' +
+      '<div class="rp-page">تابعني للخدمات الذكية' + (report.code ? ' — ' + report.code : '') + '</div>' +
       '</body></html>';
 
     var frame = document.getElementById('print-frame');
@@ -558,7 +558,7 @@
   }
 
   /* ======================================================================
-     المالية — ختم المنصة · الفاتورة الإلكترونية · ضغط الصور
+     المالية — ختم تابعني · الفاتورة الإلكترونية · ضغط الصور
      ====================================================================== */
   /** مجلد التطبيق بمسار مطلق (للاستخدام داخل وثيقة الطباعة) */
   function appBase() {
@@ -570,9 +570,9 @@
   function stampSvg(opts) {
     opts = opts || {};
     var color = opts.color || '#1E7A5A';
-    var top = opts.top || 'تابعني للخدمات التعليمية';
+    var top = opts.top || 'تابعني للخدمات الذكية';
     var mid = opts.mid || 'ختم رسمي';
-    var sub = opts.sub || 'منصة الخدمات التعليمية للمدارس';
+    var sub = opts.sub || 'تابعني للخدمات الذكية';
     var bot = opts.bottom || 'ختم إلكتروني معتمد';
     var size = opts.size || 190;
     var id = 'st' + Math.random().toString(36).slice(2, 8);
@@ -679,8 +679,8 @@
         '<div class="inv-head">' +
           '<div class="inv-brand">' +
             '<img src="assets/img/logo-mark.png" alt="تابعني">' +
-            '<div><div class="bn">تابعني للخدمات التعليمية</div>' +
-            '<div class="bs">منصة الخدمات التعليمية للمدارس · tabaani.sa</div></div>' +
+            '<div><div class="bn">تابعني للخدمات الذكية</div>' +
+            '<div class="bs">تابعني للخدمات الذكية · tabaani.sa</div></div>' +
           '</div>' +
           '<div class="inv-tag">' +
             '<div class="big">فاتورة إلكترونية</div>' +
@@ -689,8 +689,8 @@
             '<div>الوقت: <strong>' + fmtTime(d) + '</strong></div>' +
           '</div>' +
         '</div>' +
-        '<h1>فاتورة إلكترونية — «تابعني للخدمات التعليمية»</h1>' +
-        '<div class="inv-sub">صدرت إلكترونيًا من منصة تابعني · ' + esc(inv.seller || 'تابعني للخدمات التعليمية') +
+        '<h1>فاتورة إلكترونية — «تابعني للخدمات الذكية»</h1>' +
+        '<div class="inv-sub">صدرت إلكترونيًا من تابعني · ' + esc(inv.seller || 'تابعني للخدمات الذكية') +
           ' · حساب بنكي: ' + esc(bank.bankName || '') + '</div>' +
         '<div class="inv-parties">' +
           '<div><div class="k">المشتري (المدرسة):</div>' +
@@ -698,8 +698,8 @@
             '<div class="k">' + esc(inv.schoolCity || '') + (inv.schoolCode ? ' · رمز المدرسة: ' + esc(inv.schoolCode) : '') + '</div>' +
             '<div class="k">الباقة: <strong>' + esc(planName) + '</strong></div>' +
           '</div>' +
-          '<div><div class="k">البائع (المنصة):</div>' +
-            '<div><strong>' + esc(inv.seller || 'تابعني للخدمات التعليمية') + '</strong></div>' +
+          '<div><div class="k">البائع (تابعني):</div>' +
+            '<div><strong>' + esc(inv.seller || 'تابعني للخدمات الذكية') + '</strong></div>' +
             '<div class="k">طريقة السداد: تحويل بنكي — سند مختوم بختم المدرسة</div>' +
             (inv.paidUntil ? '<div class="k">سريان الاشتراك حتى: <strong>' + esc(inv.paidUntil) + '</strong></div>' : '') +
             (inv.note ? '<div class="k">' + esc(inv.note) + '</div>' : '') +
@@ -716,8 +716,8 @@
         '</table>' +
         '<div class="inv-tot"><div class="box">الإجمالي المستحق: ' + fmtMoney(amount) + ' ر.س</div></div>' +
         '<div class="inv-stamps">' +
-          '<div class="inv-stamp">' + stampSvg({ mid: 'تابعني', top: 'تابعني للخدمات التعليمية', bottom: 'ختم إلكتروني معتمد' }) +
-            '<div class="cap">ختم «تابعني للخدمات التعليمية»</div>' +
+          '<div class="inv-stamp">' + stampSvg({ mid: 'تابعني', top: 'تابعني للخدمات الذكية', bottom: 'ختم إلكتروني معتمد' }) +
+            '<div class="cap">ختم «تابعني للخدمات الذكية»</div>' +
             '<div class="hint">صادر مع الفاتورة إلكترونيًا</div></div>' +
           '<div class="inv-stamp inv-receipt">' +
             (receipt ? '<img src="' + receipt + '" alt="سند التحويل">' : '<div class="inv-ph">لم يُرفق سند تحويل</div>') +
@@ -730,14 +730,14 @@
             '<div class="cap">ختم المدرسة</div></div>' +
         '</div>' +
         '<div class="inv-foot">' +
-          '<div class="note">هذه الفاتورة صادرة إلكترونيًا من منصة تابعني، ولا تحتاج توقيعًا أو ختمًا ورقيًا.<br>' +
-            'أُصدرت بواسطة: <strong>' + esc(inv.by || 'إدارة المنصة') + '</strong>' +
+          '<div class="note">هذه الفاتورة صادرة إلكترونيًا من تابعني، ولا تحتاج توقيعًا أو ختمًا ورقيًا.<br>' +
+            'أُصدرت بواسطة: <strong>' + esc(inv.by || 'إدارة تابعني') + '</strong>' +
             (inv.requestId ? ' · على طلب السداد رقم ' + esc(inv.requestId) : '') + '</div>' +
           '<div class="inv-qr">' + qrSvg(inv.no + '|' + Math.round(amount), 3, 1) +
             '<div>رقم الفاتورة: ' + esc(inv.no) + '</div></div>' +
         '</div>' +
         '<div class="inv-sign">' +
-          '<div>المحاسب المالي للمنصة</div><div>المشرف العام</div>' +
+          '<div>المحاسب المالي لتابعني</div><div>المشرف العام</div>' +
         '</div>' +
       '</div>' +
       '<div class="inv-print"><button onclick="window.print()">طباعة / حفظ PDF</button></div>' +
@@ -745,7 +745,7 @@
     return html;
   }
 
-  /** فاتورة إلكترونية مختومة بختم «تابعني للخدمات التعليمية» — تفتح نافذة الطباعة */
+  /** فاتورة إلكترونية مختومة بختم «تابعني للخدمات الذكية» — تفتح نافذة الطباعة */
   function printInvoice(inv, opts) {
     opts = opts || {};
     var html = invoiceHtml(inv);
@@ -786,7 +786,7 @@
     '.pd-qr svg{width:80px;height:80px}' +
     '@media print{.pd-print{display:none}}';
 
-  /** يبني وثيقة رسمية بترويسة المنصة (تقارير مالية…) */
+  /** يبني وثيقة رسمية بترويسة تابعني (تقارير مالية…) */
   function platformDoc(o) {
     o = o || {};
     var base = appBase();
@@ -822,8 +822,8 @@
       '<div class="pd">' +
         '<div class="pd-head">' +
           '<div class="pd-brand"><img src="assets/img/logo-mark.png" alt="تابعني">' +
-            '<div><div class="bn">تابعني للخدمات التعليمية</div>' +
-            '<div class="bs">منصة الخدمات التعليمية للمدارس · tabaani.sa</div></div></div>' +
+            '<div><div class="bn">تابعني للخدمات الذكية</div>' +
+            '<div class="bs">تابعني للخدمات الذكية · tabaani.sa</div></div></div>' +
           '<div class="pd-tag"><div class="big">' + esc(o.title || 'تقرير') + '</div>' +
             '<div>التاريخ: <strong>' + dateLabel(d) + '</strong></div>' +
             '<div>الوقت: <strong>' + fmtTime(d) + '</strong></div>' +
@@ -834,10 +834,10 @@
         (meta ? '<div class="pd-meta">' + meta + '</div>' : '') +
         sections +
         '<div class="pd-foot">' +
-          '<div class="note">صدرت هذه الوثيقة إلكترونيًا من منصة تابعني' +
+          '<div class="note">صدرت هذه الوثيقة إلكترونيًا من تابعني' +
             (o.by ? ' — أعدّها: <strong>' + esc(o.by) + '</strong>' : '') + '</div>' +
           (o.qr ? '<div class="pd-qr">' + qrSvg(o.qr, 3, 1) + '<div>' + esc(o.qrNote || '') + '</div></div>' : '') +
-          (o.stamp === false ? '' : '<div class="pd-stamp">' + stampSvg({ size: 130 }) + '<div class="cap">ختم «تابعني للخدمات التعليمية»</div></div>') +
+          (o.stamp === false ? '' : '<div class="pd-stamp">' + stampSvg({ size: 130 }) + '<div class="cap">ختم «تابعني للخدمات الذكية»</div></div>') +
         '</div>' +
         (signs ? '<div class="pd-sign">' + signs + '</div>' : '') +
       '</div>' +

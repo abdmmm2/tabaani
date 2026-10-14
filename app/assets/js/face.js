@@ -112,7 +112,7 @@
         .catch(function (e) {
           var msg = (state.error || (e && e.message) || 'تعذّر تشغيل الكاميرا');
           if (/loadFromUri|fetch|Failed to fetch|NetworkError/i.test(msg)) {
-            msg = 'تعذّر تحميل نماذج التعرّف — شغّل المنصة عبر خادم محلي (python3 -m http.server) ثم أعد المحاولة.';
+            msg = 'تعذّر تحميل نماذج التعرّف — شغّل تابعني عبر خادم محلي (python3 -m http.server) ثم أعد المحاولة.';
           }
           setStatus(msg, 'err');
           retry.hidden = false;

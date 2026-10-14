@@ -1,8 +1,8 @@
 [
  {
   "file": "01-dash-super",
-  "label": "لوحة التحكم — مشرف المنصة",
-  "role": "مشرف المنصة",
+  "label": "لوحة التحكم — مشرف تابعني",
+  "role": "مشرف تابعني",
   "mod": "dashboard",
   "height": 950,
   "cat": "dash"
@@ -82,7 +82,7 @@
  {
   "file": "11-mod-schools",
   "label": "المدارس والمناطق",
-  "role": "مشرف المنصة",
+  "role": "مشرف تابعني",
   "mod": "schools",
   "height": 1002,
   "cat": "mod",
@@ -264,14 +264,14 @@
   "cat": "mod",
   "mod": "users",
   "label": "إدارة المستخدمين",
-  "role": "مشرف المنصة"
+  "role": "مشرف تابعني"
  },
  {
   "file": "32-mod-promo",
   "cat": "mod",
   "mod": "promo",
   "label": "الإعلان الافتتاحي",
-  "role": "مشرف المنصة"
+  "role": "مشرف تابعني"
  },
  {
   "file": "90-login",

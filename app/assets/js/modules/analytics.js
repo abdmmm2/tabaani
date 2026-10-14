@@ -1,7 +1,7 @@
 /* =============================================================================
    analytics.js — التقارير التحليلية (مركز التقارير الدورية لكل الأطراف)
    ---------------------------------------------------------------------------
-   خمسة تبويبات: تقرير المنصة العام · تفعيل المعلمين · الغياب والحرمان ·
+   خمسة تبويبات: تقرير تابعني العام · تفعيل المعلمين · الغياب والحرمان ·
    الخدمات (المخالفات/الاستئذان/التطوع/النشاط) · الفصول الدراسية (يحدّد مدير
    المدرسة بداية كل فصل ونهايته ونسبة الحرمان).
    منتقي فترة موحّد (يومي/أسبوعي/شهري/نهاية الفصل) عبر S.rangeOf، ورسوم بيانية
@@ -20,14 +20,14 @@
     { key: 'term', label: 'نهاية الفصل' }
   ];
   var TABS = [
-    { key: 'overview', label: 'تقرير المنصة العام' },
+    { key: 'overview', label: 'تقرير تابعني العام' },
     { key: 'teachers', label: 'تفعيل المعلمين' },
     { key: 'absence', label: 'الغياب والحرمان' },
     { key: 'services', label: 'الخدمات' },
     { key: 'terms', label: 'الفصول الدراسية' }
   ];
   var COLORS = { present: '#1E7A5A', late: '#C97F2C', absent: '#C2593F', excused: '#6B6152' };
-  var LEVEL_TONE = { 'متميّز': 'mint', 'منتظم': 'amber', 'ضعيف التفعيل': 'brand', 'لم يفعّل المنصة': 'plain' };
+  var LEVEL_TONE = { 'متميّز': 'mint', 'منتظم': 'amber', 'ضعيف التفعيل': 'brand', 'لم يفعّل تابعني': 'plain' };
   var VIO_STATUS = { guidance_pending: 'بانتظار التوجيه', deputy_pending: 'بانتظار الوكيل', closed: 'مغلقة' };
   var PERM_STATUS = { deputy_pending: 'بانتظار الوكيل', granted: 'ممنوح' };
   var REQ_STATUS = { pending: 'بانتظار القرار', approved: 'مقبول', rejected: 'معتذر' };
@@ -234,14 +234,14 @@
         var notActive = act.filter(function (x) { return x.logins === 0; });
         var rep = S.registerReport('ANL', 'teacher-activity', { title: 'تقرير تفعيل المعلمين — ' + r.label });
         S.notify({
-          kind: 'analytics', ref: rep.id, title: 'تقرير تفعيل المعلمين للمنصة',
+          kind: 'analytics', ref: rep.id, title: 'تقرير تفعيل المعلمين لتابعني',
           body: r.label + ' (' + r.from + ' ← ' + r.to + ') · عدد المعلمين: ' + act.length +
-            ' · متميّزون: ' + excellent.length + ' · لم يفعّلوا المنصة: ' + notActive.length,
+            ' · متميّزون: ' + excellent.length + ' · لم يفعّلوا تابعني: ' + notActive.length,
           to: ['principal']
         });
-        S.tg({ to: 'principal', text: 'تقرير تفعيل المعلمين للمنصة\n' + r.label + ' (' + r.from + ' ← ' + r.to + ')' +
+        S.tg({ to: 'principal', text: 'تقرير تفعيل المعلمين لتابعني\n' + r.label + ' (' + r.from + ' ← ' + r.to + ')' +
           '\nعدد المعلمين: ' + act.length + '\nمتميّزون: ' + excellent.length +
-          '\nلم يفعّلوا المنصة: ' + notActive.length + '\nرقم التقرير: ' + rep.code });
+          '\nلم يفعّلوا تابعني: ' + notActive.length + '\nرقم التقرير: ' + rep.code });
         UI.printReport(buildTeacherReport(r, act, rep.code));
         S.markPrinted(rep.id);
         UI.toast('أُرسل التقرير إلى مدير المدرسة وطُبعت نسخة PDF', 'ok');
@@ -253,8 +253,8 @@
         var trend = S.attendanceTrend(r);
         var totals = statusTotals(trend);
         var sections = [
-          { heading: 'مؤشرات المنصة', table: { cols: ['المؤشر', 'القيمة'], rows: [
-            ['دخولات المنصة', s.logins], ['مستخدمون نشطون', s.activeUsers],
+          { heading: 'مؤشرات تابعني', table: { cols: ['المؤشر', 'القيمة'], rows: [
+            ['دخولات تابعني', s.logins], ['مستخدمون نشطون', s.activeUsers],
             ['حصص مغلقة', s.closedSessions], ['إجمالي الحصص', s.sessions],
             ['حالات الغياب', s.absent], ['حالات التأخر', s.late],
             ['المخالفات المسجّلة', s.violations], ['الاستئذانات', s.permissions], ['التقارير المُصدرة', s.reports]
@@ -266,16 +266,16 @@
         sections.push({ heading: 'توزيع حالات الطلاب', text: 'حاضر: ' + totals.present + ' · متأخر: ' + totals.late +
           ' · غائب: ' + totals.absent + ' · بعذر: ' + totals.excused, chart: specStatus(totals) });
         return {
-          type: 'ANL', refId: 'platform', title: 'التقرير التحليلي العام للمنصة',
+          type: 'ANL', refId: 'platform', title: 'التقرير التحليلي العام لتابعني',
           subtitle: r.label + ' — من ' + r.from + ' إلى ' + r.to,
           meta: [
             { label: 'الفصل الدراسي', value: (S.activeTerm() || {}).name || 'غير محدّد' },
             { label: 'النطاق', value: r.from + ' ← ' + r.to },
             { label: 'المستخدمون النشطون', value: String(s.activeUsers) },
-            { label: 'إعداد المتجر', value: 'منصة تابعني' }
+            { label: 'إعداد المتجر', value: 'تابعني' }
           ],
           sections: sections,
-          qrNote: 'امسح الباركود للتحقق من التقرير التحليلي العام للمنصة.',
+          qrNote: 'امسح الباركود للتحقق من التقرير التحليلي العام لتابعني.',
           signatures: ['وكيل شؤون الطلاب', 'مدير المدرسة']
         };
       }
@@ -285,13 +285,13 @@
         var notActive = act.filter(function (x) { return x.logins === 0; });
         return {
           type: 'ANL', refId: 'teacher-activity', code: code,
-          title: 'تقرير تفعيل المعلمين للمنصة',
+          title: 'تقرير تفعيل المعلمين لتابعني',
           subtitle: r.label + ' — من ' + r.from + ' إلى ' + r.to,
           meta: [
             { label: 'الفصل الدراسي', value: (S.activeTerm() || {}).name || 'غير محدّد' },
             { label: 'عدد المعلمين', value: String(act.length) },
             { label: 'متميّزون', value: String(excellent.length) },
-            { label: 'لم يفعّلوا المنصة', value: String(notActive.length) },
+            { label: 'لم يفعّلوا تابعني', value: String(notActive.length) },
             { label: 'النطاق', value: r.from + ' ← ' + r.to }
           ],
           sections: [
@@ -302,12 +302,12 @@
                 return [x.name, x.subjects || '—', x.logins, x.loginRate + '٪',
                   x.lastLogin ? UI.fmtDateTime(x.lastLogin) : '—', x.closed, x.violations, x.decisions, x.level];
               }) } },
-            { heading: 'المتميزون في تفعيل المنصة', list: excellent.length
+            { heading: 'المتميزون في تفعيل تابعني', list: excellent.length
               ? excellent.map(function (x) { return x.name + ' — ' + x.loginRate + '٪ · ' + x.closed + ' حصة مغلقة'; })
               : ['لا يوجد معلمون بمستوى «متميّز» في هذا النطاق.'] },
-            { heading: 'من لم يفعّل المنصة', list: notActive.length
+            { heading: 'من لم يفعّل تابعني', list: notActive.length
               ? notActive.map(function (x) { return x.name + (x.subjects ? ' — ' + x.subjects : ''); })
-              : ['كل المعلمين فعّلوا المنصة في هذا النطاق.'] }
+              : ['كل المعلمين فعّلوا تابعني في هذا النطاق.'] }
           ],
           qrNote: 'امسح الباركود للتحقق من تقرير تفعيل المعلمين.',
           signatures: ['وكيل شؤون المعلمين', 'مدير المدرسة']
@@ -407,7 +407,7 @@
         var r = range(), s = S.platformSummary(r);
         var wrap = h('div');
         wrap.appendChild(h('div', { class: 'stat-row' }, [
-          UI.statCard('دخولات المنصة', String(s.logins), r.label),
+          UI.statCard('دخولات تابعني', String(s.logins), r.label),
           UI.statCard('مستخدمون نشطون', String(s.activeUsers)),
           UI.statCard('حصص مغلقة / الإجمالي', s.closedSessions + ' / ' + s.sessions, null, s.sessions ? 'gold' : null),
           UI.statCard('غياب', String(s.absent), 'حالة غياب', s.absent ? 'gold' : null),
@@ -435,10 +435,10 @@
         }
         wrap.appendChild(grid);
 
-        wrap.appendChild(UI.panel('تصدير تقرير المنصة', 'يُصدَّر بترويسة المدرسة وباركود (TBN-ANL) ووقت الطباعة، مع الرسوم البيانية داخل التقرير.', [
+        wrap.appendChild(UI.panel('تصدير تقرير تابعني', 'يُصدَّر بترويسة المدرسة وباركود (TBN-ANL) ووقت الطباعة، مع الرسوم البيانية داخل التقرير.', [
           UI.reportButton(function () { return buildPlatformReport(r, s); }, { label: 'تصدير PDF / طباعة', class: 'btn-soft' })
         ], [
-          h('div', { class: 'muted-block', text: 'يشمل التقرير مؤشرات المنصة، واتجاه الحضور والغياب، وتوزيع حالات الطلاب ضمن النطاق: ' + r.from + ' ← ' + r.to + '.' })
+          h('div', { class: 'muted-block', text: 'يشمل التقرير مؤشرات تابعني، واتجاه الحضور والغياب، وتوزيع حالات الطلاب ضمن النطاق: ' + r.from + ' ← ' + r.to + '.' })
         ]));
         return wrap;
       }
@@ -456,7 +456,7 @@
           UI.statCard('عدد المعلمين', String(act.length)),
           UI.statCard('متميّزون', String(excellent.length), 'نسبة تفعيل 70٪ وأعلى', excellent.length ? 'gold' : null),
           UI.statCard('منتظمون', String(regular.length), 'نسبة تفعيل 25٪ وأعلى'),
-          UI.statCard('لم يفعّلوا المنصة', String(notActive.length), 'بلا أي دخول في النطاق', notActive.length ? 'gold' : null)
+          UI.statCard('لم يفعّلوا تابعني', String(notActive.length), 'بلا أي دخول في النطاق', notActive.length ? 'gold' : null)
         ]));
 
         var grid = h('div', { class: 'chart-grid' });
@@ -471,7 +471,7 @@
         });
         var printBtn = UI.reportButton(function () { return buildTeacherReport(r, act, null); }, { label: 'تصدير PDF / طباعة', class: 'btn-soft' });
 
-        wrap.appendChild(UI.panel('تفعيل المعلمين للمنصة',
+        wrap.appendChild(UI.panel('تفعيل المعلمين لتابعني',
           r.label + ' — من ' + r.from + ' إلى ' + r.to + ' · التقدير حسب نسبة الدخولات إلى أيام الدراسة.',
           [printBtn, sendBtn],
           [UI.table({
@@ -491,7 +491,7 @@
         ));
 
         var mini = h('div');
-        mini.appendChild(UI.panel('المتميزون في تفعيل المنصة', 'نسبة تفعيل 70٪ وأعلى.', null, [
+        mini.appendChild(UI.panel('المتميزون في تفعيل تابعني', 'نسبة تفعيل 70٪ وأعلى.', null, [
           excellent.length ? UI.table({
             cols: [
               { label: 'المعلم', render: function (x) { return x.name; } },
@@ -500,14 +500,14 @@
             ], rows: excellent, empty: 'لا يوجد.'
           }) : UI.empty('لا يوجد معلمون بمستوى «متميّز» في هذا النطاق.')
         ]));
-        mini.appendChild(UI.panel('من لم يفعّل المنصة', 'بلا أي دخول خلال النطاق — يُنصح بمتابعتهم.', null, [
+        mini.appendChild(UI.panel('من لم يفعّل تابعني', 'بلا أي دخول خلال النطاق — يُنصح بمتابعتهم.', null, [
           notActive.length ? UI.table({
             cols: [
               { label: 'المعلم', render: function (x) { return x.name; } },
               { label: 'المواد', render: function (x) { return x.subjects || '—'; } },
               { label: 'الحالة', render: function (x) { return UI.badge(x.level, 'plain'); } }
             ], rows: notActive, empty: 'لا يوجد.'
-          }) : UI.empty('كل المعلمين فعّلوا المنصة في هذا النطاق.')
+          }) : UI.empty('كل المعلمين فعّلوا تابعني في هذا النطاق.')
         ]));
         wrap.appendChild(mini);
         return wrap;
@@ -714,7 +714,7 @@
           h('div', { class: 'between' }, [
             h('div', {}, [
               h('span', { class: 'eyebrow', text: 'الدور الحالي: ' + roleName() }),
-              h('p', { class: 'muted mt-3', text: 'مركز التقارير الدورية: نظرة المنصة، تفعيل المعلمين، الغياب والحرمان، والخدمات — مع طباعة رسمية بالباركود.' })
+              h('p', { class: 'muted mt-3', text: 'مركز التقارير الدورية: نظرة تابعني، تفعيل المعلمين، الغياب والحرمان، والخدمات — مع طباعة رسمية بالباركود.' })
             ]),
             h('div', { class: 'cluster' }, [
               h('span', { class: 'chip chip-brand', text: t ? ('الفصل الحالي: ' + t.name) : 'لا فصل دراسي محدّد' }),

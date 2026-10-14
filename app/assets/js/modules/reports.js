@@ -1,7 +1,7 @@
 /* =============================================================================
    reports.js — مركز التقارير
    ---------------------------------------------------------------------------
-   مركز موحّد لكل تقارير المنصة: توليد تقارير جاهزة من بيانات المدرسة الحالية
+   مركز موحّد لكل تقارير تابعني: توليد تقارير جاهزة من بيانات المدرسة الحالية
    وطباعتها بباركود ورقم فريد (TBN-…)، التحقق من أي تقرير برقمه، متابعة عدد
    الطبعات وآخر طبعة، تصدير CSV، وتصفية السجل بالنوع أو بالبحث النصّي.
    ========================================================================== */
@@ -28,7 +28,7 @@
     sch: 'الجدول الأسبوعي',
     prd: 'تقرير دوري',
     tac: 'تفعيل المعلمين',
-    tlg: 'دخول المعلمين للمنصة',
+    tlg: 'دخول المعلمين لتابعني',
     tch: 'كشف معلم',
     custom: 'تقرير'
   };
@@ -74,7 +74,7 @@
     }, []));
   }
 
-  var VIA_LABEL = { platform: 'منصة تابعني', app: 'تطبيق الجوال', telegram: 'تلقرام' };
+  var VIA_LABEL = { platform: 'تابعني', app: 'تطبيق الجوال', telegram: 'تلقرام' };
   var V_STATUS = { deputy_pending: 'بانتظار الوكيل', granted: 'ممنوح' };
   var VIO_STATUS = { guidance_pending: 'بانتظار التوجيه', deputy_pending: 'بانتظار الوكيل', closed: 'مغلقة' };
 
@@ -406,7 +406,7 @@
         { heading: 'تفعيل المعلمين', table: {
           cols: ['المعلم', 'المواد', 'الدخولات', 'نسبة التفعيل', 'التقدير'], rows: actRows } }
       ],
-      qrNote: 'امسح الباركود للتحقق من ' + range.label + ' — منصة تابعني.',
+      qrNote: 'امسح الباركود للتحقق من ' + range.label + ' — تابعني.',
       signatures: ['وكيل شؤون الطلاب', 'مدير المدرسة']
     };
   }
@@ -417,7 +417,7 @@
     var rep = plain ? null : ensureReport('tac', 'teacher-activity-' + range.from, 'تقرير تفعيل المعلمين');
     return {
       type: 'tac', refId: 'teacher-activity-' + range.from, code: rep ? rep.code : null,
-      title: 'تقرير تفعيل المعلمين للمنصة',
+      title: 'تقرير تفعيل المعلمين لتابعني',
       subtitle: schoolName() + ' — ' + rangeLabel(range),
       periodLabel: rangeLabel(range),
       meta: [
@@ -442,17 +442,17 @@
     };
   }
 
-  /* --------------------------------------------- دخول المعلمين للمنصة */
+  /* --------------------------------------------- دخول المعلمين لتابعني */
   function teacherLoginSpec(range, plain) {
     var acts = S.teacherActivity(range);
     var avg = acts.length ? Math.round(acts.reduce(function (a, t) { return a + t.loginRate; }, 0) / acts.length) : 0;
     var top = acts.filter(function (t) { return t.level === 'متميّز'; });
     var none = acts.filter(function (t) { return t.logins === 0; });
     var low = acts.filter(function (t) { return t.logins > 0 && t.level !== 'متميّز'; });
-    var rep = plain ? null : ensureReport('tlg', 'teacher-login-' + range.from, 'تقرير دخول المعلمين للمنصة');
+    var rep = plain ? null : ensureReport('tlg', 'teacher-login-' + range.from, 'تقرير دخول المعلمين لتابعني');
     return {
       type: 'tlg', refId: 'teacher-login-' + range.from, code: rep ? rep.code : null,
-      title: 'تقرير دخول المعلمين للمنصة',
+      title: 'تقرير دخول المعلمين لتابعني',
       subtitle: schoolName() + ' — ' + rangeLabel(range),
       periodLabel: rangeLabel(range),
       meta: [
@@ -472,11 +472,11 @@
         { heading: 'المتميّزون في الدخول', table: {
           cols: ['المعلم', 'الدخولات', 'نسبة الدخول', 'آخر دخول'],
           rows: top.map(function (t) { return [t.name, String(t.logins), pct(t.loginRate), t.lastLogin ? stamp(t.lastLogin) : '—']; }) } },
-        { heading: 'من لم يفعّل المنصة', table: {
+        { heading: 'من لم يفعّل تابعني', table: {
           cols: ['المعلم', 'المواد', 'الحصص', 'آخر دخول'],
           rows: none.map(function (t) { return [t.name, t.subjects || '—', String(t.sessions), t.lastLogin ? stamp(t.lastLogin) : 'لم يدخل']; }) } }
       ],
-      qrNote: 'امسح الباركود للتحقق من تقرير دخول المعلمين للمنصة.',
+      qrNote: 'امسح الباركود للتحقق من تقرير دخول المعلمين لتابعني.',
       signatures: ['وكيل شؤون المعلمين', 'مدير المدرسة']
     };
   }
@@ -516,7 +516,7 @@
     var acts = S.teacherActivity(range);
     var act = null;
     acts.some(function (a) { if (a.teacherId === teacherId) { act = a; return true; } return false; });
-    if (!act) act = { logins: 0, loginRate: 0, lastLogin: null, sessions: 0, closed: 0, violations: 0, decisions: 0, level: 'لم يفعّل المنصة' };
+    if (!act) act = { logins: 0, loginRate: 0, lastLogin: null, sessions: 0, closed: 0, violations: 0, decisions: 0, level: 'لم يفعّل تابعني' };
     var cks = S.checkinsOf(teacherId, range);
     var months = {};
     cks.forEach(function (c) { var m = String(c.date).slice(0, 7); months[m] = (months[m] || 0) + 1; });
@@ -565,8 +565,8 @@
           series: [{ name: 'أيام الحضور', values: d.monthCounts, color: '#1E7A5A' }] } },
         { heading: 'الأداء والتفعيل', table: { cols: ['البند', 'القيمة'], rows: [
           ['الحصص التي أغلقها', String(d.closed)], ['المخالفات المسجّلة', String(d.violations)],
-          ['قرارات طلبات النشاط', String(d.decisions)], ['دخولاته للمنصة', String(d.logins)],
-          ['نسبة دخوله للمنصة', pct(d.loginRate)], ['آخر دخول', d.lastLogin ? stamp(d.lastLogin) : 'لم يدخل'],
+          ['قرارات طلبات النشاط', String(d.decisions)], ['دخولاته لتابعني', String(d.logins)],
+          ['نسبة دخوله لتابعني', pct(d.loginRate)], ['آخر دخول', d.lastLogin ? stamp(d.lastLogin) : 'لم يدخل'],
           ['التقدير', d.level] ] } },
         { heading: 'نشاطه الأسبوعي', chart: {
           type: 'bar', labels: d.weekly.map(function (w) { return w.label; }),
@@ -578,7 +578,7 @@
           cols: ['التاريخ', 'الحضور', 'الانصراف', 'المصدر'],
           rows: d.checkins.slice(0, 40).map(function (c) {
             return [UI.fmtDate(c.date), UI.fmtTime(c.checkIn), c.checkOut ? UI.fmtTime(c.checkOut) : '—',
-              c.source === 'platform' ? 'المنصة' : '—'];
+              c.source === 'platform' ? 'تابعني' : '—'];
           }) } }
       ],
       qrNote: 'امسح الباركود للتحقق من كشف المعلم.',
@@ -674,7 +674,7 @@
               ['آخر طبعة', rep.lastPrint ? UI.fmtDateTime(rep.lastPrint) : 'لم يُطبع بعد']
             ]),
             h('div', { class: 'muted-block mt-3',
-              text: 'هذا السجل يمثّل تقريرًا رسميًا صادرًا من المنصة يحمل رقمًا فريدًا وباركودًا. إعادة الطباعة تُنشئ نسخة مطابقة وتزيد عدّاد الطبعات.' })
+              text: 'هذا السجل يمثّل تقريرًا رسميًا صادرًا من تابعني يحمل رقمًا فريدًا وباركودًا. إعادة الطباعة تُنشئ نسخة مطابقة وتزيد عدّاد الطبعات.' })
           ],
           actions: [
             { label: 'إعادة الطباعة', class: 'btn-soft', onClick: function (close) { close(); reprint(rep); } },
@@ -855,7 +855,7 @@
 
       view.appendChild(statsSlot);
 
-      view.appendChild(UI.panel('كل التقارير', 'سجل تقارير المنصة مرتّبًا من الأحدث، مع التصفية والبحث والتصدير.',
+      view.appendChild(UI.panel('كل التقارير', 'سجل تقارير تابعني مرتّبًا من الأحدث، مع التصفية والبحث والتصدير.',
         h('div', { class: 'cluster' }, [
           h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تصدير CSV', onClick: exportCsv }),
           h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تصفير التصفية', onClick: function () {
@@ -944,7 +944,7 @@
 
       function buildPeriodic(pane) {
         pane.appendChild(UI.panel('التقارير الرسمية الدورية',
-          'تقارير جاهزة مبنية من نطاق الفترة وملخّص المنصة، تُطبع بترويسة المدرسة وباركود ويمكن إرسالها إلى مدير المدرسة.',
+          'تقارير جاهزة مبنية من نطاق الفترة وملخّص تابعني، تُطبع بترويسة المدرسة وباركود ويمكن إرسالها إلى مدير المدرسة.',
           null, [h('div', { class: 'grid-2-app' }, PERIODIC.map(periodicCard))]));
 
         var actRange = S.rangeOf('month');
@@ -971,7 +971,7 @@
           h('div', { class: 'stat-row' }, [
             UI.statCard('عدد المعلمين', String(acts.length)),
             UI.statCard('متميّزون', String(acts.filter(function (t) { return t.level === 'متميّز'; }).length), 'نسبة تفعيل ٧٠٪ وأكثر', 'gold'),
-            UI.statCard('لم يفعّلوا', String(acts.filter(function (t) { return t.logins === 0; }).length), 'بلا دخول للمنصة'),
+            UI.statCard('لم يفعّلوا', String(acts.filter(function (t) { return t.logins === 0; }).length), 'بلا دخول لتابعني'),
             UI.statCard('متوسط التفعيل', pct(avg))
           ]),
           UI.chart({ type: 'bar', labels: acts.map(function (t) { return shortName(t.name); }),
@@ -984,8 +984,8 @@
         var low = acts.filter(function (t) { return t.logins > 0 && t.level !== 'متميّز'; });
         var logFactory = function () { return teacherLoginSpec(actRange); };
         var logSend = function () { return teacherLoginSpec(actRange, true); };
-        pane.appendChild(UI.panel('تقرير دخول المعلمين للمنصة',
-          'نسبة الدخول والمتميّزون ومن لم يفعّل المنصة — الفترة ' + rangeLabel(actRange),
+        pane.appendChild(UI.panel('تقرير دخول المعلمين لتابعني',
+          'نسبة الدخول والمتميّزون ومن لم يفعّل تابعني — الفترة ' + rangeLabel(actRange),
           h('div', { class: 'cluster' }, [
             UI.reportButton(logFactory, { label: 'تصدير PDF / طباعة', class: 'btn-soft btn-sm' }),
             sendButton(logSend)
@@ -994,7 +994,7 @@
             UI.statCard('متوسط نسبة الدخول', pct(avg)),
             UI.statCard('المتميّزون', String(top.length), 'نسبة تفعيل ٧٠٪ وأكثر', 'gold'),
             UI.statCard('دون المتميّز', String(low.length)),
-            UI.statCard('لم يفعّلوا المنصة', String(none.length), null, none.length ? 'ink' : null)
+            UI.statCard('لم يفعّلوا تابعني', String(none.length), null, none.length ? 'ink' : null)
           ]),
           h('div', { class: 'grid-2-app' }, [
             UI.chart({ type: 'donut', labels: ['متميّز', 'دون المتميّز', 'لم يفعّل'],
@@ -1030,7 +1030,7 @@
           var d = teacherData(picked, range);
           var rows = d.checkins.map(function (c) {
             return { 'المعلم': d.teacher.name, 'التاريخ': UI.fmtDate(c.date), 'الحضور': UI.fmtTime(c.checkIn),
-              'الانصراف': c.checkOut ? UI.fmtTime(c.checkOut) : '', 'المصدر': c.source === 'platform' ? 'المنصة' : '' };
+              'الانصراف': c.checkOut ? UI.fmtTime(c.checkOut) : '', 'المصدر': c.source === 'platform' ? 'تابعني' : '' };
           });
           if (!rows.length) { UI.toast('لا سجلات حضور لتصديرها', 'warn'); return; }
           UI.downloadCsv(rows, 'كشف-معلم.csv');
@@ -1046,7 +1046,7 @@
             UI.statCard('الحصص التي أغلقها', String(d.closed)),
             UI.statCard('المخالفات المسجّلة', String(d.violations)),
             UI.statCard('قرارات طلبات النشاط', String(d.decisions)),
-            UI.statCard('نسبة دخوله للمنصة', pct(d.loginRate)),
+            UI.statCard('نسبة دخوله لتابعني', pct(d.loginRate)),
             UI.statCard('آخر دخول', d.lastLogin ? stamp(d.lastLogin) : 'لم يدخل'),
             UI.statCard('تقديره', d.level, 'المواد: ' + (d.subjects.join('، ') || '—'), 'gold')
           ]));
@@ -1071,12 +1071,12 @@
             { label: 'التاريخ', render: function (c) { return UI.fmtDate(c.date); } },
             { label: 'الحضور', render: function (c) { return UI.fmtTime(c.checkIn); } },
             { label: 'الانصراف', render: function (c) { return c.checkOut ? UI.fmtTime(c.checkOut) : '—'; } },
-            { label: 'المصدر', render: function (c) { return c.source === 'platform' ? 'المنصة' : '—'; } }
+            { label: 'المصدر', render: function (c) { return c.source === 'platform' ? 'تابعني' : '—'; } }
           ], rows: d.checkins.slice(0, 30), empty: 'لا سجلات حضور للمعلم في هذه الفترة.' })]));
         }
         sel.input.addEventListener('change', function () { picked = sel.input.value; draw(); });
         pane.appendChild(UI.panel('كشوف المعلمين',
-          'اختر معلمًا لعرض كشفه التفصيلي: بياناته ومواده وفصوله، حضورُه وانصرافه، حصصه ومخالفاته، ونسب دخوله للمنصة.',
+          'اختر معلمًا لعرض كشفه التفصيلي: بياناته ومواده وفصوله، حضورُه وانصرافه، حصصه ومخالفاته، ونسب دخوله لتابعني.',
           null, [h('div', { class: 'form-grid' }, [sel.wrap]), body]));
         draw();
       }

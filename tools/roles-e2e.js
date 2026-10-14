@@ -29,7 +29,7 @@ const EXPECTED = {
 const ROLE_NAME_EXTRA = { accountant: 'المحاسب المالي', support: 'الدعم الفني' };
 
 const ROLE_NAME = {
-  super: 'مشرف المنصة', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
+  super: 'مشرف تابعني', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
   guidance: 'التوجيه والإرشاد', teacher: 'معلم', teachers_deputy: 'وكيل شؤون المعلمين',
   volunteer: 'ساعات التطوع', activity: 'النشاط الطلابي', absence_monitor: 'مراقب الغياب',
   guard: 'حارس البوابة', student: 'طالب'
@@ -226,7 +226,7 @@ main().catch((e) => {
 });
 
 /* ------------------------------------------------------------------- مساعدات */
-/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة المنصة في بيانات العرض) */
+/** يُكمل خطوة التحقق بمرحلتين إن ظهرت (الرمز يُقرأ من حالة تابعني في بيانات العرض) */
 async function completeOtp(page) {
   await B.sleep(450);
   const onOtp = await page.eval('return !!document.querySelector("[name=otpCode]");').catch(() => false);
@@ -395,7 +395,7 @@ async function licenseSuite(page, base) {
   const nav = await page.eval('return Array.prototype.map.call(document.querySelectorAll(".side-nav a[data-mod]"),' +
     'function (a) { return a.getAttribute("data-mod"); });');
   ok(nav.indexOf('telegram') === -1, 'قائمة قائد المدرسة بلا «سجل تلقرام» في الكلاسيك', nav.join(','));
-  ok(nav.indexOf('messages') > -1, 'الرسائل الخاصة باقية (المنصة تعمل بلا تلقرام)');
+  ok(nav.indexOf('messages') > -1, 'الرسائل الخاصة باقية (تعمل بلا تلقرام)');
   const tgOut = await page.eval('return Store.telegramSend("تجربة").then(function (r) { return r; });');
   ok(tgOut && tgOut.ok === false && tgOut.pro === false, 'إرسال تلقرام مرفوض في الكلاسيك مع بيان السبب',
     JSON.stringify(tgOut));
@@ -417,7 +417,7 @@ async function licenseSuite(page, base) {
   ok(r3.ok && r3.state.reason === 'issue', 'إيقاف بسبب مشكلة تشغيلية');
   await loginAsRaw(page, base, prin.uname, prin.pw);
   const msg2 = await page.eval('return (document.querySelector(".hint-error")||{}).textContent||"";');
-  ok(/موقوف من إدارة المنصة/.test(msg2), 'رسالة الإيقاف التشغيلي تختلف عن رسالة الرسوم', msg2.slice(0, 60));
+  ok(/موقوف من إدارة تابعني/.test(msg2), 'رسالة الإيقاف التشغيلي تختلف عن رسالة الرسوم', msg2.slice(0, 60));
   await loginAsRaw(page, base, sup.uname, sup.pw);
   const pay2 = await page.eval('return Store.recordPayment(' + JSON.stringify(sch.id) + ', {kind:"annual"});');
   ok(pay2.state.blocked === true, 'السداد وحده لا يرفع الإيقاف التشغيلي (قرار المشرف)',
@@ -448,7 +448,7 @@ async function financeSupportSuite(page, base) {
   const supAg = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="support"&&x.username;})[0]; return u?{u:u.username,p:u.password}:null;');
   const prin = await page.eval('var u=Store.list("users").filter(function(x){return x.role==="principal"&&x.username;})[0]; return {u:u.username,p:u.password};');
 
-  /* حسابا المنصة موجودان في بيانات العرض */
+  /* حسابا تابعني موجودان في بيانات العرض */
   ok(fin && supAg, 'بيانات العرض: حساب المحاسب المالي وحساب الدعم الفني', JSON.stringify({ accountant: !!fin, support: !!supAg }));
 
   /* المحاسب المالي: وحدة المالية وحدها (عزل) */
@@ -465,7 +465,7 @@ async function financeSupportSuite(page, base) {
   /* الفاتورة الإلكترونية: الرقم والختم والشعار والوقت والمبلغ */
   const inv = await page.eval('var inv=Store.invoices()[0]; if(!inv) return null; var h=UI.invoiceHtml(inv);' +
     'return { no:inv.no, len:h.length, num:h.indexOf(inv.no)>-1, stamp:h.indexOf("textPath")>-1, logo:h.indexOf("logo-mark")>-1,' +
-    ' time:h.indexOf("الوقت")>-1, total:h.indexOf(UI.fmtMoney(inv.amount))>-1, title:h.indexOf("تابعني للخدمات التعليمية")>-1 };');
+    ' time:h.indexOf("الوقت")>-1, total:h.indexOf(UI.fmtMoney(inv.amount))>-1, title:h.indexOf("تابعني للخدمات الذكية")>-1 };');
   ok(inv && inv.num && inv.stamp && inv.logo && inv.time && inv.total && inv.title,
     'الفاتورة الإلكترونية: رقم + ختم تابعني + الشعار + الترويسة + التاريخ/الوقت + المبلغ',
     inv ? JSON.stringify({ no: inv.no, ok: [inv.num, inv.stamp, inv.logo, inv.time, inv.total] }) : 'لا فاتورة');
@@ -473,9 +473,9 @@ async function financeSupportSuite(page, base) {
   /* تقرير مالي بست فترات */
   const periods = await page.eval('return Store.financeAllPeriods().map(function(p){return p.period.name;});');
   ok(periods.length === 6, 'التقارير المالية: يومي · أسبوعي · شهري · ربع سنوي · نصف سنوي · سنوي', periods.join(' · '));
-  const doc = await page.eval('var h=UI.platformDoc({title:"تقرير",sections:[{heading:"م",table:{cols:["أ","ب"],rows:[["1","2"]]}}],signatures:["المحاسب المالي للمنصة","المشرف العام"]});' +
+  const doc = await page.eval('var h=UI.platformDoc({title:"تقرير",sections:[{heading:"م",table:{cols:["أ","ب"],rows:[["1","2"]]}}],signatures:["المحاسب المالي لتابعني","المشرف العام"]});' +
     'return { len:h.length, stamp:h.indexOf("textPath")>-1, sig:h.indexOf("المشرف العام")>-1, logo:h.indexOf("logo-mark")>-1 };');
-  ok(doc.len > 2000 && doc.stamp && doc.sig && doc.logo, 'وثيقة التقرير المالي بترويسة المنصة والختم والتوقيعات', JSON.stringify(doc));
+  ok(doc.len > 2000 && doc.stamp && doc.sig && doc.logo, 'وثيقة التقرير المالي بترويسة تابعني والختم والتوقيعات', JSON.stringify(doc));
 
   /* مصروف */
   const e0 = await page.eval('return Store.expenses().length;');
@@ -586,7 +586,7 @@ async function twoFactorSuite(page, base) {
   const tfOn = () => page.eval('return !!document.querySelector("[name=otpCode]");');
 
   async function loginAs(u, pw) {
-    /* تنقّل جديد دائمًا: يضمن الوصول لشاشة الدخول سواء كنّا في المنصة أو على شاشة التحقق */
+    /* تنقّل جديد دائمًا: يضمن الوصول لشاشة الدخول سواء كنّا داخل تابعني أو على شاشة التحقق */
     await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
     await B.goto(page, base + '/index.html', '!!window.Store');
     await openLogin(page);

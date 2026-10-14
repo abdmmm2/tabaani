@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تسجيل الدخول | تابعني</title>
-<meta name="description" content="سجّل الدخول إلى منصة تابعني التعليمية وتابع مسارك من حيث توقّفت: دروسك، تقييماتك، وتقارير تقدّمك في مكان واحد.">
+<meta name="description" content="سجّل الدخول إلى تابعني التعليمية وتابع مسارك من حيث توقّفت: دروسك، تقييماتك، وتقارير تقدّمك في مكان واحد.">
 <meta name="theme-color" content="#CE9433">
 <link rel="icon" href="assets/img/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
@@ -38,9 +38,9 @@
     <!-- عمود النموذج: أول عنصر في DOM ليكون العمود الأول في اتجاه RTL -->
     <section class="auth-panel" aria-labelledby="login-title">
       <div class="callout" id="platform-callout" style="margin-bottom:18px;padding:14px 16px;border:1px solid rgba(206,148,51,.45);border-radius:14px;background:rgba(206,148,51,.08)">
-        <strong style="display:block;margin-bottom:6px">هل تريد الدخول إلى منصة المدرسة؟</strong>
-        <span style="display:block;font-size:.85rem;opacity:.85;margin-bottom:10px">هذه الصفحة نموذجية في الموقع التعريفي ولا تسجّل دخولًا حقيقيًا. دخول المدرسة (المدير · الوكيل · المعلم · الطالب) من منصة تابعني.</span>
-        <a class="btn btn-primary btn-block" id="go-platform" href="../app/">الدخول إلى منصة المدرسة</a>
+        <strong style="display:block;margin-bottom:6px">هل تريد الدخول إلى تابعني؟</strong>
+        <span style="display:block;font-size:.85rem;opacity:.85;margin-bottom:10px">هذه الصفحة نموذجية في الموقع التعريفي ولا تسجّل دخولًا حقيقيًا. دخول المدرسة (المدير · الوكيل · المعلم · الطالب) من تابعني.</span>
+        <a class="btn btn-primary btn-block" id="go-platform" href="../app/">الدخول إلى تابعني</a>
       </div>
       <div class="stack" style="max-width:480px;margin-inline:auto">
 
@@ -101,7 +101,7 @@
 
     <!-- عمود السياق: يظهر على الجانب الآخر، ويُخفى تحت 900px -->
     <section class="auth-aside" aria-labelledby="login-aside-title">
-      <div><span class="eyebrow eyebrow-ghost">منصة تابعني التعليمية</span></div>
+      <div><span class="eyebrow eyebrow-ghost">تابعني التعليمية</span></div>
       <h2 id="login-aside-title">أهلاً بعودتك… أكمل من حيث توقّفت</h2>
       <p class="muted" style="color:rgba(26,18,6,.78);max-width:40ch">
         مسارك محفوظ خطوة بخطوة: الدرس الذي توقّفت عنده، والتقييم القادم، وما ينتظرك هذا الأسبوع.
@@ -129,7 +129,7 @@
 <footer>
   <div class="container" style="padding-block:var(--sp-5)">
     <p class="form-note" style="text-align:center">
-      © <span data-year>2026</span> منصة تابعني التعليمية · <a href="privacy.html">سياسة الخصوصية</a> · <a href="terms.html">الشروط والأحكام</a>
+      © <span data-year>2026</span> تابعني التعليمية · <a href="privacy.html">سياسة الخصوصية</a> · <a href="terms.html">الشروط والأحكام</a>
     </p>
   </div>
 </footer>
@@ -138,7 +138,7 @@
 <script src="assets/data/promo-config.js"></script>
 <script src="assets/js/splash.js" defer></script>
 <script>
-/* يوجّه زر «الدخول إلى منصة المدرسة» إلى مكان المنصة الصحيح أيًّا كان ترتيب المجلدات */
+/* يوجّه زر «الدخول إلى تابعني» إلى مكان تابعني الصحيح أيًّا كان ترتيب المجلدات */
 (function () {
   var a = document.getElementById('go-platform');
   if (!a) return;

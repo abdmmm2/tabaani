@@ -1,5 +1,5 @@
 /* =============================================================================
-   تابعني — منصة الخدمات التعليمية للمدارس
+   تابعني — تابعني للخدمات الذكية
    store.js : نموذج البيانات + منطق العمل + التخزين المحلي
    ---------------------------------------------------------------------------
    البروتوتايب يعمل بالكامل في المتصفح: البيانات تُزرَع أول مرة ثم تُحفظ في
@@ -54,7 +54,7 @@
   };
 
   var ROLES = [
-    { id: 'super', name: 'مشرف المنصة', nameF: 'مشرفة المنصة', desc: 'إنشاء المناطق والمدن والمدارس' },
+    { id: 'super', name: 'مشرف تابعني', nameF: 'مشرفة تابعني', desc: 'إنشاء المناطق والمدن والمدارس' },
     { id: 'principal', name: 'مدير المدرسة', nameF: 'مديرة المدرسة', desc: 'إنشاء الحسابات وإسناد المواد والمتابعة' },
     { id: 'deputy', name: 'وكيل شؤون الطلاب', nameF: 'وكيلة شؤون الطالبات', desc: 'الفصول والجدول والإسناد والمخالفات والاستئذان' },
     { id: 'guidance', name: 'موجّه التوجيه والإرشاد', nameF: 'موجّهة التوجيه والإرشاد', desc: 'معالجة المخالفات السلوكية وتوجيه الاستئذان' },
@@ -64,7 +64,7 @@
     { id: 'activity', name: 'مسؤول النشاط الطلابي', nameF: 'مسؤولة النشاط الطلابي', desc: 'الأنشطة وطلبات المشاركة' },
     { id: 'absence_monitor', name: 'مراقب الغياب', nameF: 'مراقبة الغياب', desc: 'متابعة غياب الطلاب — تُضاف خصائصه لاحقًا' },
     { id: 'guard', name: 'حارس البوابة', nameF: 'حارسة البوابة', desc: 'مسح تصاريح الخروج بالكاميرا وتسجيل خروج الطلاب بوقته وسببه' },
-    { id: 'accountant', name: 'المحاسب المالي للمنصة', nameF: 'المحاسبة المالية للمنصة', desc: 'السدادات والفواتير والمصروفات والتقارير المالية' },
+    { id: 'accountant', name: 'المحاسب المالي لتابعني', nameF: 'المحاسبة المالية لتابعني', desc: 'السدادات والفواتير والمصروفات والتقارير المالية' },
     { id: 'support', name: 'موظف الدعم الفني', nameF: 'موظفة الدعم الفني', desc: 'متابعة تذاكر الدعم والرد على المدارس والزوار' },
     { id: 'student', name: 'طالب', nameF: 'طالبة', desc: 'طلبات النشاط والتطوع والاستئذان' }
   ];
@@ -160,7 +160,7 @@
     var volunteer = mk('volunteer', 'أ. بدر بن عبدالله الشهري', 4);
     var activity = mk('activity', 'أ. ياسر بن تركي الدوسري', 5);
 
-    /* حسابات المنصة (بلا مدرسة): المحاسب المالي وموظف الدعم الفني */
+    /* حسابات تابعني (بلا مدرسة): المحاسب المالي وموظف الدعم الفني */
     var platformUser = function (role, name, i, uname) {
       var u = {
         id: 'u-' + role + '-' + i, schoolId: null, role: role, name: name,
@@ -226,14 +226,14 @@
       'u-volunteer-4': 'volunteer', 'u-activity-5': 'activity'
     };
     db.users.forEach(function (u, i) {
-      /* الاسم المحدَّد صراحةً (حسابات المنصة) يُحترَم — وإلا يُولَّد بحسب الدور */
+      /* الاسم المحدَّد صراحةً (حسابات تابعني) يُحترَم — وإلا يُولَّد بحسب الدور */
       u.username = u.username || USERNAMES[u.id] || (u.role === 'teacher' ? 'teacher' + (i % 100) : u.role + (i + 1));
       u.password = DEFAULT_PASS;
     });
 
-    /* حساب مشرف المنصة + حسابات الطلاب (للنموذج) */
+    /* حساب مشرف تابعني + حسابات الطلاب (للنموذج) */
     db.users.push({
-      id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف المنصة — الإدارة العامة',
+      id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف تابعني — الإدارة العامة',
       username: 'admin', password: DEFAULT_PASS,
       email: 'admin@tabaani.com', phone: '+966500000000', telegram: '+966500000000',
       status: 'active', createdAt: now(), canLogin: true
@@ -371,7 +371,7 @@
       showBasmala: true,
       showMinistryLogo: true,
       showSchoolLogo: true,
-      footerNote: 'هذا التقرير صادر من نظام تابعني — للتحقق امسح الباركود أو ابحث برقم التقرير في المنصة.'
+      footerNote: 'هذا التقرير صادر من نظام تابعني — للتحقق امسح الباركود أو ابحث برقم التقرير في تابعني.'
     };
 
     /* الفصول الدراسية (يحدّدها مدير المدرسة: بداية ونهاية كل فصل) */
@@ -470,7 +470,7 @@
             });
           });
         });
-        /* نشاط المستخدمين: بعض المعلمين متميّزون وبعضهم لم يفعّل المنصة */
+        /* نشاط المستخدمين: بعض المعلمين متميّزون وبعضهم لم يفعّل تابعني */
         var ratesByIndex = [0.98, 0.92, 0.86, 0.6, 0.32, 0.04];
         db.users.forEach(function (u, ui) {
           var rate = u.role === 'teacher' ? ratesByIndex[ui % ratesByIndex.length] : 0.8;
@@ -512,16 +512,16 @@
       db.invoices = [
         { id: 'inv-demo-2', no: 'TBN-' + yr + '-0002', at: day(20), schoolId: school.id, schoolName: school.name,
           schoolCity: school.city, plan: 'pro', kind: 'annual', years: 1, amount: 1500,
-          seller: 'تابعني للخدمات التعليمية', by: accountant.name, paidUntil: school.license.paidUntil,
+          seller: 'تابعني للخدمات الذكية', by: accountant.name, paidUntil: school.license.paidUntil,
           note: 'تحويل بنكي — سند مختوم بختم المدرسة', vat: false },
         { id: 'inv-demo-1', no: 'TBN-' + yr + '-0001', at: day(24), schoolId: school.id, schoolName: school.name,
           schoolCity: school.city, plan: 'pro', kind: 'setup', years: 1, amount: 1000,
-          seller: 'تابعني للخدمات التعليمية', by: accountant.name, paidUntil: '', note: 'رسم التأسيس والتهيئة', vat: false }
+          seller: 'تابعني للخدمات الذكية', by: accountant.name, paidUntil: '', note: 'رسم التأسيس والتهيئة', vat: false }
       ];
       db.expenses = [
         { id: 'exp-1', at: day(22).slice(0, 10), category: 'servers', title: 'استضافة السيرفرات — شهري', amount: 450, vendor: 'مزوّد الاستضافة', note: '', by: accountant.name },
         { id: 'exp-2', at: day(18).slice(0, 10), category: 'domain', title: 'تجديد الدومين والشهادة الأمنية', amount: 320, vendor: 'مسجّل النطاقات', note: 'tabaani.sa', by: accountant.name },
-        { id: 'exp-3', at: day(12).slice(0, 10), category: 'maintenance', title: 'صيانة المنصة ودورة تحسينات', amount: 1200, vendor: 'فريق التطوير', note: '', by: accountant.name },
+        { id: 'exp-3', at: day(12).slice(0, 10), category: 'maintenance', title: 'صيانة تابعني ودورة تحسينات', amount: 1200, vendor: 'فريق التطوير', note: '', by: accountant.name },
         { id: 'exp-4', at: day(6).slice(0, 10), category: 'operations', title: 'تشغيل ومتابعة يومية', amount: 500, vendor: '—', note: '', by: accountant.name }
       ];
       db.tickets = [{
@@ -611,7 +611,7 @@
     }
     save(); }
 
-  /* يبدأ منصة فارغة تمامًا: بلا مدرسة ولا طالب ولا معلم —
+  /* يبدأ فارغًا تمامًا: بلا مدرسة ولا طالب ولا معلم —
      تبقى فقط حسابات المشرف العام (وحسابات المالك) ليدخل ويؤسّس مدرسته بنفسه. */
   function resetEmpty() {
     var d = seed();
@@ -645,14 +645,14 @@
         expires: new Date(Date.now() + 10 * 60000).toISOString(), attempts: 0, channel: channel || 'telegram', delivered: false, sentTo: '', error: '' };
       if (!db.settings) db.settings = {};
       db.settings.otp = rec;
-      var text = '🔐 رمز تأكيد لمنصة تابعني\nالرمز: ' + code + '\nصالح ١٠ دقائق — لا تشاركه مع أحد.\n' + (label || '');
+      var text = '🔐 رمز تأكيد لتابعني\nالرمز: ' + code + '\nصالح ١٠ دقائق — لا تشاركه مع أحد.\n' + (label || '');
       var c = store.telegramConfig();
       if (channel === 'email') {
         var em = store.ownerEmail();
         if (!em) { save(); return Promise.resolve({ ok: false, error: 'لا يوجد بريد للمشرف العام' }); }
         if (!(c.mode === 'relay' && c.relayUrl)) { save(); return Promise.resolve({ ok: false, error: 'البريد يحتاج وسيطًا مُفعّلًا (Apps Script) — استخدم تلقرام الآن' }); }
         return fetch(c.relayUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-          body: JSON.stringify({ key: c.relayKey, type: 'email', to: em, subject: 'رمز تأكيد — منصة تابعني', text: text.replace('<br>', '\n') }) })
+          body: JSON.stringify({ key: c.relayKey, type: 'email', to: em, subject: 'رمز تأكيد — تابعني', text: text.replace('<br>', '\n') }) })
           .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
           .then(function (j) { rec.delivered = !!j.ok; rec.sentTo = em; rec.error = j.description || j.error || ''; save(); return { ok: !!j.ok, channel: 'email', error: rec.error }; })
           .catch(function (e) { rec.error = String((e && e.message) || e); save(); return { ok: false, channel: 'email', error: rec.error }; });
@@ -714,7 +714,7 @@
       var chat = String(u.telegramChatId || '').trim();
       if (chat) return { applies: true, blocked: false, chat: chat };
       if (c.enforce) {
-        /* بوتقة أمان: لا يُحجب المشرف العام أبدًا — وإلا تعذّر إصلاح المنصة */
+        /* بوتقة أمان: لا يُحجب المشرف العام أبدًا — وإلا تعذّر إصلاح تابعني */
         if (u.role === 'super' || u.owner) {
           return { applies: false, blocked: false, reason: 'حساب المشرف العام — لا يُحجب (مسار الاسترجاع)' };
         }
@@ -733,7 +733,7 @@
       if (!chat) return Promise.resolve({ ok: false, error: 'لا توجد محادثة تلقرام شخصية مربوطة بهذا الحساب' });
       var c = store.twoFactorConfig();
       var code = String(Math.floor(100000 + Math.random() * 900000));
-      var text = '\uD83D\uDD10 رمز الدخول — منصة تابعني\n' +
+      var text = '\uD83D\uDD10 رمز الدخول — تابعني\n' +
         'الرمز: ' + code + '\n' +
         'صالح ' + c.ttl + ' دقائق — لا تشاركه مع أحد.\n' +
         (u.name ? 'الحساب: ' + u.name + ' (' + store.roleLabel(u.role) + ')' : '');
@@ -815,7 +815,7 @@
       else { db = emptyDb(); }                          /* مدرسة حقيقية: بلا بيانات تجريبية ولا حسابات */
       var u = store.insert('users', {
         id: 'u-super-owner', schoolId: null, role: 'super', owner: true,
-        name: String(data.name || 'مشرف المنصة').trim(), username: uname, password: String(data.password),
+        name: String(data.name || 'مشرف تابعني').trim(), username: uname, password: String(data.password),
         email: email, phone: '', telegram: '', status: 'active', createdAt: now(), canLogin: true, mustChange: false
       });
       store.db.meta = Object.assign({}, store.db.meta, {
@@ -1004,8 +1004,8 @@
         var lic = store.licenseState(user.schoolId);
         if (lic && lic.blocked && user.role !== 'super') {
           return { ok: false, error: lic.reason === 'fees'
-            ? 'دخول المدرسة موقوف — الاشتراك السنوي غير مسدَّد. تواصل مع إدارة منصة تابعني.'
-            : 'دخول المدرسة موقوف من إدارة المنصة — راجع مدير المدرسة.' };
+            ? 'دخول المدرسة موقوف — الاشتراك السنوي غير مسدَّد. تواصل مع إدارة تابعني.'
+            : 'دخول المدرسة موقوف من إدارة تابعني — راجع مدير المدرسة.' };
         }
       }
       if (user.password !== p) return { ok: false, error: 'كلمة المرور غير صحيحة' };
@@ -1181,7 +1181,7 @@
         bySchool: bySchool, withoutSchool: homeless
       };
     },
-    /** إيقاف/تفعيل حسابات الطلاب — جماعيًا (لوحة المشرف العام: كل المنصة أو مدرسة محدّدة · أو لصف) */
+    /** إيقاف/تفعيل حسابات الطلاب — جماعيًا (لوحة المشرف العام: كل تابعني أو مدرسة محدّدة · أو لصف) */
     setStudentAccounts: function (action, opts) {
       opts = opts || {};
       var targets = opts.ids && opts.ids.length
@@ -1222,10 +1222,10 @@
        ---------------------------------------------------------------------
        المسار: المدرسة تحوّل المبلغ بنكيًا ← ترفع صورة سند التحويل مختومة بختم
        المدرسة ← تُراجع (المشرف العام أو المحاسب المالي) ← تُصدر فاتورة إلكترونية
-       مختومة بختم «تابعني للخدمات التعليمية» ← وتُفعَّل الباقة آليًا.
+       مختومة بختم «تابعني للخدمات الذكية» ← وتُفعَّل الباقة آليًا.
        ===================================================================== */
     EXPENSE_CATS: [
-      { id: 'maintenance', name: 'صيانة المنصة' },
+      { id: 'maintenance', name: 'صيانة تابعني' },
       { id: 'servers', name: 'السيرفرات والاستضافة' },
       { id: 'operations', name: 'التشغيل' },
       { id: 'domain', name: 'الدومين والشهادات' },
@@ -1240,7 +1240,7 @@
     bank: function () {
       var b = (db.settings && db.settings.bank) || {};
       return {
-        beneficiary: b.beneficiary || 'مؤسسة تابعني للخدمات التعليمية',
+        beneficiary: b.beneficiary || 'مؤسسة تابعني للخدمات الذكية',
         bankName: b.bankName || 'مصرف الراجحي',
         account: b.account || '000-0000-000000-0',
         iban: b.iban || 'SA00 0000 0000 0000 0000 0000',
@@ -1260,7 +1260,7 @@
     },
     /** بيان البند في الفاتورة */
     invoiceTitle: function (inv) {
-      if (inv.kind === 'setup') return 'رسم التأسيس والتهيئة — منصة تابعني';
+      if (inv.kind === 'setup') return 'رسم التأسيس والتهيئة — تابعني';
       return 'اشتراك سنوي — باقة «' + store.planDef(inv.plan).name + '»' +
         ((inv.years || 1) > 1 ? ' (' + inv.years + ' سنوات)' : '');
     },
@@ -1270,7 +1270,7 @@
       return schoolId ? all.filter(function (i) { return i.schoolId === schoolId; }) : all;
     },
     invoice: function (id) { return store.list('invoices').find(function (i) { return i.id === id; }) || null; },
-    /** إصدار فاتورة إلكترونية مختومة بختم «تابعني للخدمات التعليمية» */
+    /** إصدار فاتورة إلكترونية مختومة بختم «تابعني للخدمات الذكية» */
     issueInvoice: function (data) {
       data = data || {};
       var sc = store.school(data.schoolId) || {};
@@ -1281,7 +1281,7 @@
         kind: data.kind === 'setup' ? 'setup' : 'annual',
         years: Math.max(1, parseInt(data.years, 10) || 1),
         amount: Number(data.amount) || 0, vat: !!data.vat,
-        seller: 'تابعني للخدمات التعليمية',
+        seller: 'تابعني للخدمات الذكية',
         by: store.session.name || '',
         paidUntil: data.paidUntil || ((store.licenseState(sc.id) || {}).paidUntil || ''),
         note: data.note || '', requestId: data.requestId || '',
@@ -1476,7 +1476,7 @@
         a: 'أبشر! الرمز ينزل على تلقرام في محادثتك الخاصة مع البوت — تأكد أنك مرسل /start للبوت، وأدخل الرمز خلال ٥ دقايق (يُستهلك مرة وحدة). ولو ما وصلك، كلّم مدير المدرسة يربط محادثتك من «الموظفون والحسابات».' },
       { id: 'telegram', cat: 'telegram', title: 'تلقرام والإشعارات',
         k: ['تلقرام', 'تلجرام', 'بوت', 'اشعار', 'إشعار', 'رسالة ما توصل', 'قناة'],
-        a: 'تمام! للإشعارات: تابعنا في باقتين — «كلاسيك» المنصة كاملة بلا تلقرام، و«برو» فيها تلقرام. ولو باقتك «برو» وما توصل الرسائل: تأكد من التوكن ومعرّف المحادثة في «سجل تلقرام»، وجرّب «إرسال رسالة تجريبية».' },
+        a: 'تمام! للإشعارات: تابعنا في باقتين — «كلاسيك» كل الوحدات بلا تلقرام، و«برو» فيها تلقرام. ولو باقتك «برو» وما توصل الرسائل: تأكد من التوكن ومعرّف المحادثة في «سجل تلقرام»، وجرّب «إرسال رسالة تجريبية».' },
       { id: 'reports', cat: 'reports', title: 'التقارير والطباعة',
         k: ['تقرير', 'تقارير', 'طباعة', 'اطبع', 'بي دي اف', 'pdf', 'باركود', 'ترويسة'],
         a: 'أبشر! التقارير من «التقارير» ← اختر النوع والفترة ← «تصدير PDF / طباعة»، وتطلع بترويسة الوزارة والباركود. ولو الترويسة مو مضبوطة، مدير المدرسة يعدّلها من «ترويسة التقارير».' },
@@ -1500,7 +1500,7 @@
         a: 'هلا! بصمة الوجه تحتاج إذن الكاميرا وموقع آمن (https أو localhost). افتح إعدادات المتصفح ← الأذونات ← الكاميرا ← «سماح»، ثم أعد تحميل الصفحة. ولو الجهاز فيه كاميرا مغطاة، اكشفها وجرّب من جديد.' },
       { id: 'backup', cat: 'backup', title: 'النسخ الاحتياطي والبيانات',
         k: ['نسخة', 'احتياطي', 'باك اب', 'بيانات', 'استرجاع', 'تصفير', 'ضاعت'],
-        a: 'انتبه لي: البيانات محفوظة في متصفح الجهاز نفسه (نموذج أولي بلا خادم). خذ نسخة احتياطية دوريًا من «بيانات المنصة ← نسخة احتياطية» واحفظها بمكان آمن — ومنها تقدر تسترجع كل شي.' }
+        a: 'انتبه لي: البيانات محفوظة في متصفح الجهاز نفسه (نموذج أولي بلا خادم). خذ نسخة احتياطية دوريًا من «بيانات تابعني ← نسخة احتياطية» واحفظها بمكان آمن — ومنها تقدر تسترجع كل شي.' }
     ],
     /** يطبّع النص العربي للبحث */
     _norm: function (t) {
@@ -1663,15 +1663,15 @@
     /* =====================================================================
        الباقات والاشتراكات — «تابعني كلاسيك» و«تابعني برو»
        ---------------------------------------------------------------------
-       • الباقة لكل مدرسة: كلاسيك = المنصة كاملة بلا تلقرام · برو = كل الخدمات.
-       • رسم تأسيس وتهيئة المنصة مرة واحدة، ثم اشتراك سنوي لكل باقة.
+       • الباقة لكل مدرسة: كلاسيك = كل الوحدات بلا تلقرام · برو = كل الخدمات.
+       • رسم تأسيس وتهيئة تابعني مرة واحدة، ثم اشتراك سنوي لكل باقة.
        • الإيقاف بيد المشرف العام وحده: عدم سداد الرسوم السنوية أو مشكلة تشغيلية،
          ولا يمسّ حساب المشرف العام نفسه أبدًا (مسار الاسترجاع).
        ===================================================================== */
     PLANS: [
       { id: 'classic', name: 'تابعني كلاسيك', short: 'كلاسيك', telegram: false,
-        tagline: 'المنصة كاملة — بلا تلقرام',
-        features: ['وحدات المنصة كلها و١٠ أدوار', 'التحضير والمخالفات والاستئذان والمناوبة',
+        tagline: 'كل الوحدات — بلا تلقرام',
+        features: ['وحدات كل الوحدات و١٠ أدوار', 'التحضير والمخالفات والاستئذان والمناوبة',
                    'التقارير الرسمية بترويسة الوزارة وباركود التحقّق', 'يعمل بلا إنترنت · نسخ احتياطي'] },
       { id: 'pro', name: 'تابعني برو', short: 'برو', telegram: true, best: true,
         tagline: 'كل الخدمات + تلقرام',
@@ -1679,7 +1679,7 @@
                    'الرسائل الخاصة وتنبيهات أولياء الأمور', 'التحقق بمرحلتين برمز تلقرام',
                    'ربط محادثة تلقرام خاصة لكل مستخدم'] }
     ],
-    /** الرسوم: رسم تأسيس + اشتراك سنوي لكل باقة (قابلة للتعديل من إدارة المنصة) */
+    /** الرسوم: رسم تأسيس + اشتراك سنوي لكل باقة (قابلة للتعديل من إدارة تابعني) */
     planFees: function () {
       var f = (db.settings && db.settings.planFees) || {};
       var num = function (v, d) { var x = Number(v); return isFinite(x) && x >= 0 ? Math.round(x) : d; };
@@ -1699,7 +1699,7 @@
       var p = sc && (sc.plan || (sc.license && sc.license.plan));
       return p === 'pro' ? 'pro' : 'classic';
     },
-    /** هل المدرسة على باقة برو؟ — مشرف المنصة (بلا مدرسة) لا تُحجب عنه أدواته */
+    /** هل المدرسة على باقة برو؟ — مشرف تابعني (بلا مدرسة) لا تُحجب عنه أدواته */
     isPro: function (schoolId) {
       var sid = schoolId || store.session.schoolId;
       if (!sid) return true;
@@ -1737,7 +1737,7 @@
       var soon = days !== null && days >= 0 && days <= 30;
       var suspended = L.status === 'suspended';
       var state = suspended ? 'suspended' : (overdue ? 'overdue' : (soon ? 'soon' : (L.paidUntil ? 'active' : 'unpaid')));
-      var labels = { suspended: (L.reason === 'fees' ? 'موقوفة — عدم سداد الرسوم' : 'موقوفة من إدارة المنصة'),
+      var labels = { suspended: (L.reason === 'fees' ? 'موقوفة — عدم سداد الرسوم' : 'موقوفة من إدارة تابعني'),
                      overdue: 'متأخّرة السداد', soon: 'تنتهي قريبًا', active: 'سارية', unpaid: 'بانتظار أول سداد' };
       return Object.assign({}, L, {
         daysLeft: days, overdue: overdue, soon: soon, blocked: suspended,
@@ -1802,7 +1802,7 @@
       store.saveLicense(schoolId, { status: 'suspended', reason: r, note: String(note || ''), suspendedAt: now() });
       var why = r === 'fees' ? 'عدم سداد الرسوم السنوية' : (r === 'issue' ? 'مشكلة تشغيلية' : 'سبب آخر');
       store._licenseLog('school_suspended', 'إيقاف دخول ' + sc.name + ' — ' + why + (note ? ' (' + note + ')' : ''),
-        { title: 'إيقاف دخول المدرسة: ' + sc.name, body: why + (note ? ' — ' + note : '') + ' · تواصل مع إدارة المنصة', schoolId: schoolId });
+        { title: 'إيقاف دخول المدرسة: ' + sc.name, body: why + (note ? ' — ' + note : '') + ' · تواصل مع إدارة تابعني', schoolId: schoolId });
       return { ok: true, reason: r, state: store.licenseState(schoolId) };
     },
     /** رفع الإيقاف */
@@ -1826,7 +1826,7 @@
       store._licenseLog('plan_changed', 'تغيير باقة ' + sc.name + ' إلى «' + store.planDef(plan).name + '» · ' +
         was.annual + ' ر.س سنويًا',
         { title: 'تغيّرت الباقة: ' + sc.name, body: 'الباقة الحالية «' + store.planDef(plan).name + '» — ' +
-          (store.planDef(plan).telegram ? 'كل الخدمات + تلقرام.' : 'المنصة كاملة بلا تلقرام.') + ' · الاشتراك السنوي ' + was.annual + ' ر.س',
+          (store.planDef(plan).telegram ? 'كل الخدمات + تلقرام.' : 'كل الوحدات بلا تلقرام.') + ' · الاشتراك السنوي ' + was.annual + ' ر.س',
           schoolId: schoolId });
       return { ok: true, plan: plan, license: store.license(schoolId) };
     },
@@ -2037,7 +2037,7 @@
     schoolChatId: function (schoolId) {
       return store.telegramFor(schoolId).chatId;
     },
-    /** وجهة الإرسال الفعلية للمدرسة: مجموعة خاصة إن وُجدت، وبوت خاص إن وُجد، وإلا إعدادات المنصة */
+    /** وجهة الإرسال الفعلية للمدرسة: مجموعة خاصة إن وُجدت، وبوت خاص إن وُجد، وإلا إعدادات تابعني */
     telegramFor: function (schoolId) {
       var id = schoolId || store.session.schoolId;
       var sc = (db.schools || []).filter(function (x) { return x.id === id; })[0];
@@ -2112,7 +2112,7 @@
         .catch(function (e) { return { ok: false, error: 'تعذّر الوصول للوسيط: ' + String((e && e.message) || e) }; });
     },
     telegramTest: function (text) {
-      return store.telegramSend(text || 'رسالة تجريبية من منصة تابعني — الإرسال يعمل ✓', null).then(function (r) {
+      return store.telegramSend(text || 'رسالة تجريبية من تابعني — الإرسال يعمل ✓', null).then(function (r) {
         store.saveTelegramConfig({ lastTest: now(), lastTestOk: r.ok, lastTestMsg: r.detail || '' });
         return r;
       });
@@ -2231,7 +2231,7 @@
       save();
       store.telegram && store.telegram();
       store.tg([
-        { to: 'guidance', text: '✅ مُنح الاستئذان ' + p.number + ' عبر ' + (via || 'المنصة') + '\nتصريح الخروج: ' + p.exitNo },
+        { to: 'guidance', text: '✅ مُنح الاستئذان ' + p.number + ' عبر ' + (via || 'تابعني') + '\nتصريح الخروج: ' + p.exitNo },
         { to: 'teacher', text: 'ℹ️ خروج الطالب ' + ((store.student(p.studentId) || {}).name) + ' — تصريح ' + p.exitNo + ' (الحصة ' + ((store.period(p.periodId) || {}).index || '') + ')' }
       ]);
       store.notify({ kind: 'permission', ref: p.id, title: 'مُنح الاستئذان ' + p.number, body: 'تصريح خروج: ' + p.exitNo, to: ['guidance', 'teacher'] });
@@ -2241,7 +2241,7 @@
     /* =======================================================================
        إذن دخول الفصل (الطالب المتأخر)
        يصدره وكيل شؤون الطلاب أو التوجيه والإرشاد لمعلم الحصة، ويصل بثلاث طرق:
-       ورقي (مطبوع بترويسة المدرسة وباركود) · رسالة تلقرام · رسالة خاصة في المنصة.
+       ورقي (مطبوع بترويسة المدرسة وباركود) · رسالة تلقرام · رسالة خاصة في تابعني.
        الحقل الإلزامي فيه: سبب تأخّر الطالب.
        ======================================================================= */
     entryPermitNumber: function () {
@@ -2295,7 +2295,7 @@
         issuedAt: at.toISOString(), seen: null, ack: null, printed: null
       });
 
-      /* ١) رسالة خاصة في المنصة للمعلم (+ إشعار باسمه) */
+      /* ١) رسالة خاصة في تابعني للمعلم (+ إشعار باسمه) */
       var lines = [
         'الطالب: ' + st.name + (cls.name ? ' — ' + cls.name : ''),
         x.subject ? 'المادة: ' + x.subject : '',
@@ -2483,7 +2483,7 @@
       });
       store.tg({
         to: 'teacher',
-        text: '✅ ثُبّت إسنادك في المنصة\nالفصول: ' + store.teacherPlan(teacherId).classes.map(function (c) { return c.name; }).join('، ') +
+        text: '✅ ثُبّت إسنادك في تابعني\nالفصول: ' + store.teacherPlan(teacherId).classes.map(function (c) { return c.name; }).join('، ') +
           '\nالمواد: ' + subjects.join('، ') + '\nلم يظهر لك في التحضير إلا فصولك.'
       });
       return { ok: true, created: created, existing: existing, classes: classes.length, subjects: subjects.length };
@@ -2667,7 +2667,7 @@
       return { ok: true, placed: placed, skipped: skipped, days: days.length };
     },
 
-    /** تذكير آلي عبر تلقرام قبل المناوبة بيوم — يُستدعى عند تشغيل المنصة وعند الطلب */
+    /** تذكير آلي عبر تلقرام قبل المناوبة بيوم — يُستدعى عند تشغيل تابعني وعند الطلب */
     sendDutyReminders: function (date) {
       var target = date || new Date(Date.now() + 864e5).toISOString().slice(0, 10);   /* غدًا افتراضيًا */
       var list = store.dutiesOf(target, store.session.schoolId);
@@ -2704,7 +2704,7 @@
     /* ------------------------------- تنبيهات الجوال ------------------------------- */
     canNotify: function () { return typeof Notification !== 'undefined'; },
     /* ===================== إذن الخروج (حارس البوابة) ===================== */
-    /* مدة صلاحية تصريح الخروج: ٢٠ دقيقة افتراضيًا (قابلة للتغيير من إعدادات المنصة) */
+    /* مدة صلاحية تصريح الخروج: ٢٠ دقيقة افتراضيًا (قابلة للتغيير من إعدادات تابعني) */
     permitMinutes: function () {
       var m = parseInt((store.db.settings || {}).permitMinutes, 10);
       return (m && m > 0) ? m : 20;
@@ -2808,7 +2808,7 @@
     pendingExits: function () {   /* تصاريح ممنوحة ولم يُسجَّل خروجها بعد */
       return store.list('permissions').filter(function (p) { return p.granted && !p.exited; });
     },
-    /* ===================== بيانات المنصة: إحصاء · نسخة احتياطية · استرجاع ===================== */
+    /* ===================== بيانات تابعني: إحصاء · نسخة احتياطية · استرجاع ===================== */
     dataStats: function () {
       var d = store.db;
       return {
@@ -2824,7 +2824,7 @@
     restoreJson: function (text) {
       try {
         var o = JSON.parse(text);
-        if (!o || !o.users || !o.schools) return { ok: false, error: 'الملف ليس نسخة صالحة لمنصة تابعني' };
+        if (!o || !o.users || !o.schools) return { ok: false, error: 'الملف ليس نسخة صالحة لتابعني' };
         db = o;
         if (!db.exits) db.exits = [];
         if (!db.subjects) db.subjects = [];
@@ -2850,7 +2850,7 @@
       return shown;
     },
 
-    /* ===================== إدارة المستخدمين (مشرف المنصة) ===================== */
+    /* ===================== إدارة المستخدمين (مشرف تابعني) ===================== */
     userStatuses: { active: 'نشط', pending: 'بانتظار الاعتماد', suspended: 'موقوف', disabled: 'معطَّل' },
     rolesList: function () { return ROLES.map(function (r) { return { id: r.id, name: r.name, nameF: r.nameF, desc: r.desc }; }); },
     roleNameOf: function (id, schoolId) { return store.roleLabel(id, schoolId); },
@@ -2902,7 +2902,7 @@
         email: String(d.email || '').trim(), phone: String(d.phone || '').trim(), telegram: String(d.phone || '').trim(),
         telegramChatId: String(d.telegramChatId || '').trim(),
         status: d.status || 'active', canLogin: (d.status || 'active') === 'active',
-        mustChange: !!d.mustChange, createdAt: new Date().toISOString(), createdBy: store.session.name || 'مشرف المنصة'
+        mustChange: !!d.mustChange, createdAt: new Date().toISOString(), createdBy: store.session.name || 'مشرف تابعني'
       };
       store.db.users.push(u); save();
       return { ok: true, user: u };
@@ -3010,7 +3010,7 @@
       return db.promo;
     },
     /* يُكتب الإعلان في localStorage بمفتاح مشترك 'tabaani_promo_config' ليقرأه
-       موقع تابعني فورًا (عند وجود الموقع والمنصة على نفس النطاق)، وللزوار عبر
+       موقع تابعني فورًا (عند وجود الموقع وتابعني على نفس النطاق)، وللزوار عبر
        ملف promo-config.js المصدَّر. */
     mirrorPromo: function () {
       try { localStorage.setItem('tabaani_promo_config', store.promoConfigJson()); store._promoMirror = true; }
@@ -3051,7 +3051,7 @@
     promoConfigFile: function () {
       return '/* =============================================================================\n' +
         '   promo-config.js — إعداد الإعلان الافتتاحي لموقع تابعني\n' +
-        '   صدّره من: منصة تابعني ← «الإعلان الافتتاحي» ← نشر الإعلان على الموقع\n' +
+        '   صدّره من: تابعني ← «الإعلان الافتتاحي» ← نشر الإعلان على الموقع\n' +
         '   ضعه في: site/assets/data/promo-config.js\n' +
         '   آخر تحديث: ' + new Date().toISOString().slice(0, 10) + '\n' +
         '   ========================================================================== */\n' +
@@ -3124,7 +3124,7 @@
       return { from: iso(d), to: iso(d), label: 'تقرير' };
     },
 
-    /* ===================== سجل النشاط (لقياس تفعيل المنصة) ===================== */
+    /* ===================== سجل النشاط (لقياس تفعيل تابعني) ===================== */
     log: function (type, meta) {
       if (store.session.userId) {
         store.db.activityLog.push({
@@ -3356,7 +3356,7 @@
         };
       });
     },
-    /** نسبة تفعيل المعلمين للمنصة: دخول، إغلاق تحضير، مخالفات، قرارات نشاط */
+    /** نسبة تفعيل المعلمين لتابعني: دخول، إغلاق تحضير، مخالفات، قرارات نشاط */
     teacherActivity: function (range) {
       var teachers = store.usersByRole('teacher', store.session.schoolId);
       var log = store.activities({ from: range.from, to: range.to });
@@ -3382,14 +3382,14 @@
         var loginRate = Math.min(100, Math.round((logins.length / schoolDays) * 100));
         var level = loginRate >= 70 ? 'متميّز'
           : (loginRate >= 25 ? 'منتظم'
-          : (logins.length > 0 ? 'ضعيف التفعيل' : 'لم يفعّل المنصة'));
+          : (logins.length > 0 ? 'ضعيف التفعيل' : 'لم يفعّل تابعني'));
         var last = logins.length ? logins[logins.length - 1].at : null;
         return { teacherId: t.id, name: t.name, subjects: (t.subjects || []).join('، '),
                  logins: logins.length, loginRate: loginRate, lastLogin: last,
                  sessions: sessions.length, closed: closed, violations: violations, decisions: decisions, level: level };
       }).sort(function (a, b) { return b.loginRate - a.loginRate; });
     },
-    /** ملخّص عام للمنصة في نطاق */
+    /** ملخّص عام لتابعني في نطاق */
     platformSummary: function (range) {
       var log = store.activities({ from: range.from, to: range.to });
       var sessions = store.sessionsInRange(range);

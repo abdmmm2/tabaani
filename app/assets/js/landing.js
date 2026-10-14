@@ -5,14 +5,14 @@
      عن تابعني · الدعم الفني · تواصل معنا.
    • ترويسة ثابتة: اللوغو والاسم يمينًا · التنقّل في الوسط · الدخول وثلاثة خطوط يسارًا.
    • الإعلان يظهر في الصفحة الرئيسية فقط: قابل للإغلاق، ويتلاشى تلقائيًا بعد مدة
-     (تُضبط من: المنصة ← الإعلان الافتتاحي ← إغلاق تلقائي).
+     (تُضبط من: تابعني ← الإعلان الافتتاحي ← إغلاق تلقائي).
    • التصميم: أبيض + أخضر زمردي + ذهبي محدود — بتناسق واحد بلا خلفيات داكنة.
    ========================================================================== */
 (function (global) {
   'use strict';
   var S = global.Store, UI = global.UI, App = global.App, h = UI.h, clear = UI.clear;
 
-  var BRAND = 'تابعني للخدمات التعليمية الذكية';
+  var BRAND = 'تابعني للخدمات الذكية';
   var PAGES = [
     { id: 'home', label: 'الرئيسية', nav: false, title: 'الرئيسية' },
     { id: 'features', label: 'مميزاتنا', nav: true, title: 'مميزاتنا' },
@@ -89,8 +89,8 @@
   App.openLogin = function () {
     if (S.needsSetup()) {
       UI.modal({
-        title: 'تهيئة المنصة', body: [
-          h('p', { class: 'muted', text: 'هذه أول مرة تُفتح فيها المنصة على هذا الجهاز — أنشئ حساب المشرف العام أولًا ثم سجّل دخولك.' }),
+        title: 'تهيئة تابعني', body: [
+          h('p', { class: 'muted', text: 'هذه أول مرة تُفتح فيها تابعني على هذا الجهاز — أنشئ حساب المشرف العام أولًا ثم سجّل دخولك.' }),
           h('button', { class: 'btn btn-primary btn-block', type: 'button', text: 'إنشاء حساب المشرف العام',
             onClick: function () { closeAll(); App.setupScreen(); } })
         ]
@@ -146,7 +146,7 @@
         h('img', { src: 'assets/img/logo-mark.png', alt: 'تابعني', class: 'lp-logo' }),
         h('span', { class: 'lp-brand-txt' }, [
           h('span', { class: 'lp-brand-name', text: 'تابعني' }),
-          h('span', { class: 'lp-brand-sub', text: 'لخدمات التعليمية الذكية' })
+          h('span', { class: 'lp-brand-sub', text: 'للخدمات الذكية' })
         ])
       ]),
       nav,
@@ -164,7 +164,7 @@
       h('div', { class: 'lp-foot-in' }, [
         h('div', { class: 'lp-foot-brand' }, [
           h('img', { src: 'assets/img/logo-mark.png', alt: '', class: 'lp-logo-sm' }),
-          h('div', {}, [h('strong', { text: BRAND }), h('span', { class: 'lp-mut', text: 'منصة الخدمات التعليمية للمدارس' })])
+          h('div', {}, [h('strong', { text: BRAND }), h('span', { class: 'lp-mut', text: 'نظام تشغيل مدرسي — يعمل بلا إنترنت' })])
         ]),
         h('nav', { class: 'lp-foot-nav' }, PAGES.map(function (p) {
           return h('a', { href: '#/' + p.id, onClick: function (e) { e.preventDefault(); goPage(p.id); }, text: p.label });
@@ -176,7 +176,7 @@
         ])
       ]),
       h('div', { class: 'lp-foot-base' }, [
-        h('span', { text: '© ' + new Date().getFullYear() + ' تابعني للخدمات التعليمية الذكية — جميع الحقوق محفوظة.' }),
+        h('span', { text: '© ' + new Date().getFullYear() + ' — جميع الحقوق محفوظة.' }),
         h('span', { class: 'lp-mut', text: 'الإصدار ' + App.version() })
       ])
     ]);
@@ -185,7 +185,7 @@
     var setupBar = S.needsSetup() ? h('div', { class: 'lp-setupbar' }, [
       h('span', { html: '&#9888;&#65039;' }),
       h('span', { text: 'هذا الجهاز غير مُهيّأ — أنشئ حساب المشرف العام لتبدأ.' }),
-      h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تهيئة المنصة', onClick: function () { App.setupScreen(); } })
+      h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'تهيئة تابعني', onClick: function () { App.setupScreen(); } })
     ]) : null;
 
     var page = h('div', { class: 'lp' }, [
@@ -244,7 +244,7 @@
     host.appendChild(h('section', { class: 'lp-hero' }, [
       h('div', { class: 'lp-hero-txt' }, [
         h('h1', { class: 'lp-h1', text: BRAND }),
-        h('p', { class: 'lp-lead', text: 'منصة واحدة تدير الحضور والمخالفات والاستئذان والجدول والمناوبة والتقارير الرسمية — من الجوال وبلا إنترنت.' }),
+        h('p', { class: 'lp-lead', text: 'نظام واحد يدير الحضور والمخالفات والاستئذان والجدول والمناوبة والتقارير الرسمية — من الجوال وبلا إنترنت.' }),
         h('div', { class: 'lp-cta' }, [
           h('button', { class: 'btn btn-primary btn-lg', type: 'button', text: 'تسجيل الدخول', 'data-login': '1', onClick: function () { App.openLogin(); } }),
           h('a', { class: 'btn btn-outline btn-lg', href: '#/pricing', onClick: function (e) { e.preventDefault(); location.hash = '#/pricing'; }, text: 'الأسعار والباقات' })
@@ -383,7 +383,7 @@
       h('div', { class: 'lp-grid lp-grid-3' }, [
         card('&#127760;', 'عربي بالكامل', 'كل الشاشات والتقارير بالعربية، ومسمّيات تتأنّث تلقائيًا في مدارس البنات.'),
         card('&#128241;', 'يعمل كتطبيق', 'ثبّته على الجوال أو الآيباد، ويفتح بملء الشاشة وبلا إنترنت بعد أول مرة.'),
-        card('&#128221;', 'قابل للتخصيص', 'ترويسة التقارير وفترات المناوبة وأذون الدخول والإعلانات — تُضبط من داخل المنصة.')
+        card('&#128221;', 'قابل للتخصيص', 'ترويسة التقارير وفترات المناوبة وأذون الدخول والإعلانات — تُضبط من داخل تابعني.')
       ])
     ]));
   }
@@ -395,7 +395,7 @@
       h('div', { class: 'lp-grid lp-grid-3' }, [
         card('&#128172;', 'محادثة الدعم الفني', 'فارس الحربي وهند المطيري — شفتان على مدار اليوم.'),
         card('&#128231;', 'البريد الإلكتروني', 'info@tabaani.sa'),
-        card('&#127970;', 'تفعيل مدرسة جديدة', 'نُهيّئ المنصة وننشئ حساب مدير المدرسة وندرّب فريقك.')
+        card('&#127970;', 'تفعيل مدرسة جديدة', 'نُهيّئ تابعني وننشئ حساب مدير المدرسة وندرّب فريقك.')
       ]),
       h('div', { class: 'lp-band' }, [
         h('div', {}, [h('strong', { text: 'تفعيل مدرسة أو ترقية باقة' }), h('p', { text: 'راسلنا في المحادثة ونكمل معك خلال دقائق.' })]),
@@ -405,7 +405,7 @@
   }
 
   /* ------------------------------------------------------------ شريط الإعلان */
-  /** يقرأ إعلان المنصة: يُغلق، ويتلاشى بعد مدة (autoClose)، ويحترم تكرار العرض */
+  /** يقرأ إعلان تابعني: يُغلق، ويتلاشى بعد مدة (autoClose)، ويحترم تكرار العرض */
   /** يقرأ ملف الإعلان المنشور للموقع (site/assets/data/promo-config.js) — للزوار */
   function probePromo(cb) {
     try {

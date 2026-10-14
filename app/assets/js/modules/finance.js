@@ -131,7 +131,7 @@
 
       function approve(r, redraw) {
         UI.confirm('اعتماد سداد ' + r.schoolName + ' بمبلغ ' + money(r.amount) + '؟\n' +
-          'سيُسجَّل السداد وتُفعَّل الباقة آليًا، وتُصدر فاتورة إلكترونية مختومة بختم «تابعني للخدمات التعليمية».',
+          'سيُسجَّل السداد وتُفعَّل الباقة آليًا، وتُصدر فاتورة إلكترونية مختومة بختم «تابعني للخدمات الذكية».',
           { ok: 'اعتماد وتفعيل' }).then(function (yes) {
           if (!yes) return;
           var res = S.approvePaymentRequest(r.id);
@@ -140,7 +140,7 @@
           UI.modal({
             title: 'فُعّلت الباقة ✓ — فاتورة ' + res.invoice.no,
             body: [
-              h('p', { class: 'muted', text: 'صدرت الفاتورة الإلكترونية مختومة بختم المنصة، والسريان حتى ' + ((res.state || {}).paidUntil || '—') + '.' }),
+              h('p', { class: 'muted', text: 'صدرت الفاتورة الإلكترونية مختومة بختم تابعني، والسريان حتى ' + ((res.state || {}).paidUntil || '—') + '.' }),
               h('div', { class: 'cluster' }, [
                 h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'طباعة الفاتورة', onClick: function () { UI.printInvoice(res.invoice); } }),
                 h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'عرض الفاتورة', onClick: function () { invoiceDialog(res.invoice); } })
@@ -179,7 +179,7 @@
               App._licRow('بواسطة', inv.by || '—'),
               App._licRow('سريان الاشتراك', inv.paidUntil || '—')
             ]),
-            h('p', { class: 'lic-note', text: 'الفاتورة مختومة بختم «تابعني للخدمات التعليمية» وتُطبع بترويسة المنصة ورقم الفاتورة والتاريخ والوقت.' })
+            h('p', { class: 'lic-note', text: 'الفاتورة مختومة بختم «تابعني للخدمات الذكية» وتُطبع بترويسة تابعني ورقم الفاتورة والتاريخ والوقت.' })
           ],
           actions: [
             { label: 'طباعة / حفظ PDF', class: 'btn-primary', onClick: function (close) { UI.printInvoice(inv); close(); } },
@@ -193,7 +193,7 @@
         var all = S.invoices();
         var total = all.reduce(function (a, i) { return a + (Number(i.amount) || 0); }, 0);
         host.appendChild(UI.panel('الفواتير الإلكترونية',
-          'كل فاتورة برقمها وتاريخها ووقتها، مختومة بختم «تابعني للخدمات التعليمية» — جاهزة للطباعة أو الحفظ PDF.',
+          'كل فاتورة برقمها وتاريخها ووقتها، مختومة بختم «تابعني للخدمات الذكية» — جاهزة للطباعة أو الحفظ PDF.',
           [
             h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تسجيل سداد وفاتورة يدويًا', onClick: manualInvoice }),
             h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'طباعة كشف الفواتير', onClick: function () { printInvoicesReport(all); } })
@@ -273,7 +273,7 @@
         };
         var sum = function (arr) { return arr.reduce(function (a, e) { return a + (Number(e.amount) || 0); }, 0); };
         host.appendChild(UI.panel('إضافة مصروف',
-          'صيانة المنصة · السيرفرات والاستضافة · التشغيل · الدومين والشهادات — كل مصروف يُقيَّد باسمك ووقته.',
+          'صيانة تابعني · السيرفرات والاستضافة · التشغيل · الدومين والشهادات — كل مصروف يُقيَّد باسمك ووقته.',
           [h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'إضافة المصروف', onClick: function () {
             var r = S.addExpense({
               title: inputs.title.input.value, category: inputs.category.input.value,
@@ -415,7 +415,7 @@
                 rows: sum.expenses.map(function (e) { return [e.at, S.expenseCat(e.category), e.title, e.vendor || '—', money(e.amount)]; })
               } }
           ],
-          signatures: ['المحاسب المالي للمنصة', 'المشرف العام'],
+          signatures: ['المحاسب المالي لتابعني', 'المشرف العام'],
           qr: 'مالية|' + sum.period.id + '|' + Math.round(sum.revenue) + '|' + Math.round(sum.expensesTotal),
           qrNote: 'ملخّص مالي — ' + sum.period.name
         });
@@ -424,7 +424,7 @@
       function printInvoicesReport(all) {
         UI.printPlatformDoc({
           title: 'كشف الفواتير الإلكترونية',
-          subtitle: 'كل الفواتير الصادرة من منصة تابعني — ' + all.length + ' فاتورة',
+          subtitle: 'كل الفواتير الصادرة من تابعني — ' + all.length + ' فاتورة',
           by: S.session.name,
           meta: [{ label: 'عدد الفواتير', value: String(all.length) },
             { label: 'الإجمالي', value: money(all.reduce(function (a, i) { return a + (Number(i.amount) || 0); }, 0)) }],
@@ -432,7 +432,7 @@
             cols: ['رقم الفاتورة', 'المدرسة', 'البند', 'المبلغ', 'التاريخ', 'الوقت', 'بواسطة'],
             rows: all.map(function (i) { return [i.no, i.schoolName, S.invoiceTitle(i), money(i.amount), UI.fmtDate(i.at), UI.fmtTime(i.at), i.by || '—']; })
           } }],
-          signatures: ['المحاسب المالي للمنصة', 'المشرف العام']
+          signatures: ['المحاسب المالي لتابعني', 'المشرف العام']
         });
       }
 
@@ -456,7 +456,7 @@
             UI.toast('حُفظت بيانات الحساب ✓', 'ok');
           } })],
           [h('div', { class: 'form-grid' }, [f.beneficiary.wrap, f.bankName.wrap, f.account.wrap, f.iban.wrap, f.note.wrap]),
-            h('div', { class: 'lic-note', text: 'الرسوم: رسم التأسيس ' + S.planFees().setupFee + ' ر.س مرة واحدة · كلاسيك ' + S.planFees().classic + ' ر.س سنويًا · برو ' + S.planFees().pro + ' ر.س سنويًا (تُعدَّل من «بيانات المنصة ← الباقات والرسوم»).' })]));
+            h('div', { class: 'lic-note', text: 'الرسوم: رسم التأسيس ' + S.planFees().setupFee + ' ر.س مرة واحدة · كلاسيك ' + S.planFees().classic + ' ر.س سنويًا · برو ' + S.planFees().pro + ' ر.س سنويًا (تُعدَّل من «بيانات تابعني ← الباقات والرسوم»).' })]));
       }
 
       paint();

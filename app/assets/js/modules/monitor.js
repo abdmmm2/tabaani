@@ -330,17 +330,17 @@
           'وهي عند حد الحرمان المعتمد (' + threshold + '٪). نأمل التعاون بمتابعة الحضور ومراجعة مراقب الغياب.';
         UI.formModal({
           title: 'إشعار ولي الأمر — ' + row.name,
-          intro: 'اختر قناة الإبلاغ وحرّر نص الرسالة، ثم أرسل. يُسجَّل الإشعار في سجل المنصة وسجل تلقرام.',
+          intro: 'اختر قناة الإبلاغ وحرّر نص الرسالة، ثم أرسل. يُسجَّل الإشعار في سجل تابعني وسجل تلقرام.',
           fields: [
             {
               name: 'channel', label: 'قناة الإبلاغ', type: 'select', required: true, value: 'telegram',
-              options: [{ value: 'platform', label: 'منصة' }, { value: 'telegram', label: 'تلقرام' }, { value: 'sms', label: 'جوال' }]
+              options: [{ value: 'platform', label: 'تابعني' }, { value: 'telegram', label: 'تلقرام' }, { value: 'sms', label: 'جوال' }]
             },
             { name: 'message', label: 'نص الرسالة', type: 'textarea', rows: 6, required: true, value: defaultMsg }
           ],
           submitLabel: 'إرسال الإشعار',
           onSubmit: function (data) {
-            var chLabel = { platform: 'منصة', telegram: 'تلقرام', sms: 'جوال' }[data.channel] || 'منصة';
+            var chLabel = { platform: 'تابعني', telegram: 'تلقرام', sms: 'جوال' }[data.channel] || 'تابعني';
             S.tg({
               to: 'deputy',
               text: 'إشعار ولي أمر (' + chLabel + ')\n' + row.name + ' — ' + row.className +

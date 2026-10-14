@@ -1,5 +1,5 @@
 /* =============================================================================
-   schools.js — المناطق والمدن والمدارس (مشرف المنصة)
+   schools.js — المناطق والمدن والمدارس (مشرف تابعني)
    ---------------------------------------------------------------------------
    الرحلة: يضيف المشرف منطقة ومدينة (ربط انزلاقي بينهما) ← يؤسّس مدرسة ويحدّد
    مراحلها ← ينشئ حساب مدير المدرسة ← تظهر المدرسة في الجدول بحالة «نشطة»
@@ -11,11 +11,11 @@
 
   var STAGE_TONE = { kg: 'amber', primary: 'brand', middle: 'mint', secondary: 'plain' };
 
-  /* حساب «مشرف المنصة»: هذه الوحدة مسؤولة عن الدور super، والزرع الافتراضي
+  /* حساب «مشرف تابعني»: هذه الوحدة مسؤولة عن الدور super، والزرع الافتراضي
      لا يتضمّن حسابًا له — نضمن وجوده مرة واحدة ليعمل الدخول ولوحة المشرف. */
   if (!S.list('users', { role: 'super' }).length) {
     S.insert('users', {
-      id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف المنصة',
+      id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف تابعني',
       nationalId: '', phone: '', email: 'super@tabaani.sa', status: 'active', canLogin: true
     });
   }
@@ -157,7 +157,7 @@
           { name: 'email', label: 'البريد الإلكتروني', half: true, value: school ? school.email || '' : '' },
           {
             name: 'gender', label: 'جنس المدرسة', type: 'select', half: true, required: true,
-            help: 'يحدّد المسمّيات في المنصة: طلاب ← وكيل/معلم/مدير · طالبات ← وكيلة/معلمة/مديرة',
+            help: 'يحدّد المسمّيات في تابعني: طلاب ← وكيل/معلم/مدير · طالبات ← وكيلة/معلمة/مديرة',
             options: S.genders.map(function (g) { return { value: g.id, label: g.name }; }),
             value: school ? (school.gender || 'boys') : 'boys'
           }
@@ -330,7 +330,7 @@
                 })
               }
             }],
-            signatures: ['مشرف المنصة']
+            signatures: ['مشرف تابعني']
           };
         }, { label: 'طباعة التقرير', class: 'btn-outline' });
 
@@ -383,7 +383,7 @@
                   text: (s.gender === 'girls') ? 'اجعله طلابًا' : 'اجعله طالبات',
                   onClick: function () {
                     var next = (s.gender === 'girls') ? 'boys' : 'girls';
-                    UI.confirm('تحويل "' + s.name + '" إلى مدرسة ' + (next === 'girls' ? 'طالبات' : 'طلاب') + '؟ ستتغيّر المسمّيات (وكيل/وكيلة، معلم/معلمة…) في كل المنصة لهذه المدرسة.',
+                    UI.confirm('تحويل "' + s.name + '" إلى مدرسة ' + (next === 'girls' ? 'طالبات' : 'طلاب') + '؟ ستتغيّر المسمّيات (وكيل/وكيلة، معلم/معلمة…) في كل تابعني لهذه المدرسة.',
                       { ok: 'تحويل', danger: false }).then(function (ok) {
                       if (!ok) return;
                       S.setSchoolGender(s.id, next);
@@ -416,7 +416,7 @@
           empty: 'لا توجد مدارس بعد.'
         }) : UI.empty('لا توجد مدارس بعد — ابدأ بتأسيس أول مدرسة.', h('button', { class: 'btn btn-primary', type: 'button', text: 'إضافة مدرسة', onClick: schoolCreateModal }));
 
-        return UI.panel('المدارس المسجّلة', 'كل مدارس المنصة مرتّبة بحسب المنطقة والمدينة.', [reportBtn], [body]);
+        return UI.panel('المدارس المسجّلة', 'كل مدارس تابعني مرتّبة بحسب المنطقة والمدينة.', [reportBtn], [body]);
       }
 
       draw();

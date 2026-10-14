@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------------
    واجهتان منفصلتان بحسب الدور:
    • المعلم: حضور وانصراف المعلم + كشوفه الخاصة (غياب/تأخر/انتظام/حرمان) مقيّدة
-     بفصوله وحصصه فقط + نشاطه في المنصة.
+     بفصوله وحصصه فقط + نشاطه في تابعني.
    • الطالب: كشفه الخاص فقط (حضور/تأخر/غياب/نسبة الحرمان + الحضور التفصيلي +
      التطوع والأنشطة) وطباعة كشف حضوره.
    لا يرى المعلم بيانات معلم آخر، ولا يرى الطالب إلا سجلاته.
@@ -369,7 +369,7 @@
         ]));
       });
 
-      /* ٦) نشاطي في المنصة */
+      /* ٦) نشاطي في تابعني */
       var logins = S.activities({ userId: teacherId, from: r.from, to: r.to, type: 'login' }).length;
       var loginRate = sd ? Math.min(100, Math.round((logins / sd) * 100)) : 0;
       var violations = S.list('violations').filter(function (v) {
@@ -379,14 +379,14 @@
         return a.decidedBy === S.session.name && a.decidedAt &&
           a.decidedAt.slice(0, 10) >= r.from && a.decidedAt.slice(0, 10) <= r.to;
       }).length;
-      var level = loginRate >= 70 ? 'متميّز' : (loginRate >= 25 ? 'منتظم' : (logins > 0 ? 'ضعيف التفعيل' : 'لم يفعّل المنصة'));
+      var level = loginRate >= 70 ? 'متميّز' : (loginRate >= 25 ? 'منتظم' : (logins > 0 ? 'ضعيف التفعيل' : 'لم يفعّل تابعني'));
 
-      view.appendChild(UI.panel('نشاطي في المنصة', 'مؤشرات تفعيلك للمنصة خلال نطاق التقرير.', [
+      view.appendChild(UI.panel('نشاطي في تابعني', 'مؤشرات تفعيلك لتابعني خلال نطاق التقرير.', [
         makeReport(function () {
           var rr = rng();
           return {
             type: 'teacher-activity', refId: teacherId + '-act-' + rr.from + '-' + rr.to,
-            title: 'كشف نشاط المعلم في المنصة', subtitle: me.name,
+            title: 'كشف نشاط المعلم في تابعني', subtitle: me.name,
             meta: [
               { label: 'المعلم', value: me.name },
               { label: 'الفترة', value: rangeLabel(state.kind, rr) },

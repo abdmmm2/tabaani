@@ -147,7 +147,7 @@
       var note = h('textarea', { class: 'input', rows: '2', placeholder: 'ملاحظة (اختيارية) — تُسجَّل في سجل التدقيق وتُرسل لإدارة المدرسة' });
       var opts = [
         { v: 'fees', t: 'عدم سداد الرسوم السنوية', d: 'الاشتراك السنوي غير مسدَّد — ويُرفع الإيقاف تلقائيًا عند تسجيل السداد.' },
-        { v: 'issue', t: 'مشكلة تشغيلية', d: 'خلل أو مخالفة في الاستخدام — يُرفع بقرار من إدارة المنصة.' },
+        { v: 'issue', t: 'مشكلة تشغيلية', d: 'خلل أو مخالفة في الاستخدام — يُرفع بقرار من إدارة تابعني.' },
         { v: 'other', t: 'سبب آخر', d: 'يُوضَّح في الملاحظة.' }
       ];
       var box = h('div', { class: 'stack' });
@@ -230,7 +230,7 @@
                 } })
             ]);
           })),
-          h('p', { class: 'lic-note', text: 'السداد يُسجَّل يدويًا بعد التحصيل (تحويل بنكي أو نقدًا). رسم التأسيس ' + fees.setupFee + ' ر.س مرة واحدة عند تهيئة المنصة للمدرسة.' })
+          h('p', { class: 'lic-note', text: 'السداد يُسجَّل يدويًا بعد التحصيل (تحويل بنكي أو نقدًا). رسم التأسيس ' + fees.setupFee + ' ر.س مرة واحدة عند تهيئة تابعني للمدرسة.' })
         ],
         actions: [
           { label: 'تسجيل السداد (+سنة)', class: 'btn-primary', onClick: function (close) { close(); App.payFlow(schoolId); } },
@@ -269,7 +269,7 @@
           st.blocked
             ? h('div', { class: 'lic-banner is-danger' }, [
                 h('strong', { text: 'دخول المدرسة موقوف' }),
-                h('span', { class: 'muted', text: st.reason === 'fees' ? '— الاشتراك السنوي غير مسدَّد. تواصل مع إدارة منصة تابعني.' : '— قرار من إدارة المنصة. ' + (st.note || '') })
+                h('span', { class: 'muted', text: st.reason === 'fees' ? '— الاشتراك السنوي غير مسدَّد. تواصل مع إدارة تابعني.' : '— قرار من إدارة تابعني. ' + (st.note || '') })
               ])
             : null,
           (!st.blocked && (st.overdue || st.soon))
@@ -281,7 +281,7 @@
           !st.telegram
             ? h('div', { class: 'plan-hint' }, [
                 h('span', { html: '&#9733;', style: { color: 'var(--amber-600)' } }),
-                h('span', { text: 'باقتك الحالية «تابعني كلاسيك»: المنصة كاملة بلا تلقرام. الترقية إلى «تابعني برو» تضيف إشعارات تلقرام الفورية والمعلمين وأولياء الأمور، والرسائل الخاصة، والتحقق بمرحلتين — ' + (fees.pro - fees.classic) + ' ر.س فرقًا في السنة (الإجمالي ' + fees.pro + ' ر.س). تواصل مع إدارة المنصة.' })
+                h('span', { text: 'باقتك الحالية «تابعني كلاسيك»: كل الوحدات بلا تلقرام. الترقية إلى «تابعني برو» تضيف إشعارات تلقرام الفورية والمعلمين وأولياء الأمور، والرسائل الخاصة، والتحقق بمرحلتين — ' + (fees.pro - fees.classic) + ' ر.س فرقًا في السنة (الإجمالي ' + fees.pro + ' ر.س). تواصل مع إدارة تابعني.' })
               ])
             : h('div', { class: 'lic-banner is-ok' }, [
                 h('strong', { text: 'باقة «تابعني برو»' }),
@@ -321,7 +321,7 @@
         h('img', { src: 'assets/img/logo-mark.png', alt: '', width: '44', height: '33' }),
         h('span', {}, [
           h('span', { class: 'brand-name', style: { color: '#fff' }, text: 'تابعني' }),
-          h('span', { class: 'brand-sub', text: 'الخدمات التعليمية للمدارس' })
+          h('span', { class: 'brand-sub', text: 'للخدمات الذكية' })
         ])
       ]));
       sidebar.appendChild(h('div', { class: 'side-school' }, [
@@ -335,7 +335,7 @@
       document.body.appendChild(backdrop);
       sidebar._backdrop = backdrop;
 
-      var nav = h('nav', { class: 'side-nav', 'aria-label': 'أقسام المنصة' });
+      var nav = h('nav', { class: 'side-nav', 'aria-label': 'أقسام تابعني' });
       App.order.forEach(function (id) {
         var mod = App.modules[id];
         if (!mod || !App.can(mod)) return;
@@ -501,7 +501,7 @@
       panel.appendChild(h('p', { class: 'app-ver', text: 'تابعني · الإصدار ' + App.version() }));
 
       var aside = h('aside', { class: 'login-aside' }, [
-        h('span', { class: 'eyebrow eyebrow-ghost', text: 'منصة تابعني للخدمات التعليمية' }),
+        h('span', { class: 'eyebrow eyebrow-ghost', text: 'تابعني للخدمات الذكية' }),
         h('h2', { style: { fontSize: '1.9rem' }, text: 'إدارة مدرسية متكاملة… من التحضير إلى التقرير المطبوع' }),
         h('ul', {}, [
           'المدرسة والمناطق والمدن والحسابات والصلاحيات',
@@ -567,9 +567,9 @@
           h('strong', { text: 'التحقق بمرحلتين: ' }),
           h('span', { text: 'حسابات الموظفين تطلب رمزًا بعد كلمة المرور يُرسل إلى محادثة تلقرام الخاصة. وفي بيانات العرض يظهر الرمز على الشاشة كـ«رمز معاينة» لأن الإرسال الفعلي غير مُفعّل.' })
         ]),
-        h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'أدوات البيانات (إعادة بيانات العرض · البدء من الصفر · النسخة الاحتياطية) صارت داخل المنصة: حساب المشرف العام ← «بيانات المنصة».' })
+        h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'أدوات البيانات (إعادة بيانات العرض · البدء من الصفر · النسخة الاحتياطية) صارت داخل تابعني: حساب المشرف العام ← «بيانات تابعني».' })
       ]);
-      App.authShell('الدخول إلى المنصة', 'سجّل دخولك لمتابعة خدماتك بحسب دورك.', box);
+      App.authShell('الدخول إلى تابعني', 'سجّل دخولك لمتابعة خدماتك بحسب دورك.', box);
     },
 
     /** المرحلة الثانية: التحقق برمز يُرسل إلى تلقرام المستخدم الخاص */
@@ -688,7 +688,7 @@
         form, done,
         h('button', { class: 'btn-link', type: 'button', text: 'لديك حساب؟ تسجيل الدخول', onClick: function () { App.login(); } })
       ]);
-      App.authShell('إنشاء حساب جديد', 'سجّل بياناتك للانضمام إلى مدرستك على منصة تابعني.', content);
+      App.authShell('إنشاء حساب جديد', 'سجّل بياناتك للانضمام إلى مدرستك على تابعني.', content);
     },
 
     /** استعادة كلمة المرور (خطوتان) */
@@ -778,7 +778,7 @@
       UI.modal({
         title: 'مرحبًا ' + (user.name || '') + ' — عيّن كلمة مرور جديدة',
         body: [h('div', { class: 'stack' }, [
-          h('p', { class: 'muted', text: 'كلمة المرور الحالية مولَّدة من إدارة المنصة عند التسليم، ولأمان حسابك اختر كلمة مرور خاصة بك.' }),
+          h('p', { class: 'muted', text: 'كلمة المرور الحالية مولَّدة من إدارة تابعني عند التسليم، ولأمان حسابك اختر كلمة مرور خاصة بك.' }),
           p1.wrap, p2.wrap, err
         ])],
         actions: [
@@ -798,12 +798,12 @@
       var root = document.getElementById('app');
       UI.clear(root);
       var panel = h('div', { class: 'login-panel' });
-      var note = h('p', { class: 'muted', text: 'وجّه وجهك نحو الكاميرا للمتابعة إلى المنصة.' });
+      var note = h('p', { class: 'muted', text: 'وجّه وجهك نحو الكاميرا للمتابعة إلى تابعني.' });
       var holder = h('div');
       panel.appendChild(h('div', {}, [
         h('span', { class: 'eyebrow', text: 'تحقّق الهوية' }),
         h('h1', { style: { fontSize: '1.9rem', marginTop: '10px' }, text: 'تمرير الوجه' }),
-        h('p', { class: 'muted', text: 'التسجيل في المنصة يتطلّب مطابقة بصمة الوجه — كما في تسجيل حضورك للفصل.' })
+        h('p', { class: 'muted', text: 'التسجيل في تابعني يتطلّب مطابقة بصمة الوجه — كما في تسجيل حضورك للفصل.' })
       ]));
       panel.appendChild(note);
       panel.appendChild(holder);
@@ -853,13 +853,13 @@
       UI.toast('مرحباً ' + u.name, 'ok');
     },
 
-    /** تدفّق إعادة المنصة: يطلب رمز OTP على تلقرام/البريد ثم يُنفّذ الإعادة */
+    /** تدفّق إعادة تابعني: يطلب رمز OTP على تلقرام/البريد ثم يُنفّذ الإعادة */
     resetFlow: function (opts) {
       opts = opts || {};
       var kind = opts.kind || 'demo';           /* demo = بيانات العرض · empty = من الصفر */
       var title = kind === 'demo' ? 'إعادة بيانات العرض التجريبية' : 'البدء من الصفر (حذف كل البيانات)';
       var warn = kind === 'demo'
-        ? 'سيُستبدل ما في المنصة ببيانات العرض التجريبية، ويبقى حساب المشرف العام كما هو.'
+        ? 'سيُستبدل ما في تابعني ببيانات العرض التجريبية، ويبقى حساب المشرف العام كما هو.'
         : 'سيُحذف كل شيء: المدارس والفصول والطلاب والموظفون والتحاضير والمخالفات — ولا يبقى إلا حساب المشرف العام.';
       var otp = UI.field({ name: 'otpCode', label: 'رمز التحقق (٦ أرقام)', dir: 'ltr', placeholder: '______', half: true });
       var pass = UI.field({ name: 'otpWord', label: 'اكتب كلمة: إعادة', half: true, help: 'بديل الرمز عند تعذّر الإرسال.' });
@@ -901,7 +901,7 @@
           }
           var r = kind === 'demo' ? S.reset() : S.resetEmptyAll();
           S.otpClear();
-          UI.toast('تمت إعادة المنصة (' + (kind === 'demo' ? 'بيانات العرض' : 'من الصفر') + ') ✓', 'ok');
+          UI.toast('تمت إعادة تابعني (' + (kind === 'demo' ? 'بيانات العرض' : 'من الصفر') + ') ✓', 'ok');
           S.logout();
         }
       });
@@ -944,7 +944,7 @@
       var panel = h('div', { class: 'login-panel' });
       var nameF = UI.field({ name: 'supName', label: 'اسم المشرف العام', placeholder: 'مثال: عبدالله العتيبي', half: true });
       var userF = UI.field({ name: 'supUser', label: 'اسم المستخدم', placeholder: 'a-otaibi', dir: 'ltr', half: true,
-        help: 'به تدخل المنصة (يمكنك الدخول بالبريد أيضًا).' });
+        help: 'به تدخل تابعني (يمكنك الدخول بالبريد أيضًا).' });
       var mailF = UI.field({ name: 'supMail', label: 'البريد الإلكتروني (اختياري)', dir: 'ltr', half: true });
       var p1 = UI.field({ name: 'supPass', label: 'كلمة المرور', type: 'password', half: true, help: '٨ أحرف على الأقل.' });
       var p2 = UI.field({ name: 'supPass2', label: 'تأكيد كلمة المرور', type: 'password', half: true });
@@ -964,7 +964,7 @@
         demoAdminCb,
         h('span', { text: 'أضف حساب المشرف العام التجريبي ' }),
         h('code', { text: 'admin' }),
-        h('span', { class: 'muted', text: ' — بكلمة المرور الموحّدة للعرض، ليسهل تجربة دور المشرف العام. أوقفه إن كنت ستشارك المنصة مع أحد.' })
+        h('span', { class: 'muted', text: ' — بكلمة المرور الموحّدة للعرض، ليسهل تجربة دور المشرف العام. أوقفه إن كنت ستشارك تابعني مع أحد.' })
       ]);
       function draw() {
         clear(cards);
@@ -977,7 +977,7 @@
       panel.appendChild(h('div', {}, [
         h('span', { class: 'eyebrow', text: 'التهيئة الأولى' }),
         h('h1', { style: { fontSize: '1.9rem', marginTop: '10px' }, text: 'إنشاء حساب المشرف العام' }),
-        h('p', { class: 'muted', text: 'هذه الشاشة تظهر مرة واحدة فقط عند أول تشغيل — لا توجد أي كلمة مرور مكتوبة داخل المنصة، وأنت من يُنشئ حسابك بنفسك.' })
+        h('p', { class: 'muted', text: 'هذه الشاشة تظهر مرة واحدة فقط عند أول تشغيل — لا توجد أي كلمة مرور مكتوبة داخل تابعني، وأنت من يُنشئ حسابك بنفسك.' })
       ]));
       panel.appendChild(cards);
       panel.appendChild(adminRow);
@@ -1012,7 +1012,7 @@
         setupPaid,
         h('span', { text: 'تم سداد رسم التأسيس والتهيئة ' }),
         h('strong', { text: '1000 ر.س' }),
-        h('span', { class: 'muted', text: ' — مرة واحدة عند تهيئة المنصة للمدرسة.' })
+        h('span', { class: 'muted', text: ' — مرة واحدة عند تهيئة تابعني للمدرسة.' })
       ]));
       panel.appendChild(h('div', { class: 'form-grid' }, [nameF.wrap, userF.wrap, mailF.wrap, p1.wrap, p2.wrap]));
       panel.appendChild(err);
@@ -1054,10 +1054,10 @@
       var action = function (label, mod, cls) { actions.push(h('button', { class: 'btn ' + (cls || 'btn-outline'), type: 'button', text: label, onClick: function () { App.go(mod); } })); };
 
       if (role === 'super') {
-        /* أسفل اللوحة — على اليمين: إعادة المنصة للوضع الافتراضي (برمز تحقق) */
+        /* أسفل اللوحة — على اليمين: إعادة تابعني للوضع الافتراضي (برمز تحقق) */
         view.appendChild(h('div', { class: 'dash-corner' }, [
           h('div', { class: 'panel danger-panel' }, [
-            h('h3', { class: 'panel-title', text: 'إعادة المنصة للوضع الافتراضي' }),
+            h('h3', { class: 'panel-title', text: 'إعادة تابعني للوضع الافتراضي' }),
             h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
               text: 'يُطلب رمز تحقق (OTP) يُرسل إلى تلقرام أو البريد قبل التنفيذ — حماية من الإعادة بالخطأ.' }),
             h('div', { class: 'cluster' }, [
@@ -1088,7 +1088,7 @@
         var one = App._dashSchool ? S.studentAccountStats(App._dashSchool) : null;
         var oneOff = !!one && one.total > 0 && one.active === 0;
         view.appendChild(h('div', { class: 'panel' }, [
-          h('h3', { class: 'panel-title', text: 'حسابات الطلاب — دخول المنصة' }),
+          h('h3', { class: 'panel-title', text: 'حسابات الطلاب — دخول تابعني' }),
           h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
             text: allOff
               ? 'كل حسابات الطلاب موقوفة حاليًا — لا يستطيع أي طالب الدخول.'
@@ -1329,10 +1329,10 @@
             disabled: perm === 'denied', onClick: function () { App.enableMobileNotify(); } })
         ], [
           h('p', { class: 'muted', text: perm === 'unsupported'
-            ? 'هذا المتصفح لا يدعم تنبيهات النظام — ستظهر التنبيهات داخل المنصة وإشعارات تلقرام.'
+            ? 'هذا المتصفح لا يدعم تنبيهات النظام — ستظهر التنبيهات داخل تابعني وإشعارات تلقرام.'
             : perm === 'denied'
               ? 'سبق رفض الإذن — افتح إعدادات الموقع في المتصفح وامنح الإذن للتنبيهات ثم أعد التحميل.'
-              : 'سيطلب المتصفح الإذن مرة واحدة، وبعدها تصل التنبيهات حتى لو كانت المنصة في الخلفية.' })
+              : 'سيطلب المتصفح الإذن مرة واحدة، وبعدها تصل التنبيهات حتى لو كانت تابعني في الخلفية.' })
         ]));
       }
       if (actions.length) view.appendChild(UI.panel('إجراءات سريعة', null, actions, [
@@ -1355,7 +1355,7 @@
         principal: ['تُنشئ حسابات المدرسة', 'تستورد بيانات المعلمين من نور', 'تُسند المواد بحسب المرحلة', 'تتابع التقارير والمخالفات المغلقة']
       };
       if (flows[role]) {
-        view.appendChild(UI.panel('مسار عملك في المنصة', null, null, [
+        view.appendChild(UI.panel('مسار عملك في تابعني', null, null, [
           h('div', { class: 'timeline-list' }, flows[role].map(function (t, i) {
             return h('li', {}, [h('span', { class: 'timeline-num', style: { width: '34px', height: '34px', fontSize: '14px' }, text: '١٢٣٤'[i] || String(i + 1) }),
               h('div', { class: 'tl-text', text: t })]);

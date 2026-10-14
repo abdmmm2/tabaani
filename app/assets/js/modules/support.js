@@ -141,7 +141,7 @@
     });
 
     var dlg = UI.modal({
-      title: 'الدعم الفني — منصة تابعني', wide: true,
+      title: 'الدعم الفني — تابعني', wide: true,
       body: [
         h('div', { class: 'lic-banner is-ok' }, [agentHead(agent, { size: 46 }),
           h('span', { class: 'muted', text: 'على الشفت الآن — البوت يرد فورًا وبلهجة سعودية.' })]),
