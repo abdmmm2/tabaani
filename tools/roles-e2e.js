@@ -328,6 +328,16 @@ async function backupSuite(page, base, hitsFn) {
   await B.sleep(700);
   const scr = await page.eval('var t=document.querySelector("#app").innerText; return { restore:t.indexOf("استرجاع نسخة احتياطية")>-1, fresh:t.indexOf("استرجاع")>-1, create:t.indexOf("إنشاء الحساب والبدء")>-1 };');
   ok(scr.restore && scr.create, 'شاشة التهيئة فيها «استرجاع نسخة احتياطية» بجانب إنشاء حساب جديد', JSON.stringify(scr));
+  /* تنبيه آبل: داخل التطبيق المُثبَّت يظهر تحذير المخزن المنفصل (v47) */
+  const iosNote = await page.eval(
+    'var keep = UI.env; UI.env = function () { return { ios: true, standalone: true, canShare: true }; };' +
+    'App.setupScreen(); var t = document.querySelector("#app").innerText;' +
+    'var shown = t.indexOf("مخزن بيانات منفصل") > -1 || t.indexOf("التطبيق المُثبَّت") > -1;' +
+    'UI.env = keep; App.setupScreen(); var after = document.querySelector("#app").innerText.indexOf("مخزن بيانات منفصل") > -1;' +
+    'return { shown: shown, after: after };');
+  ok(iosNote.shown === true, 'داخل التطبيق المُثبَّت (آبل): تنبيه واضح بفصل المخزن عن سفاري', JSON.stringify(iosNote));
+  ok(iosNote.after === false, 'وخارج التطبيق المُثبَّت لا يظهر التنبيه (بلا إزعاج)');
+
   const mig = await page.eval('var r = Store.restoreJson(localStorage.getItem("__e2e_backup")); localStorage.removeItem("__e2e_backup");' +
     'return { ok:r.ok, schools:r.ok?r.stats.schools:0, users:r.ok?r.stats.users:0, setup:Store.needsSetup() };');
   ok(mig.ok && mig.schools === before.schools && mig.users === before.users && mig.setup === false,
