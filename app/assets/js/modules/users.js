@@ -264,7 +264,11 @@
             });
           });
           host.appendChild(UI.panel('استيراد موظفين من Excel', 'ارفع كشف الموظفين (xlsx · xls · csv) — يتعرّف على الأعمدة تلقائيًا (الاسم · الدور · المادة · الهوية · الجوال · البريد) ويُنشئ لكل واحد حساب دخول جاهزًا.', [
-            h('label', { class: 'btn btn-outline', style: { cursor: 'pointer' } }, [h('span', { text: 'اختر ملف Excel' }), fInput])
+            h('label', { class: 'btn btn-outline', style: { cursor: 'pointer' } }, [h('span', { text: 'اختر ملف Excel' }), fInput]),
+            h('button', { class: 'btn btn-soft', type: 'button', text: 'تنزيل قالب الأعمدة', onClick: function () {
+              UI.downloadCsv(S.staffTemplate(), 'قالب-الموظفين.csv');
+              UI.toast('القالب يشرح: عمود الدور يقبل (معلم · وكيل شؤون الطلاب · موجّه التوجيه والإرشاد…) واترك «اسم المستخدم» فارغًا ليُولّده النظام', 'ok');
+            } })
           ], [
             h('div', { class: 'form-grid' }, [schoolSel.wrap, roleSel.wrap]),
             h('div', { class: 'callout info', text: 'سيُعرض كشف بأسماء المستخدمين وكلمات المرور للطباعة أو التنزيل، ويُطلب من كل مستخدم تغييرها عند أول دخول. الصفوف المكررة (نفس الهوية/الجوال/البريد) تُتخطّى تلقائيًا.' })

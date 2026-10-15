@@ -470,6 +470,11 @@ async function backupSuite(page, base, hitsFn) {
   const impPanel = await page.eval('var t=document.querySelector("#view").innerText; return { p:t.indexOf("استيراد موظفين من Excel")>-1, btn:t.indexOf("اختر ملف Excel")>-1, sheet:t.indexOf("كشف")>-1 };');
   ok(impPanel.p && impPanel.btn, 'لوحة «استيراد موظفين من Excel» ظاهرة للمشرف العام', JSON.stringify(impPanel));
 
+  /* القالب والأعمدة متوافقان: عناوين القالب يجب أن يتعرّف عليها المخمّن كلها */
+  const tpl = await page.eval('var t = Store.staffTemplate()[0]; var k = Object.keys(t); var m = Store.guessStaffMap(k);' +
+    'return { cols: k.length, mapped: [m.name, m.role, m.subject, m.id, m.phone, m.email].filter(function (x) { return x; }).length, username: !!m.username };');
+  ok(tpl.cols >= 7 && tpl.mapped === 6 && tpl.username, 'قالب الأعمدة متوافق مع التعرّف التلقائي (الاسم · الدور · المادة · الهوية · الجوال · البريد · المستخدم)', JSON.stringify(tpl));
+
   await page.eval('Store.saveDriveConfig({ url: "", enabled: false }); return true;');
   ok(await page.eval('return !Store.driveConfigured();'), 'السحابة: فصل الربط يُوقف الرفع التلقائي');
   return res;
