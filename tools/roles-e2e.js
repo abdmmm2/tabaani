@@ -353,6 +353,18 @@ async function backupSuite(page, base, hitsFn) {
   const back = await page.eval('UI.withPrintTitle("تقرير آخر"); return { now: document.title };');
   ok(back.now === 'تقرير آخر', 'كل تقرير يضبط اسمه الخاص (لا يلتصق اسم الأول)', back.now);
 
+  /* ملاحظات المالك على التقرير (v50): التاريخ هجري ثم ميلادي · بلا اسم معدّ التقرير · بلا سطر الهوية/التابعي */
+  const dtLbl = await page.eval('var d = new Date(2026, 9, 15); return { label: UI.dateLabel(d), hj: UI.hijri(d), gg: UI.greg(d) };');
+  ok(dtLbl.hj && dtLbl.gg && dtLbl.hj !== dtLbl.gg, 'التقويمان مختلفان فعلًا (كان الميلادي يُخرج هجريًا!)', 'هجري=' + dtLbl.hj + ' | ميلادي=' + dtLbl.gg);
+  ok(/هـ/.test(dtLbl.label) && /م$/.test(dtLbl.label) && dtLbl.label.indexOf('هـ') < dtLbl.label.lastIndexOf('م'), 'التاريخ: هجري أولًا ثم الميلادي بجانبه', dtLbl.label);
+  await page.eval('UI.printReport({ title: "تقرير فحص التذييل", sections: [{ heading: "x", text: "y" }] }); return true;');
+  await B.sleep(700);
+  const printFoot = await page.eval('var h = document.getElementById("print-frame").contentDocument.documentElement.innerHTML;' +
+    'return { vendor:/مُعدّ من تابعني/.test(h), prep:/معد التقرير/.test(h), brand:/class="rp-page"/.test(h), date:/هـ/.test(h) && /م/.test(h) };');
+  ok(printFoot.vendor === false && printFoot.prep === false && printFoot.brand === false, 'التقرير المطبوع بلا «هذا التقرير مُعدّ من تابعني» وبلا اسم معدّ التقرير وبلا سطر الهوية', JSON.stringify(printFoot));
+  ok(printFoot.date === true, 'التاريخ يظهر في التذييل (هجري/ميلادي)');
+
+
   const mig = await page.eval('var r = Store.restoreJson(localStorage.getItem("__e2e_backup")); localStorage.removeItem("__e2e_backup");' +
     'return { ok:r.ok, schools:r.ok?r.stats.schools:0, users:r.ok?r.stats.users:0, setup:Store.needsSetup() };');
   ok(mig.ok && mig.schools === before.schools && mig.users === before.users && mig.setup === false,

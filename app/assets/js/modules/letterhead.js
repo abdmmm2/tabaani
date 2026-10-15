@@ -44,7 +44,7 @@
           h('h1', { class: 'lh-title', text: 'اسم التقرير يظهر هنا بخط كبير' }),
           h('div', { class: 'lh-sub', text: 'الفصل / المادة / الفترة — سطر توضيحي' }),
           h('div', { class: 'lh-preview-foot' }, [
-            h('span', {}, [h('span', { text: 'معد التقرير: ' }), h('strong', { text: S.session.name })]),
+            h('span', {}, [h('span', { text: 'التاريخ: ' }), h('strong', { text: UI.dateLabel(new Date()) })]),
             h('span', {}, [h('span', { text: 'التاريخ: ' }), h('strong', { text: UI.dateLabel(new Date()) })]),
             h('span', {}, [h('span', { text: 'الوقت: ' }), h('strong', { text: UI.fmtTime(new Date()) })]),
             h('span', { class: 'muted', text: 'التوقيعات: المعلم · وكيل شؤون الطلاب · مدير المدرسة' })
@@ -126,7 +126,7 @@
                   meta: [
                     { label: 'المدرسة', value: S.school().name },
                     { label: 'إدارة التعليم', value: S.letterhead().educationDept },
-                    { label: 'أُعدّ بواسطة', value: S.session.name }
+                    { label: 'التاريخ', value: UI.dateLabel(new Date()) }
                   ],
                   sections: [
                     { heading: 'بيانات تجريبية', table: { cols: ['م', 'البيان', 'القيمة'], rows: [[1, 'الطلاب', S.studentWord(true)], [2, 'أيام الدراسة', '٤٢ يومًا'], [3, 'الفصول', String(S.list('classes').length)]] } },
@@ -138,7 +138,7 @@
             ])
           ]),
           UI.panel('معاينة مباشرة', 'شكل الترويسة كما ستُطبع (بحجم مصغّر).', null, [preview(),
-            h('p', { class: 'form-note', text: 'الترتيب: البسملة · الدولة · الجهة · إدارة التعليم (من القائمة) · اسم المدرسة في المنتصف، ثم شعار الوزارة وشعار المدرسة (وأسفله تاريخ الإصدار والباركود)، ثم اسم التقرير بخط كبير، وفي الأسفل معد التقرير والتاريخ والوقت.' })
+            h('p', { class: 'form-note', text: 'الترتيب: البسملة · الدولة · الجهة · إدارة التعليم (من القائمة) · اسم المدرسة في المنتصف، ثم شعار الوزارة وشعار المدرسة (وأسفله تاريخ الإصدار والباركود)، ثم اسم التقرير بخط كبير، وفي الأسفل التاريخ (هجري ثم ميلادي) والوقت.' })
           ])
         ]));
       }

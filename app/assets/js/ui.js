@@ -235,7 +235,7 @@
   /* -------------------------------------------------------------- التواريخ */
   var HIJRI = null;
   try { HIJRI = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: '2-digit', month: 'long', year: 'numeric' }); } catch (e) {}
-  var GREG = new Intl.DateTimeFormat('ar-SA', { day: '2-digit', month: 'long', year: 'numeric' });
+  var GREG = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { day: '2-digit', month: 'long', year: 'numeric' });
   /** يحوّل 'YYYY-MM-DD' إلى تاريخ محلي (تجنّب انزياح UTC) */
   function toDate(d) {
     if (d instanceof Date) return d;
@@ -259,7 +259,9 @@
   /** تاريخ ميلادي + هجري — بلا تكرار «هـ» (صيغة التقويم الهجري تُضمّنها أصلًا) */
   function dateLabel(d) {
     var hj = String(hijri(d) || '').trim().replace(/\s*هـ\s*$/, '');
-    return hj ? (greg(d) + ' — ' + hj + ' هـ') : greg(d);
+    var g = String(greg(d) || '').trim().replace(/\s*م\s*$/, '');
+    if (hj && g) return hj + ' هـ — ' + g + ' م';      /* الهجري أولًا ثم الميلادي */
+    return hj ? (hj + ' هـ') : g;
   }
   function today() { return new Date().toISOString().slice(0, 10); }
 
@@ -595,7 +597,6 @@
       '<div class="rp-foot">' +
         '<div class="rp-foot-top">' +
           '<div class="rp-foot-line">' +
-            '<span>معد التقرير: <strong>' + (report.by || (global.Store && global.Store.session.name) || '') + '</strong></span>' +
             '<span>التاريخ: <strong>' + dateLabel(new Date()) + '</strong></span>' +
             '<span>الوقت: <strong>' + fmtTime(new Date()) + '</strong></span>' +
           '</div>' +
@@ -604,10 +605,8 @@
             '<div class="lh-code" style="margin-top:3px">رقم التقرير: <code>' + report.code + '</code></div></div>' : '') +
         '</div>' +
         '<div class="signs">' + signs + '</div>' +
-        '<div class="rp-note">هذا التقرير مُعدّ من تابعني' + (lh.footerNote ? ' — ' + lh.footerNote : '') +
-          (report.qrNote && report.qrNote !== lh.footerNote ? ' — ' + report.qrNote : '') + '</div>' +
+        (lh.footerNote ? '<div class="rp-note">' + lh.footerNote + '</div>' : '') +
       '</div>' +
-      '<div class="rp-page">تابعني للخدمات الذكية' + (report.code ? ' — ' + report.code : '') + '</div>' +
       '</body></html>';
 
     var frame = document.getElementById('print-frame');
@@ -1155,7 +1154,7 @@
           printReport({
             type: 'passwords', title: 'كشف كلمات مرور الحسابات',
             subtitle: 'يُسلَّم لجهة التسليم — يُرجى حفظه في مكان آمن',
-            meta: [{ label: 'عدد الحسابات', value: String(list.length) }, { label: 'أُعدّ بواسطة', value: global.Store ? global.Store.session.name : '' }],
+            meta: [{ label: 'عدد الحسابات', value: String(list.length) }],
             sections: [{
               heading: 'الحسابات وكلمات المرور المؤقتة',
               table: { cols: ['م', 'الاسم', 'اسم المستخدم', 'الدور', 'كلمة المرور'],

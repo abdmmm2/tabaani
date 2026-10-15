@@ -128,13 +128,13 @@
               UI.printReport({
                 type: 'passwords', title: 'كشف كلمات مرور الحسابات',
                 subtitle: 'يُسلَّم لجهة التسليم — يُرجى حفظه في مكان آمن',
-                meta: [{ label: 'عدد الحسابات', value: String(rows.length) }, { label: 'أُعدّ بواسطة', value: S.session.name }],
+                meta: [{ label: 'عدد الحسابات', value: String(rows.length) }],
                 sections: [{
                   heading: 'الحسابات وكلمات المرور المؤقتة',
                   table: { cols: ['م', 'الاسم', 'اسم المستخدم', 'الدور', 'كلمة المرور'], rows: rows.map(function (r, i) { return [i + 1, r.name, r.username, r.role, r.password]; }) },
                   text: 'ملاحظة: يلزم كل مستخدم تغيير كلمة مروره عند أول دخول.'
                 }],
-                signatures: ['أعدّ الكشف', 'مدير المدرسة', 'مدير عام تابعني']
+                signatures: ['مدير المدرسة']
               });
             } },
             { label: 'تم', class: 'btn-primary', onClick: function (close) { close(); } }
