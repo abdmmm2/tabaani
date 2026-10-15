@@ -406,6 +406,12 @@ async function backupSuite(page, base, hitsFn) {
     'زر «طباعة التقرير» يُنتج الوثيقة ويُظهر شريط الإجراءات (طباعة · تبويب · PDF)', repClick + ' | frame=' + rb.frame + ' | ' + rb.actions);
   ok(rb.err === 0, 'لا أخطاء JS عند الطباعة', String(rb.err));
 
+  /* بيئة آبل: مساعدات جاهزة (تُختبر هنا على سطح مكتب ⇒ قيمها false والمسار العادي سليم) */
+  const env = await page.eval('var e = UI.env(); return { ios:e.ios, st:e.standalone, share:typeof UI.shareFile, btns:(document.getElementById("report-bar")||{querySelectorAll:function(){return[];}}).querySelectorAll("button").length };');
+  ok(env.ios === false && env.st === false && env.share === 'function', 'دعم آبل مُهيّأ (‎UI.env/UI.shareFile) وبلا تأثير على سطح المكتب', JSON.stringify(env));
+  const dl = await page.eval('var r = UI.downloadText("x", "فحص.txt", "text/plain"); return { r: r, frame: !!document.getElementById("print-frame") };');
+  ok(dl.r === 'فحص.txt', 'تنزيل الملفات يعمل كما هو على غير آبل (بلا تغيير)', JSON.stringify(dl));
+
   await page.eval('Store.saveDriveConfig({ url: "", enabled: false }); return true;');
   ok(await page.eval('return !Store.driveConfigured();'), 'السحابة: فصل الربط يُوقف الرفع التلقائي');
   return res;

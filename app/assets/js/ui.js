@@ -468,6 +468,30 @@
     '@media print{.no-print{display:none}}';
 
   /** يطبع تقريرًا كاملًا في إطار مخفي (لا يفتح نوافذ منبثقة). */
+  /* ---------------- بيئة آبل: التطبيق المُثبَّت لا يطبع ولا ينزّل كما في سفاري ---------------- */
+  function isIOS() {
+    try {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    } catch (e) { return false; }
+  }
+  function isStandalone() {
+    try {
+      return (window.navigator.standalone === true) ||
+        !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    } catch (e) { return false; }
+  }
+  /** مشاركة ملف عبر ورقة المشاركة (على آبل: طباعة · حفظ في الملفات · درايف) */
+  function shareFile(content, filename, mime, title) {
+    try {
+      if (!navigator.canShare || !window.File) return false;
+      var f = new File([content], filename, { type: mime || 'text/html;charset=utf-8' });
+      if (!navigator.canShare({ files: [f] })) return false;
+      navigator.share({ files: [f], title: title || filename }).catch(function () {});
+      return true;
+    } catch (e) { return false; }
+  }
+
   /** شريط إجراءات ظاهر للتقرير: يضمن رؤية النتيجة، ويعطي بدائل حين تُحجب نافذة الطباعة (جوال/تطبيق مثبَّت) */
   function reportActionBar(html, frame, title) {
     var old = document.getElementById('report-bar');
@@ -480,6 +504,11 @@
         if (!w) toast('اسمح بالنوافذ المنبثقة لفتح الوثيقة', 'warn');
       } catch (e) { toast('تعذّر فتح الوثيقة في تبويب', 'warn'); }
     }
+    var shareable = isIOS();
+    var shareBtn = shareable ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'مشاركة / طباعة', onClick: function () {
+      var okShare = shareFile(html, (title || 'وثيقة') + '.html', 'text/html;charset=utf-8', title);
+      if (!okShare) toast('تعذّرت المشاركة — افتح تابعني من سفاري للطباعة', 'warn');
+    } }) : null;
     var bar = h('div', { id: 'report-bar', class: 'report-bar', dir: 'rtl' }, [
       h('span', { class: 'rb-ic', html: '&#128424;&#65039;' }),
       h('span', { class: 'rb-t', text: title || 'الوثيقة جاهزة' }),
@@ -488,14 +517,20 @@
         catch (e) { openTab(); }
       } }),
       h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'فتح في تبويب جديد', onClick: openTab }),
+      shareBtn,
       h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'حفظ PDF', onClick: function () {
         toast('في نافذة الطباعة اختر: الوجهة ← حفظ كـ PDF', 'ok');
         try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { openTab(); }
       } }),
       h('button', { class: 'icon-btn', type: 'button', title: 'إخفاء', html: '&times;', onClick: function () { bar.remove(); } })
     ]);
+    if (shareable) {
+      bar.appendChild(h('div', { class: 'rb-hint', text: isStandalone()
+        ? 'في التطبيق المُثبَّت على آبل لا تعمل الطباعة/التنزيل مباشرة — اضغط «مشاركة / طباعة» ثم اختر «طباعة» أو «حفظ في الملفات/درايف»، أو افتح تابعني من سفاري.'
+        : 'على آبل: استخدم «مشاركة / طباعة» لحفظ الوثيقة PDF أو إرسالها إلى درايف.' }));
+    }
     document.body.appendChild(bar);
-    setTimeout(function () { if (bar.parentElement) bar.remove(); }, 30000);
+    setTimeout(function () { if (bar.parentElement) bar.remove(); }, 45000);
     return bar;
   }
 
@@ -1045,6 +1080,11 @@
 
   /** يُنزّل نصًا كملف (للإعدادات والتصدير) */
   function downloadText(text, filename, mime) {
+    /* آبل: التنزيل داخل التطبيق المُثبَّت غير موثوق ⇒ نستخدم ورقة المشاركة (حفظ في الملفات/درايف) */
+    if (isIOS() && shareFile(text, filename || 'file.txt', mime || 'text/plain;charset=utf-8', filename)) {
+      toast('اختر «حفظ في الملفات» أو «Drive» لحفظ ' + (filename || ''), 'ok');
+      return filename;
+    }
     var blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1052,6 +1092,7 @@
     document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 400);
     toast('نُزّل الملف: ' + a.download, 'ok');
+    return a.download;
   }
 
   var UI = {
@@ -1067,6 +1108,7 @@
     qrSvg: qrSvg, qrBox: qrBox, barcodeSvg: barcodeSvg, barcodeBox: barcodeBox,
     readExcel: readExcel, downloadCsv: downloadCsv, downloadText: downloadText,
     printReport: printReport, reportButton: reportButton,
+    env: function () { return { ios: isIOS(), standalone: isStandalone(), canShare: !!(navigator.canShare) }; }, shareFile: shareFile,
     setupTelegram: setupTelegram, renderTelegram: renderTelegram
   };
   global.UI = UI;
