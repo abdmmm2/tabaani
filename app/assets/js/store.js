@@ -104,9 +104,17 @@
     });
   }
 
+  /** نسخة مستقلة من المناطق الافتراضية (تُخزَّن في قاعدة البيانات وتُحفظ فعليًا) */
+  function defaultRegions() {
+    return REGIONS.map(function (r) {
+      return { id: r.id, name: r.name, cities: (r.cities || []).slice() };
+    });
+  }
+
   function seed() {
     var db = {
       meta: { version: 1, createdAt: now() },
+      regions: defaultRegions(),
       schools: [], users: [], classes: [], students: [], assignments: [], transfers: [],
       periods: [], sessions: [], violations: [], permissions: [],
       programs: [], programRegs: [], activities: [], activityReqs: [],
@@ -547,6 +555,7 @@
   function emptyDb() {
     return {
       meta: { version: 1, createdAt: now(), needsSetup: true, empty: true },
+      regions: defaultRegions(),
       users: [], schools: [], classes: [], students: [], assignments: [], transfers: [], periods: [],
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
@@ -569,6 +578,7 @@
     if (!d.settings || typeof d.settings !== 'object') d.settings = { hijri: true };
     COLLECTIONS.forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
     if (!Array.isArray(d.schools)) d.schools = [];
+    if (!Array.isArray(d.regions) || !d.regions.length) d.regions = defaultRegions();
     return d;
   }
 
@@ -884,8 +894,8 @@
     },
 
     /* قوائم مرجعية */
-    regions: REGIONS, stages: STAGES, roles: ROLES, grades: GRADES,
-    citiesOf: function (regionId) { var r = REGIONS.find(function (x) { return x.id === regionId; }); return r ? r.cities : []; },
+    stages: STAGES, roles: ROLES, grades: GRADES,
+    citiesOf: function (regionId) { var r = (db.regions || []).find(function (x) { return x.id === regionId; }); return r ? (r.cities || []) : []; },
     subjectsFor: function (stages) {
       var base = (stages || []).reduce(function (acc, s) { return acc.concat(SUBJECTS[s] || []); }, []);
       var custom = (stages || []).reduce(function (acc, s) {
@@ -2996,6 +3006,172 @@
       };
     },
 
+    /* =====================================================================
+       الأتمتة: تأسيس مدرسة كاملة من ملفات العميل (فصول · موظفون · طلاب)
+       ===================================================================== */
+    /** تخمين أعمدة ملف الفصول */
+    guessClassMap: function (keys) {
+      keys = keys || [];
+      function pick(re) { return keys.find(function (k) { return re.test(String(k)); }) || ''; }
+      return { stage: pick(/مرحلة|stage/i), grade: pick(/صف|grade|class/i), section: pick(/شعبة|فصل|section|div/i), room: pick(/غرفة|قاعة|room/i) };
+    },
+    /** تخمين أعمدة ملف الطلاب */
+    guessStudentMap: function (keys) {
+      keys = keys || [];
+      function pick(re) { return keys.find(function (k) { return re.test(String(k)); }) || ''; }
+      return { name: pick(/اسم|name/i), id: pick(/هوية|سجل|national|id/i), phone: pick(/جوال|هاتف|phone|mobile/i),
+        stage: pick(/مرحلة|stage/i), grade: pick(/صف|grade/i), section: pick(/شعبة|فصل|section/i), seat: pick(/مقعد|رقم|seat/i) };
+    },
+    /** المرحلة من نص الملف */
+    stageFromText: function (txt) {
+      var t = String(txt || '').trim();
+      if (!t) return '';
+      var hit = STAGES.find(function (x) { return x.id === t || x.name === t; });
+      if (hit) return hit.id;
+      var low = t.toLowerCase();
+      if (/kg|روض|تمهيد/.test(low)) return 'kg';
+      if (/ابتد|primary|إبتد/.test(low)) return 'primary';
+      if (/متوسط|middle/.test(low)) return 'middle';
+      if (/ثانو|secondary/.test(low)) return 'secondary';
+      return '';
+    },
+    /** الصف (اسمه القياسي) من نص الملف */
+    gradeFromText: function (stageId, txt) {
+      var t = String(txt || '').trim();
+      if (!t) return '';
+      var list = GRADES[stageId] || [];
+      function norm(x) { return String(x || '').replace(/[\s\u0640ـ]/g, '').replace(/^ال/, ''); }
+      var n = norm(t);
+      var hit = list.find(function (g) { return norm(g) === n; }) ||
+                list.find(function (g) { return norm(g).indexOf(n) > -1 || n.indexOf(norm(g)) > -1; });
+      if (hit) return hit;
+      var num = (t.match(/\d+/) || [])[0];
+      if (num) { var i = parseInt(num, 10) - 1; if (list[i]) return list[i]; }
+      return t;
+    },
+
+    /** تأسيس مدرسة من الصفر من بيانات + ملفات العميل. يعيد الإحصاءات وبيانات الدخول والتحذيرات. */
+    onboardSchool: function (cfg, files) {
+      cfg = cfg || {}; files = files || {};
+      var warnings = [], creds = [];
+      var sc = cfg.school || {};
+      var name = String(sc.name || '').trim();
+      if (!name) return { ok: false, error: 'اسم المدرسة مطلوب' };
+
+      /* المنطقة والمدينة (تُنشأ إن لم توجد — والآن تُحفظ فعلًا) */
+      var region = null;
+      var wanted = String(sc.regionName || '').trim();
+      if (sc.regionId) region = store.regions.find(function (r) { return r.id === sc.regionId; }) || null;
+      if (!region && wanted) region = store.regions.find(function (r) { return r.name === wanted || r.name.indexOf(wanted) > -1; }) || null;
+      if (!region && wanted) {
+        region = { id: store.uid('rg'), name: wanted, cities: [] };
+        store.regions.push(region);
+        warnings.push('أُنشئت منطقة جديدة: ' + wanted);
+      }
+      if (!region) return { ok: false, error: 'حدّد المنطقة (أو اسم منطقة جديدة)' };
+      var city = String(sc.city || '').trim();
+      if (city && (region.cities || []).indexOf(city) === -1) region.cities.push(city);
+
+      var stages = (sc.stages || []).filter(Boolean);
+      var school = store.insert('schools', {
+        name: name, code: String(sc.code || '').trim(), regionId: region.id, regionName: region.name,
+        city: city, address: String(sc.address || '').trim(), location: '', phone: String(sc.phone || '').trim(),
+        email: String(sc.email || '').trim(), gender: sc.gender === 'girls' ? 'girls' : 'boys',
+        stages: stages, status: 'established', logo: '', createdBy: store.session.userId, onboardedAt: now()
+      });
+      store.initLicense(school.id, { plan: sc.plan === 'pro' ? 'pro' : 'classic', setupPaid: sc.setupPaid !== false });
+
+      /* مدير المدرسة */
+      var pr = cfg.principal || {};
+      if (pr.name) {
+        var pun = store.suggestUsername(pr.name, '', {});
+        var ppw = store.randomPassword();
+        store.insert('users', {
+          schoolId: school.id, role: 'principal', name: String(pr.name).trim(), username: pun, password: ppw,
+          email: String(pr.email || '').trim(), phone: String(pr.phone || '').trim(),
+          mustChange: true, passwordSetAt: now(), status: 'active', canLogin: true, subjects: []
+        });
+        creds.push({ name: pr.name, username: pun, role: store.roleLabel('principal', school.id), password: ppw, schoolId: school.id });
+      } else { warnings.push('لم يُحدَّد مدير للمدرسة'); }
+
+      /* الموظفون من ملف */
+      var staffAdded = 0, staffSkipped = 0;
+      var sfRows = (files.staff && files.staff.rows) || [];
+      if (sfRows.length) {
+        var sfMap = (files.staff && files.staff.map) || store.guessStaffMap(Object.keys(sfRows[0]));
+        var sr = store.importStaff(sfRows, sfMap, { schoolId: school.id, role: 'teacher' });
+        staffAdded = sr.added; staffSkipped = sr.skipped;
+        creds = creds.concat(sr.creds);
+        if (sr.skipped) warnings.push('تُخطّي ' + sr.skipped + ' من الموظفين (بلا اسم أو مكرر)');
+      }
+
+      /* الفصول: من ملف الفصول، وتُستنتج تلقائيًا من ملف الطلاب */
+      var index = {};
+      function val(row, map, key) { return (map[key] && row[map[key]] != null) ? String(row[map[key]]).trim() : ''; }
+      function ensureClass(stageTxt, gradeTxt, secTxt, room) {
+        var st = store.stageFromText(stageTxt) || stages[0] || '';
+        var gr = store.gradeFromText(st, gradeTxt) || String(gradeTxt || '').trim() || 'غير محدد';
+        var sec = String(secTxt || '').trim() || 'أ';
+        var key = st + '|' + gr + '|' + sec;
+        if (index[key]) return index[key];
+        var k = store.insert('classes', {
+          schoolId: school.id, stage: st, grade: gr, section: sec,
+          name: gr + ' / ' + sec, students: 0, room: String(room || '').trim(), supervisorId: ''
+        });
+        index[key] = k.id;
+        return k.id;
+      }
+      var clsRows = (files.classes && files.classes.rows) || [];
+      if (clsRows.length) {
+        var cmap = (files.classes && files.classes.map) || store.guessClassMap(Object.keys(clsRows[0]));
+        clsRows.forEach(function (row) {
+          var g = val(row, cmap, 'grade'); if (!g && !val(row, cmap, 'stage')) return;
+          ensureClass(val(row, cmap, 'stage'), g, val(row, cmap, 'section'), val(row, cmap, 'room'));
+        });
+      }
+
+      /* الطلاب */
+      var stAdded = 0, stSkipped = 0, noClass = 0;
+      var sdRows = (files.students && files.students.rows) || [];
+      if (sdRows.length) {
+        var smap = (files.students && files.students.map) || store.guessStudentMap(Object.keys(sdRows[0]));
+        sdRows.forEach(function (row) {
+          var nm = val(row, smap, 'name');
+          if (!nm) { stSkipped++; return; }
+          var nid = val(row, smap, 'id');
+          if (nid && store.list('students').some(function (x) { return x.nationalId === nid; })) { stSkipped++; return; }
+          var stageTxt = val(row, smap, 'stage'), gradeTxt = val(row, smap, 'grade'), secTxt = val(row, smap, 'section');
+          if (!gradeTxt && !stageTxt && !Object.keys(index).length) { noClass++; return; }
+          var cid = ensureClass(stageTxt, gradeTxt, secTxt);
+          var k = store.find('classes', cid) || {};
+          store.insert('students', {
+            schoolId: school.id, classId: cid, name: nm, nationalId: nid,
+            guardianPhone: val(row, smap, 'phone'), seat: store.studentsOf(cid).length + 1,
+            status: 'active', stage: k.stage, grade: k.grade, section: k.section
+          });
+          stAdded++;
+        });
+      }
+      /* index: مفاتيح مركّبة → قيمها معرّفات الفصول */
+      Object.keys(index).forEach(function (key) {
+        var cid = index[key];
+        store.update('classes', cid, { students: store.studentsOf(cid).length });
+      });
+      if (noClass) warnings.push(noClass + ' طالبًا بلا صف/شعبة (تُخطّوا)');
+      if (!Object.keys(index).length) warnings.push('لا فصول — ارفع ملف الفصول أو ملف الطلاب');
+      if (!staffAdded) warnings.push('لا موظفون — ارفع ملف الموظفين');
+
+      store.notify({
+        kind: 'school', ref: school.id, title: 'تأسيس آلي: ' + school.name,
+        body: Object.keys(index).length + ' فصلًا · ' + stAdded + ' طالبًا · ' + staffAdded + ' موظفًا', to: ['super']
+      });
+      return {
+        ok: true, schoolId: school.id, warnings: warnings, creds: creds,
+        stats: { classes: Object.keys(index).length, staff: staffAdded, staffSkipped: staffSkipped,
+          students: stAdded, studentsSkipped: stSkipped, credentials: creds.length }
+      };
+    },
+
     /** اسم مستخدم فريد مقترح من الاسم (أو من الهوية إن كان الاسم عربيًا) */
     suggestUsername: function (name, nid, used) {
       used = used || {};
@@ -3595,6 +3771,9 @@
       return store.list('reports').find(function (r) { return r.code.toUpperCase() === q; }) || null;
     }
   };
+
+  /* المناطق: مصدرها قاعدة البيانات (أي إضافة تُحفظ وتبقى) */
+  Object.defineProperty(store, 'regions', { get: function () { return db.regions || (db.regions = defaultRegions()); } });
 
   global.Store = store;
   load();

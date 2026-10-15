@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 9, principal: 15, deputy: 16, guidance: 9, teacher: 9,
+  super: 10, principal: 15, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 3
 };
@@ -490,6 +490,40 @@ async function backupSuite(page, base, hitsFn) {
   ok(imp.allLogin === true, 'كل حساب مستورد يستطيع الدخول فعلًا (اسم المستخدم + كلمة المرور)');
   ok(imp.mustChange === true && imp.passLen >= 8 && imp.school, 'إلزام تغيير كلمة المرور + ربط الحساب بالمدرسة', 'pass=' + imp.passLen);
   ok(/موجّه/.test(imp.roles), 'الدور يُقرأ من الملف (موجّه التوجيه والإرشاد)', imp.roles);
+
+  /* ============ التأسيس الآلي: مدرسة كاملة من ملفات العميل ============ */
+  const onb = await page.eval(
+    'var classRows = [' +
+    ' { "المرحلة": "المرحلة المتوسطة", "الصف": "الأول المتوسط", "الشعبة": "أ", "الغرفة": "م-101" },' +
+    ' { "المرحلة": "متوسط", "الصف": "الأول المتوسط", "الشعبة": "ب" },' +
+    ' { "المرحلة": "ثانوي", "الصف": "الأول الثانوي", "الشعبة": "أ" }];' +
+    'var staffRows = [' +
+    ' { "الاسم": "أ. سعد الآلي", "الدور": "معلم", "المادة": "الرياضيات", "رقم الهوية": "9000000001" },' +
+    ' { "الاسم": "أ. هند الآلية", "الدور": "وكيل شؤون الطلاب", "رقم الهوية": "9000000002" }];' +
+    'var studRows = []; for (var i = 1; i <= 6; i++) studRows.push({ "الاسم": "طالب آلي " + i, "رقم الهوية": "800000000" + i, "الجوال": "+96650000000" + i, "المرحلة": "متوسط", "الصف": "الأول المتوسط", "الشعبة": (i <= 3 ? "أ" : "ب") });' +
+    'var r = Store.onboardSchool(' +
+    ' { school: { name: "مدرسة الفحص الآلي", regionName: "منطقة الفحص", city: "مدينة الفحص", gender: "boys", stages: ["middle", "secondary"], plan: "pro" },' +
+    '   principal: { name: "مدير الفحص", phone: "+966500000009" } },' +
+    ' { classes: { rows: classRows }, staff: { rows: staffRows }, students: { rows: studRows } });' +
+    'var sc = Store.school(r.schoolId) || {};' +
+    'var st = Store.list("students", { schoolId: r.schoolId });' +
+    'return { ok: r.ok, classes: r.stats.classes, staff: r.stats.staff, students: r.stats.students, creds: r.stats.credentials,' +
+    ' plan: sc.plan, stages: (sc.stages || []).join(","), stageIds: Store.list("classes", { schoolId: r.schoolId }).map(function (k) { return k.stage + ":" + k.grade + ":" + k.section; }).join(" | "),' +
+    ' regionSaved: Store.regions.some(function (x) { return x.name === "منطقة الفحص"; }), citySaved: Store.citiesOf(sc.regionId).indexOf("مدينة الفحص") > -1,' +
+    ' seated: st.filter(function (x) { return x.classId; }).length, counters: Store.list("classes", { schoolId: r.schoolId }).reduce(function (a, k) { return a + (k.students || 0); }, 0),' +
+    ' login: (function () { var c = r.creds[r.creds.length - 1]; return Store.authenticate(c.username, c.password).ok; })(),' +
+    ' warnings: r.warnings.length };');
+  ok(onb.ok && onb.classes === 3 && onb.students === 6 && onb.staff === 2, 'التأسيس الآلي: أنشأ الفصول والطلاب والموظفين من ملفات العميل', JSON.stringify(onb));
+  ok(/middle:الأول المتوسط:أ/.test(onb.stageIds) && onb.stages === 'middle,secondary', 'المراحل والصفوف والشعب تُترجم تلقائيًا من نص الملف', onb.stageIds);
+  ok(onb.regionSaved === true && onb.citySaved === true, 'المنطقة والمدينة الجديدتان تُنشآن وتُحفظان');
+  ok(onb.plan === 'pro' && onb.creds >= 3 && onb.login === true, 'الرخصة + حسابات الدخول (مدير + موظفون) تعمل فعلًا', 'creds=' + onb.creds);
+  ok(onb.seated === 6 && onb.counters === 6, 'كل الطلاب موزّعون على فصولهم وعدّادات الفصول صحيحة');
+
+  /* وحدة «التأسيس الآلي» ظاهرة للمشرف العام */
+  await page.eval('App.go("onboard"); return true;');
+  await B.sleep(1100);
+  const onbUi = await page.eval('var t = document.querySelector("#view").innerText; return { p: t.indexOf("موظف الأتمتة") > -1, d: t.indexOf("بيانات المدرسة") > -1, f: t.indexOf("ملفات العميل") > -1, run: t.indexOf("من الصفر إلى العمل") > -1 };');
+  ok(onbUi.p && onbUi.d && onbUi.f && onbUi.run, 'وحدة «التأسيس الآلي» بمراحلها الثلاث ظاهرة للمشرف العام', JSON.stringify(onbUi));
 
   /* لوحة الاستيراد ظاهرة للمشرف العام في وحدة الحسابات */
   await page.eval('App.go("users"); return true;');
