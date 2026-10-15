@@ -317,6 +317,16 @@ async function backupSuite(page, base, hitsFn) {
 
   /* ============ الحفظ السحابي في Google Drive ============
      نقطتان محليتان تحاكيان تطبيق Apps Script: /__cloud (نجاح) و/__cloudfail (فشل). */
+  /* أدوات التسليم: لا تُصفَّر كلمة مرور المستخدم الحالي */
+  const gp = await page.eval(
+    'var me = (Store.list("users").filter(function(x){return x.role==="super";})[0] || Store.list("users")[0]).id;' +
+    'Store.session = { userId: me, role: "super", schoolId: null, name: "مراجع" };' +
+    'var before = Store.find("users", me).password;' +
+    'var n = Store.generatePasswords({ kind: "staff", excludeSelf: true }).length;' +
+    'var after = Store.find("users", me).password;' +
+    'return { same: before === after, n: n, role: Store.find("users", me).role, other: Store.list("users").filter(function(x){return x.role!=="student";}).length };');
+  ok(gp.same, 'توليد كلمات المرور لا يمسّ حساب المستخدم الحالي (بعد إصلاحه)', JSON.stringify(gp));
+
   const hits = (typeof hitsFn === 'function') ? hitsFn : (() => []);
   const waitEval = async (expr, pollExpr, tries = 24) => {
     await page.eval(expr);

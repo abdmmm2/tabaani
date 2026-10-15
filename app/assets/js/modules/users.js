@@ -234,21 +234,21 @@
         /* توليد كلمات المرور عند التسليم */
         host.appendChild(UI.panel('تسليم الحسابات: كلمات مرور مختلفة لكل حساب', 'يولّد كلمة مرور قوية مختلفة لكل حساب حقيقي، ويُلزم أصحابها بتغييرها عند أول دخول.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'توليد لكلم الحسابات', onClick: function () {
-            UI.confirm('سيُغيَّر كلمة المرور لكل الحسابات (' + counts.total + ') إلى كلمات مختلفة عشوائية، وتُلزَم بتغييرها عند أول دخول. متابعة؟', { ok: 'توليد الكل' })
+            UI.confirm('سيُغيَّر كلمة المرور للحسابات (' + counts.total + ' — ما عدا حسابك أنت) إلى كلمات مختلفة عشوائية، وتُلزَم بتغييرها عند أول دخول. متابعة؟', { ok: 'توليد الكل' })
               .then(function (ok) {
                 if (!ok) return;
-                var rows = S.generatePasswords({});
+                var rows = S.generatePasswords({ excludeSelf: true });
                 UI.toast('وُلّدت كلمات مرور لـ ' + rows.length + ' حسابًا', 'ok');
                 passwordsSheet(rows); redraw();
               });
           } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: 'الموظفون فقط', onClick: function () {
-            var rows = S.generatePasswords({ kind: 'staff' });
+            var rows = S.generatePasswords({ kind: 'staff', excludeSelf: true });
             UI.toast('وُلّدت كلمات مرور لـ ' + rows.length + ' حسابًا', 'ok');
             passwordsSheet(rows); redraw();
           } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: 'الطلاب فقط', onClick: function () {
-            var rows = S.generatePasswords({ kind: 'students' });
+            var rows = S.generatePasswords({ kind: 'students', excludeSelf: true });
             UI.toast('وُلّدت كلمات مرور لـ ' + rows.length + ' حسابًا', 'ok');
             passwordsSheet(rows); redraw();
           } }),
