@@ -714,3 +714,8 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .report-bar .btn { margin: 0; }
 .report-bar { flex-direction: row; }
 .report-bar .rb-hint { flex: 1 1 100%; font-size: var(--fs-xs); color: var(--ink-600, #5A6A63); line-height: 1.7; }
+
+/* شاشة التهيئة: نقل البيانات من جهاز آخر */
+.setup-restore { margin-top: 20px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: var(--r-md); background: var(--bg-soft); }
+.setup-restore strong { display: block; margin-bottom: 6px; }
+.setup-restore .btn { margin-top: 10px; }

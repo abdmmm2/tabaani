@@ -11,14 +11,9 @@
 
   var STAGE_TONE = { kg: 'amber', primary: 'brand', middle: 'mint', secondary: 'plain' };
 
-  /* حساب «مشرف تابعني»: هذه الوحدة مسؤولة عن الدور super، والزرع الافتراضي
-     لا يتضمّن حسابًا له — نضمن وجوده مرة واحدة ليعمل الدخول ولوحة المشرف. */
-  if (!S.list('users', { role: 'super' }).length) {
-    S.insert('users', {
-      id: 'u-super-1', schoolId: null, role: 'super', name: 'مشرف تابعني',
-      nationalId: '', phone: '', email: 'super@tabaani.sa', status: 'active', canLogin: true
-    });
-  }
+  /* لا يُنشئ المشرفَ العام أحد غير شاشة التهيئة (u-super-owner).
+     كان هنا زرع حساب «مشرف تابعني» بلا اسم مستخدم ولا كلمة مرور عند كل جهاز جديد،
+     فأدى إلى حساب شبح في العدّادات والقوائم — أُزيل (v45). لا تُعِده. */
 
   /* إعادة بناء قائمة المدن من المنطقة المختارة (ربط انزلاقي) */
   function fillCity(cityEl, regionId, keep) {

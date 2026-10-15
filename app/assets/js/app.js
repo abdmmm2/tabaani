@@ -1098,6 +1098,32 @@
       } }));
       panel.appendChild(h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
         text: 'يمكنك تغيير كلمة المرور لاحقًا من: بياناتي ← تغيير كلمة المرور.' }));
+
+      /* نقل البيانات من جهاز آخر: استرجاع نسخة احتياطية بدل إنشاء حساب جديد */
+      var bFile = h('input', { type: 'file', accept: '.json,application/json', class: 'input' });
+      bFile.addEventListener('change', function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        UI.confirm('سيُستبدل ما في هذا الجهاز ببيانات الملف «' + f.name + '». متابعة؟', { ok: 'استرجاع', danger: true }).then(function (yes) {
+          if (!yes) { bFile.value = ''; return; }
+          var rd = new FileReader();
+          rd.onload = function (ev) {
+            var r = S.restoreJson(ev.target.result);
+            if (!r.ok) { err.hidden = false; err.textContent = r.error; return; }
+            UI.toast('أُعيدت النسخة — ' + r.stats.schools + ' مدرسة · ' + r.stats.users + ' حسابًا', 'ok');
+            setTimeout(function () { location.reload(); }, 900);
+          };
+          rd.readAsText(f, 'utf-8');
+        });
+      });
+      panel.appendChild(h('div', { class: 'setup-restore' }, [
+        h('strong', { text: 'هل عندك نسخة احتياطية من جهاز آخر؟' }),
+        h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', lineHeight: '1.9' },
+          text: 'بيانات تابعني محفوظة في المتصفح الذي هيّأتها عليه فقط. لنقل مدرستك إلى هذا الجهاز (مثلًا من كروم الجوال إلى سفاري الآيباد): نزّل النسخة من الجهاز الأول، ثم استرجعها هنا — وستُنقل المدارس والحسابات والبيانات كما هي بلا إعادة إدخال.' }),
+        h('label', { class: 'btn btn-outline', style: { cursor: 'pointer' } }, [
+          h('span', { text: 'استرجاع نسخة احتياطية' }), bFile
+        ])
+      ]));
       root.appendChild(panel);
     },
   };

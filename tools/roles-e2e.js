@@ -315,6 +315,24 @@ async function backupSuite(page, base, hitsFn) {
   const r4 = await page.eval('Store.markBackup(); var d = Store.backupDue(); return { due:d.due, since:d.daysSince, last:Store.lastBackupAt() ? true : false };');
   ok(r4.due === false && r4.since === 0 && r4.last, 'بعد تنزيل نسخة: لا تذكير حتى الموعد القادم', JSON.stringify({ due: r4.due, since: r4.since }));
 
+  /* ============ نقل البيانات بين الأجهزة (استرجاع على جهاز جديد) ============
+     جهاز جديد = مخزن فارغ: يجب أن تُبنى شاشة التهيئة وفيها خيار استرجاع نسخة. */
+  const before = await page.eval('return { users: Store.list("users").length, schools: Store.list("schools").length, json: Store.backupJson() };');
+  await page.eval('localStorage.setItem("__e2e_backup", localStorage.getItem("tabaani-school-db-v1"));' +
+    'localStorage.removeItem("tabaani-school-db-v1"); return true;');
+  await B.goto(page, base + '/index.html', '!!window.Store');
+  await B.sleep(900);
+  const fresh = await page.eval('return { setup: Store.needsSetup(), users: Store.list("users").length };');
+  ok(fresh.setup === true && fresh.users === 0, 'جهاز جديد: مخزن فارغ ويطلب التهيئة (لا يرى بيانات الجهاز الآخر)', JSON.stringify(fresh));
+  await page.eval('App.setupScreen(); return true;');
+  await B.sleep(700);
+  const scr = await page.eval('var t=document.querySelector("#app").innerText; return { restore:t.indexOf("استرجاع نسخة احتياطية")>-1, fresh:t.indexOf("استرجاع")>-1, create:t.indexOf("إنشاء الحساب والبدء")>-1 };');
+  ok(scr.restore && scr.create, 'شاشة التهيئة فيها «استرجاع نسخة احتياطية» بجانب إنشاء حساب جديد', JSON.stringify(scr));
+  const mig = await page.eval('var r = Store.restoreJson(localStorage.getItem("__e2e_backup")); localStorage.removeItem("__e2e_backup");' +
+    'return { ok:r.ok, schools:r.ok?r.stats.schools:0, users:r.ok?r.stats.users:0, setup:Store.needsSetup() };');
+  ok(mig.ok && mig.schools === before.schools && mig.users === before.users && mig.setup === false,
+    'الاسترجاع ينقل المدرسة والحسابات كاملة ويُلغي طلب التهيئة', JSON.stringify({ ok: mig.ok, schools: mig.schools + '/' + before.schools, users: mig.users + '/' + before.users }));
+
   /* ============ الحفظ السحابي في Google Drive ============
      نقطتان محليتان تحاكيان تطبيق Apps Script: /__cloud (نجاح) و/__cloudfail (فشل). */
   /* أدوات التسليم: لا تُصفَّر كلمة مرور المستخدم الحالي */
