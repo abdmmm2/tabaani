@@ -110,6 +110,7 @@
   /* ---------------------------------------------------------------- الصفحة */
   App.landing = function (opts) {
     opts = opts || {};
+    if (App.setTitle) App.setTitle('');                 /* العنوان الأساسي للواجهة العامة */
     App._removeSupportFab();
     var root = document.getElementById('app');
     var old = document.querySelector('.login-wrap');

@@ -15,6 +15,11 @@
       if (App.order.indexOf(mod.id) === -1) App.order.push(mod.id);
     },
     go: function (id) { location.hash = '#/' + id; },
+    /** عنوان تبويب المتصفح: «اسم الشاشة · تابعني» (والأساس بلا تكرار الاسم) */
+    setTitle: function (text) {
+      document.title = text ? (String(text).trim() + ' · تابعني') : 'تابعني للخدمات الذكية';
+      return document.title;
+    },
     can: function (mod) {
       if (!mod) return false;
       if (mod.roles && mod.roles.indexOf(S.session.role) === -1) return false;
@@ -503,6 +508,7 @@
       });
       var title = document.getElementById('view-title');
       if (title) title.textContent = S.gtext(mod.label);
+      App.setTitle(S.gtext(mod.label));                 /* عنوان التبويب = اسم الشاشة */
       var view = document.getElementById('view');
       if (!view) return;
       clear(view);

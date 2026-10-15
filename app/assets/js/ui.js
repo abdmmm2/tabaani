@@ -492,6 +492,29 @@
     } catch (e) { return false; }
   }
 
+  /** عنوان المستند أثناء الطباعة: يجعل اسم ملف PDF/الحفظ = اسم التقرير لا اسم المنصة */
+  var _titleTimer = null;
+  function withPrintTitle(title) {
+    try {
+      if (!title) return;
+      if (_titleTimer) clearTimeout(_titleTimer);
+      if (!withPrintTitle._base) withPrintTitle._base = document.title;
+      document.title = String(title).trim();
+      _titleTimer = setTimeout(function () { if (withPrintTitle._base) document.title = withPrintTitle._base; }, 6000);
+      if (!withPrintTitle._bound) {
+        withPrintTitle._bound = true;
+        window.addEventListener('afterprint', function () {
+          if (withPrintTitle._base) { document.title = withPrintTitle._base; withPrintTitle._base = ''; }
+        });
+      }
+    } catch (e) {}
+  }
+  /** استخراج عنوان من HTML وثيقة مطبوعة */
+  function htmlTitle(html) {
+    var m = String(html || '').match(/<title>([^<]*)<\/title>/i);
+    return m ? m[1].trim() : '';
+  }
+
   /** شريط إجراءات ظاهر للتقرير: يضمن رؤية النتيجة، ويعطي بدائل حين تُحجب نافذة الطباعة (جوال/تطبيق مثبَّت) */
   function reportActionBar(html, frame, title) {
     var old = document.getElementById('report-bar');
@@ -513,6 +536,7 @@
       h('span', { class: 'rb-ic', html: '&#128424;&#65039;' }),
       h('span', { class: 'rb-t', text: title || 'الوثيقة جاهزة' }),
       h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'طباعة', onClick: function () {
+        withPrintTitle(title);
         try { frame.contentWindow.focus(); frame.contentWindow.print(); }
         catch (e) { openTab(); }
       } }),
@@ -520,6 +544,7 @@
       shareBtn,
       h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'حفظ PDF', onClick: function () {
         toast('في نافذة الطباعة اختر: الوجهة ← حفظ كـ PDF', 'ok');
+        withPrintTitle(title);
         try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { openTab(); }
       } }),
       h('button', { class: 'icon-btn', type: 'button', title: 'إخفاء', html: '&times;', onClick: function () { bar.remove(); } })
@@ -593,6 +618,7 @@
     var doc = frame.contentDocument || frame.contentWindow.document;
     doc.open(); doc.write(html); doc.close();
     var go = function () {
+      withPrintTitle(report.title);
       reportActionBar(html, frame, report.title);
       try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { toast('تعذّر فتح نافذة الطباعة', 'warn'); }
     };
@@ -675,6 +701,7 @@
     var doc = frame.contentDocument || frame.contentWindow.document;
     doc.open(); doc.write(html); doc.close();
     var go = function () {
+      withPrintTitle(htmlTitle(html) || 'الوثيقة جاهزة');
       reportActionBar(html, frame, 'الوثيقة جاهزة');
       try { frame.contentWindow.focus(); frame.contentWindow.print(); }
       catch (e) { toast('تعذّر فتح نافذة الطباعة', 'warn'); }
@@ -1153,7 +1180,7 @@
     dateLabel: dateLabel, today: today,
     qrSvg: qrSvg, qrBox: qrBox, barcodeSvg: barcodeSvg, barcodeBox: barcodeBox,
     readExcel: readExcel, downloadCsv: downloadCsv, downloadText: downloadText,
-    printReport: printReport, reportButton: reportButton, passwordSheet: passwordSheet,
+    printReport: printReport, reportButton: reportButton, passwordSheet: passwordSheet, withPrintTitle: withPrintTitle,
     env: function () { return { ios: isIOS(), standalone: isStandalone(), canShare: !!(navigator.canShare) }; }, shareFile: shareFile,
     setupTelegram: setupTelegram, renderTelegram: renderTelegram
   };

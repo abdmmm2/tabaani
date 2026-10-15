@@ -338,6 +338,21 @@ async function backupSuite(page, base, hitsFn) {
   ok(iosNote.shown === true, 'داخل التطبيق المُثبَّت (آبل): تنبيه واضح بفصل المخزن عن سفاري', JSON.stringify(iosNote));
   ok(iosNote.after === false, 'وخارج التطبيق المُثبَّت لا يظهر التنبيه (بلا إزعاج)');
 
+  /* اسم ملف التقارير عند الحفظ/PDF: عنوان المستند = عنوان التقرير لا اسم المنصة (v49) */
+  const ttl = await page.eval(
+    'var base = App.setTitle("");' +
+    'var modT = App.setTitle("المناطق والمدن والمدارس");' +
+    'UI.printReport({ title: "تقرير فحص العنوان", sections: [], by: "مراجع" });' +
+    'window.__titleMod = modT;' +
+    'return { base: base, mod: modT, twice: (base.match(/تابعني/g) || []).length };');
+  await B.sleep(900);          /* الطباعة تُهيّأ بعد ٢٦٠ مللي ثم يُضبط العنوان */
+  const during = await page.eval('return document.title;');
+  ok(ttl.base === 'تابعني للخدمات الذكية' && ttl.twice === 1, 'عنوان المنصة بلا تكرار الاسم', ttl.base + ' (' + ttl.twice + ')');
+  ok(ttl.mod === 'المناطق والمدن والمدارس · تابعني', 'عنوان التبويب يتبع الشاشة الحالية', ttl.mod);
+  ok(during === 'تقرير فحص العنوان', 'أثناء الطباعة يصير عنوان المستند = اسم التقرير (وهو ما يُسمّى به ملف PDF)', during);
+  const back = await page.eval('UI.withPrintTitle("تقرير آخر"); return { now: document.title };');
+  ok(back.now === 'تقرير آخر', 'كل تقرير يضبط اسمه الخاص (لا يلتصق اسم الأول)', back.now);
+
   const mig = await page.eval('var r = Store.restoreJson(localStorage.getItem("__e2e_backup")); localStorage.removeItem("__e2e_backup");' +
     'return { ok:r.ok, schools:r.ok?r.stats.schools:0, users:r.ok?r.stats.users:0, setup:Store.needsSetup() };');
   ok(mig.ok && mig.schools === before.schools && mig.users === before.users && mig.setup === false,
