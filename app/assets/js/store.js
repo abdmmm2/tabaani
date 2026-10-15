@@ -2972,6 +2972,78 @@
       var core = pick(A, 2) + pick(a, 4) + pick(d, 3) + pick(sym, 1);
       return 'Tbn@' + core.split('').sort(function () { return Math.random() - 0.5; }).join('');
     },
+    /** تخمين أعمدة ملف الموظفين (نور/Excel) من عناوين الأعمدة */
+    guessStaffMap: function (keys) {
+      keys = keys || [];
+      function pick(re) { return keys.find(function (k) { return re.test(String(k)); }) || ''; }
+      return {
+        name: pick(/اسم|name/i),
+        subject: pick(/مادة|subject/i),
+        id: pick(/هوية|national|id/i),
+        phone: pick(/جوال|هاتف|phone|mobile/i),
+        email: pick(/بريد|email|mail/i),
+        role: pick(/دور|وظيفة|مسمى|role/i),
+        username: pick(/اسم المستخدم|مستخدم|username|user/i)
+      };
+    },
+
+    /** اسم مستخدم فريد مقترح من الاسم (أو من الهوية إن كان الاسم عربيًا) */
+    suggestUsername: function (name, nid, used) {
+      used = used || {};
+      var base = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (base.length < 3) base = (nid ? 't' + String(nid).replace(/\D/g, '').slice(-4) : 'teacher');
+      base = base.slice(0, 14);
+      var u = base, i = 1;
+      while (used[String(u).toLowerCase()]) { i++; u = base.slice(0, 12) + i; }
+      return u;
+    },
+
+    /** استيراد موظفين/معلمين من صفوف ملف (Excel/CSV) — يولّد لكل حساب اسم مستخدم وكلمة مرور */
+    importStaff: function (rows, map, opts) {
+      map = map || {}; opts = opts || {};
+      var schoolId = opts.schoolId || store.session.schoolId || (store.list('schools')[0] || {}).id || null;
+      var defaultRole = opts.role || 'teacher';
+      var roles = store.rolesList();
+      var used = {};
+      store.list('users').forEach(function (u) { if (u.username) used[String(u.username).toLowerCase()] = 1; });
+      var existing = store.list('users');
+      var users = [], creds = [], skipped = 0;
+      (rows || []).forEach(function (r) {
+        function val(k) { return (map[k] && r[map[k]] != null) ? String(r[map[k]]).trim() : ''; }
+        var name = val('name');
+        if (!name) { skipped++; return; }
+        var nid = val('id'), email = val('email'), phone = val('phone');
+        var role = defaultRole;
+        var roleTxt = val('role');
+        if (roleTxt) {
+          var hit = roles.find(function (x) { return x.name === roleTxt || x.id === roleTxt || (x.nameF && x.nameF === roleTxt); });
+          if (hit && hit.id !== 'super') role = hit.id;      /* لا يُنشأ مشرف عام من ملف */
+        }
+        var dup = (nid && existing.some(function (u) { return u.nationalId && u.nationalId === nid; })) ||
+                  (email && existing.some(function (u) { return u.email && u.email === email; })) ||
+                  (phone && existing.some(function (u) { return u.phone && u.phone === phone; }));
+        if (dup) { skipped++; return; }
+        var want = val('username').toLowerCase();
+        var uname = (want && !used[want]) ? want : store.suggestUsername(name, nid, used);
+        used[String(uname).toLowerCase()] = 1;
+        var pw = store.randomPassword();
+        var subjects = val('subject') ? val('subject').split(/[,،\/]+/).map(function (x) { return x.trim(); }).filter(Boolean) : [];
+        var u = store.insert('users', {
+          schoolId: role === 'super' ? null : schoolId, role: role, name: name, nationalId: nid,
+          phone: phone, email: email, username: uname, password: pw, mustChange: true, passwordSetAt: now(),
+          status: 'active', canLogin: true, subjects: subjects, qualified: subjects.slice(),
+          source: opts.source || 'nur', importedAt: now()
+        });
+        existing.push(u); users.push(u);
+        creds.push({ id: u.id, name: u.name, username: uname, role: store.roleLabel(role, schoolId), password: pw, phone: phone, schoolId: schoolId });
+      });
+      save();
+      if (users.length) {
+        store.notify({ kind: 'staff', title: 'استيراد من Excel', body: 'أُضيف ' + users.length + ' حسابًا · تُخطّي ' + skipped, to: ['principal', 'super'] });
+      }
+      return { ok: true, added: users.length, skipped: skipped, users: users, creds: creds };
+    },
+
     addUser: function (data) {
       var d = data || {};
       var name = String(d.name || '').trim();

@@ -232,6 +232,45 @@
         ]));
 
         /* توليد كلمات المرور عند التسليم */
+        /* استيراد موظفين من Excel (للمشرف العام) — يولّد اسم مستخدم وكلمة مرور لكل واحد */
+        (function () {
+          var fInput = h('input', { type: 'file', accept: '.xlsx,.xls,.csv', class: 'input' });
+          var schoolsImp = S.list('schools');
+          var schoolSel = UI.field({
+            name: 'impSchool', label: 'المدرسة', type: 'select', half: true,
+            options: schoolsImp.map(function (sc) { return { value: sc.id, label: sc.name }; }),
+            value: (schoolsImp[0] || {}).id || ''
+          });
+          var roleSel = UI.field({
+            name: 'impRole', label: 'الدور الافتراضي (إن لم يوجد عمود دور في الملف)', type: 'select', half: true,
+            options: S.rolesList().filter(function (r) { return r.id !== 'super'; }).map(function (r) { return { value: r.id, label: r.name }; }),
+            value: 'teacher'
+          });
+          fInput.addEventListener('change', function (e) {
+            var f = e.target.files && e.target.files[0];
+            if (!f) return;
+            UI.readExcel(f).then(function (res) {
+              var rows = (res && res.rows) || [];
+              if (!rows.length) { UI.toast('الملف لا يحتوي صفوفًا', 'warn'); return; }
+              var map = S.guessStaffMap(Object.keys(rows[0]));
+              var r = S.importStaff(rows, map, { schoolId: schoolSel.input.value, role: roleSel.input.value, source: 'excel' });
+              UI.toast('أُضيف ' + r.added + ' حسابًا · تُخطّي ' + r.skipped, r.added ? 'ok' : 'warn');
+              if (r.added) UI.passwordSheet(r.creds, { title: 'حسابات المستوردين وكلمات المرور' });
+              fInput.value = '';
+              draw();
+            }).catch(function (err) {
+              UI.toast('تعذّر قراءة الملف: ' + ((err && err.message) || 'صيغة غير مدعومة'), 'bad');
+              fInput.value = '';
+            });
+          });
+          host.appendChild(UI.panel('استيراد موظفين من Excel', 'ارفع كشف الموظفين (xlsx · xls · csv) — يتعرّف على الأعمدة تلقائيًا (الاسم · الدور · المادة · الهوية · الجوال · البريد) ويُنشئ لكل واحد حساب دخول جاهزًا.', [
+            h('label', { class: 'btn btn-outline', style: { cursor: 'pointer' } }, [h('span', { text: 'اختر ملف Excel' }), fInput])
+          ], [
+            h('div', { class: 'form-grid' }, [schoolSel.wrap, roleSel.wrap]),
+            h('div', { class: 'callout info', text: 'سيُعرض كشف بأسماء المستخدمين وكلمات المرور للطباعة أو التنزيل، ويُطلب من كل مستخدم تغييرها عند أول دخول. الصفوف المكررة (نفس الهوية/الجوال/البريد) تُتخطّى تلقائيًا.' })
+          ]));
+        })();
+
         host.appendChild(UI.panel('تسليم الحسابات: كلمات مرور مختلفة لكل حساب', 'يولّد كلمة مرور قوية مختلفة لكل حساب حقيقي، ويُلزم أصحابها بتغييرها عند أول دخول.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'توليد لكلم الحسابات', onClick: function () {
             UI.confirm('سيُغيَّر كلمة المرور للحسابات (' + counts.total + ' — ما عدا حسابك أنت) إلى كلمات مختلفة عشوائية، وتُلزَم بتغييرها عند أول دخول. متابعة؟', { ok: 'توليد الكل' })

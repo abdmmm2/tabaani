@@ -524,22 +524,15 @@
       /* ============================================ (ب) استيراد المعلمين */
       function downloadTemplate() {
         UI.downloadCsv([
-          { 'الاسم': 'أ. سعد بن إبراهيم المطيري', 'المادة': 'الرياضيات', 'رقم الهوية': '1023456789', 'الجوال': '+966501234567', 'البريد': 'saad@school.edu.sa' },
-          { 'الاسم': 'أ. نورة بنت سالم الغامدي', 'المادة': 'الكفايات اللغوية / التفكير الناقد', 'رقم الهوية': '1098765432', 'الجوال': '+966509876543', 'البريد': 'noura@school.edu.sa' }
+          { 'الاسم': 'أ. سعد بن إبراهيم المطيري', 'الدور': 'معلم', 'المادة': 'الرياضيات', 'رقم الهوية': '1023456789', 'الجوال': '+966501234567', 'البريد': 'saad@school.edu.sa', 'اسم المستخدم': '' },
+          { 'الاسم': 'أ. نورة بنت سالم الغامدي', 'الدور': 'معلم', 'المادة': 'الكفايات اللغوية / التفكير الناقد', 'رقم الهوية': '1098765432', 'الجوال': '+966509876543', 'البريد': 'noura@school.edu.sa', 'اسم المستخدم': '' },
+          { 'الاسم': 'أ. هند العتيبي', 'الدور': 'وكيل شؤون الطلاب', 'المادة': '', 'رقم الهوية': '1077777777', 'الجوال': '+966507777777', 'البريد': '', 'اسم المستخدم': '' }
         ], 'قالب-المعلمين-نور.csv');
+        UI.toast('القالب يشرح الأعمدة: الدور يقبل (معلم · وكيل شؤون الطلاب · موجّه التوجيه والإرشاد…) واترك «اسم المستخدم» فارغًا ليُولّده النظام', 'ok');
         UI.toast('نُزّل قالب الأعمدة', 'ok');
       }
 
-      function guessMap(keys) {
-        function pick(re) { return keys.find(function (k) { return re.test(String(k)); }) || ''; }
-        return {
-          name: pick(/اسم|name/i),
-          subject: pick(/مادة|subject/i),
-          id: pick(/هوية|national|id/i),
-          phone: pick(/جوال|هاتف|phone|mobile/i),
-          email: pick(/بريد|email|mail/i)
-        };
-      }
+      function guessMap(keys) { return S.guessStaffMap(keys); }
 
       function onFile(e) {
         var file = e.target.files && e.target.files[0];
@@ -573,29 +566,13 @@
       function runImport() {
         var rows = state.imp.rows, m = state.imp.map;
         if (!m.name) { UI.toast('حدّد عمود الاسم أولًا', 'warn'); return; }
-        var existing = S.list('users');
-        var added = 0, skipped = 0, imported = [];
-        rows.forEach(function (r) {
-          var name = String(r[m.name] == null ? '' : r[m.name]).trim();
-          if (!name) { skipped++; return; }
-          var nid = m.id ? String(r[m.id] == null ? '' : r[m.id]).trim() : '';
-          var email = m.email ? String(r[m.email] == null ? '' : r[m.email]).trim() : '';
-          var phone = m.phone ? String(r[m.phone] == null ? '' : r[m.phone]).trim() : '';
-          var subjects = m.subject ? String(r[m.subject] == null ? '' : r[m.subject]).split(/[,،\/]+/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
-          var dup = (nid && existing.some(function (u) { return u.nationalId === nid; })) ||
-                    (email && existing.some(function (u) { return u.email === email; }));
-          if (dup) { skipped++; return; }
-          var u = S.insert('users', {
-            schoolId: schoolId, role: 'teacher', name: name, nationalId: nid, phone: phone, email: email,
-            status: 'active', canLogin: true, subjects: subjects, qualified: subjects.slice(), source: 'nur'
-          });
-          existing.push(u); added++; imported.push(u);
-        });
-        state.imp.imported = imported;
-        state.imp.rows = [];
-        state.imp.map = {};
-        UI.toast('أُضيف ' + added + ' معلمًا · تم تخطّي ' + skipped, added ? 'ok' : 'warn');
-        if (added) S.notify({ kind: 'staff', title: 'استيراد معلمين من نور', body: 'أُضيف ' + added + ' حسابًا · تم تخطّي ' + skipped, to: ['principal'] });
+        var res = S.importStaff(rows, m, { schoolId: schoolId, source: 'nur' });
+        state.imp.imported = res.users;
+        state.imp.creds = res.creds;
+        state.imp.rows = []; state.imp.map = {};
+        UI.toast('أُضيف ' + res.added + ' حسابًا · تُخطّي ' + res.skipped,
+          res.added ? 'ok' : 'warn');
+        if (res.added) UI.passwordSheet(res.creds, { title: 'حسابات المستوردين وكلمات المرور' });
         draw();
       }
 
@@ -611,7 +588,7 @@
 
         var children = [
           h('div', { class: 'between' }, [
-            h('p', { class: 'muted', text: 'ارفع كشف المعلمين من نظام نور ثم حدّد أعمدة الاسم والمادة والهوية والجوال والبريد.' }),
+            h('p', { class: 'muted', text: 'ارفع كشف المعلمين (Excel/CSV) ثم حدّد الأعمدة، وسيُنشئ النظام لكل واحد اسم مستخدم وكلمة مرور جاهزين للدخول — ويعرض لك كشفًا للطباعة والتسليم.' }),
             h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'تنزيل قالب الأعمدة', onClick: downloadTemplate })
           ]),
           drop
@@ -629,7 +606,9 @@
               mapField('عمود المادة', 'subject', cols),
               mapField('عمود رقم الهوية', 'id', cols),
               mapField('عمود الجوال', 'phone', cols),
-              mapField('عمود البريد', 'email', cols)
+              mapField('عمود البريد', 'email', cols),
+              mapField('عمود الدور (اختياري)', 'role', cols),
+              mapField('عمود اسم المستخدم (اختياري)', 'username', cols)
             ])
           ]));
           children.push(h('div', { class: 'mt-4' }, [

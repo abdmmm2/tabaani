@@ -430,6 +430,36 @@ async function backupSuite(page, base, hitsFn) {
   const dl = await page.eval('var r = UI.downloadText("x", "فحص.txt", "text/plain"); return { r: r, frame: !!document.getElementById("print-frame") };');
   ok(dl.r === 'فحص.txt', 'تنزيل الملفات يعمل كما هو على غير آبل (بلا تغيير)', JSON.stringify(dl));
 
+  /* ============ استيراد المعلمين من Excel (٨٠ معلمًا بضغطة) ============ */
+  const imp = await page.eval(
+    'var before = Store.list("users").length;' +
+    'var rows = [' +
+    ' { "الاسم": "أ. سعد المطيري", "الدور": "معلم", "المادة": "الرياضيات", "رقم الهوية": "1023000001", "الجوال": "+966501110001", "البريد": "imp1@x.sa" },' +
+    ' { "الاسم": "أ. نورة الغامدي", "الدور": "معلم", "المادة": "الكفايات اللغوية / التفكير الناقد", "رقم الهوية": "1023000002" },' +
+    ' { "الاسم": "أ. هند العتيبي", "الدور": "موجّه التوجيه والإرشاد", "رقم الهوية": "1023000003" },' +
+    ' { "الاسم": "أ. سعد المطيري", "رقم الهوية": "1023000001" }' +
+    '];' +
+    'var map = Store.guessStaffMap(Object.keys(rows[0]));' +
+    'var gm = [map.name, map.role, map.id].join("|");' +
+    'var r = Store.importStaff(rows, map, {});' +
+    'var logins = r.creds.map(function (c) { return Store.authenticate(c.username, c.password).ok ? "OK" : "FAIL"; });' +
+    'return { added: r.added, skipped: r.skipped, gm: gm, usernames: r.creds.map(function (c) { return c.username; }),' +
+    ' roles: r.creds.map(function (c) { return c.role; }).join("|"), passLen: r.creds[0].password.length,' +
+    ' mustChange: r.users[0].mustChange, allLogin: logins.every(function (x) { return x === "OK"; }),' +
+    ' school: !!r.users[0].schoolId, total: Store.list("users").length - before };');
+  ok(imp.added === 3 && imp.skipped === 1 && imp.total === 3, 'استيراد Excel: يضيف الصفوف الصحيحة ويتخطّى المكرر', JSON.stringify({ added: imp.added, skipped: imp.skipped }));
+  ok(imp.gm.split('|').every(function (x) { return x; }), 'يتعرّف على أعمدة الملف تلقائيًا (الاسم/الدور/الهوية)', imp.gm);
+  ok(new Set(imp.usernames).size === 3 && imp.usernames.every(function (u) { return u && u.length >= 3; }), 'لكل مستورد اسم مستخدم فريد', imp.usernames.join(','));
+  ok(imp.allLogin === true, 'كل حساب مستورد يستطيع الدخول فعلًا (اسم المستخدم + كلمة المرور)');
+  ok(imp.mustChange === true && imp.passLen >= 8 && imp.school, 'إلزام تغيير كلمة المرور + ربط الحساب بالمدرسة', 'pass=' + imp.passLen);
+  ok(/موجّه/.test(imp.roles), 'الدور يُقرأ من الملف (موجّه التوجيه والإرشاد)', imp.roles);
+
+  /* لوحة الاستيراد ظاهرة للمشرف العام في وحدة الحسابات */
+  await page.eval('App.go("users"); return true;');
+  await B.sleep(1000);
+  const impPanel = await page.eval('var t=document.querySelector("#view").innerText; return { p:t.indexOf("استيراد موظفين من Excel")>-1, btn:t.indexOf("اختر ملف Excel")>-1, sheet:t.indexOf("كشف")>-1 };');
+  ok(impPanel.p && impPanel.btn, 'لوحة «استيراد موظفين من Excel» ظاهرة للمشرف العام', JSON.stringify(impPanel));
+
   await page.eval('Store.saveDriveConfig({ url: "", enabled: false }); return true;');
   ok(await page.eval('return !Store.driveConfigured();'), 'السحابة: فصل الربط يُوقف الرفع التلقائي');
   return res;

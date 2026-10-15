@@ -1095,6 +1095,52 @@
     return a.download;
   }
 
+  /** كشف كلمات المرور المولَّدة (يُسلَّم للمستخدمين) */
+  function passwordSheet(rows, opts) {
+    opts = opts || {};
+    if (!rows || !rows.length) { toast('لا حسابات لعرضها', 'warn'); return; }
+    var list = rows.map(function (r) {
+      var s = global.Store ? (global.Store.school(r.schoolId) || {}) : {};
+      return { name: r.name, username: r.username, role: r.role, school: s.name || '—', password: r.password };
+    });
+    modal({
+      title: (opts.title || 'كلمات المرور المولَّدة') + ' (' + list.length + ' حسابًا)',
+      wide: true,
+      body: [
+        h('p', { class: 'muted', text: 'كل حساب له كلمة مرور مختلفة، وسيُطلب من صاحبه تغييرها عند أول دخول. سلّم كل مستخدم بيانته.' }),
+        table({
+          cols: [
+            { key: 'name', label: 'الاسم' }, { key: 'username', label: 'اسم المستخدم' },
+            { key: 'role', label: 'الدور' }, { key: 'school', label: 'المدرسة' },
+            { key: 'password', label: 'كلمة المرور المؤقتة' }
+          ], rows: list
+        }),
+        h('div', { class: 'callout warn', style: { marginTop: '10px' },
+          text: 'احفظ الكشف في مكان آمن — لا يمكن استرجاع هذه الكلمات من تابعني بعد إغلاق النافذة إلا بإعادة التوليد.' })
+      ],
+      actions: [
+        { label: 'تنزيل CSV', class: 'btn-outline', onClick: function () {
+          downloadCsv(list.map(function (r) {
+            return { 'الاسم': r.name, 'اسم المستخدم': r.username, 'الدور': r.role, 'المدرسة': r.school, 'كلمة المرور': r.password };
+          }), 'كلمات-مرور-الحسابات.csv');
+        } },
+        { label: 'طباعة كشف بالتوقيعات', class: 'btn-soft', onClick: function () {
+          printReport({
+            type: 'passwords', title: 'كشف كلمات مرور الحسابات',
+            subtitle: 'يُسلَّم لجهة التسليم — يُرجى حفظه في مكان آمن',
+            meta: [{ label: 'عدد الحسابات', value: String(list.length) }, { label: 'أُعدّ بواسطة', value: global.Store ? global.Store.session.name : '' }],
+            sections: [{
+              heading: 'الحسابات وكلمات المرور المؤقتة',
+              table: { cols: ['م', 'الاسم', 'اسم المستخدم', 'الدور', 'كلمة المرور'],
+                rows: list.map(function (r, i) { return [i + 1, r.name, r.username, r.role, r.password]; }) },
+              text: 'ملاحظة: يلزم كل مستخدم تغيير كلمة مروره عند أول دخول.'
+            }]
+          });
+        } }
+      ]
+    });
+  }
+
   var UI = {
     h: h, clear: clear, toast: toast, modal: modal, confirm: confirm,
     stampSvg: stampSvg, printInvoice: printInvoice, invoiceHtml: invoiceHtml,
@@ -1107,7 +1153,7 @@
     dateLabel: dateLabel, today: today,
     qrSvg: qrSvg, qrBox: qrBox, barcodeSvg: barcodeSvg, barcodeBox: barcodeBox,
     readExcel: readExcel, downloadCsv: downloadCsv, downloadText: downloadText,
-    printReport: printReport, reportButton: reportButton,
+    printReport: printReport, reportButton: reportButton, passwordSheet: passwordSheet,
     env: function () { return { ios: isIOS(), standalone: isStandalone(), canShare: !!(navigator.canShare) }; }, shareFile: shareFile,
     setupTelegram: setupTelegram, renderTelegram: renderTelegram
   };
