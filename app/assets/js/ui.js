@@ -468,6 +468,37 @@
     '@media print{.no-print{display:none}}';
 
   /** يطبع تقريرًا كاملًا في إطار مخفي (لا يفتح نوافذ منبثقة). */
+  /** شريط إجراءات ظاهر للتقرير: يضمن رؤية النتيجة، ويعطي بدائل حين تُحجب نافذة الطباعة (جوال/تطبيق مثبَّت) */
+  function reportActionBar(html, frame, title) {
+    var old = document.getElementById('report-bar');
+    if (old) old.remove();
+    var blobUrl = '';
+    function openTab() {
+      try {
+        if (!blobUrl) blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+        var w = window.open(blobUrl, '_blank');
+        if (!w) toast('اسمح بالنوافذ المنبثقة لفتح الوثيقة', 'warn');
+      } catch (e) { toast('تعذّر فتح الوثيقة في تبويب', 'warn'); }
+    }
+    var bar = h('div', { id: 'report-bar', class: 'report-bar', dir: 'rtl' }, [
+      h('span', { class: 'rb-ic', html: '&#128424;&#65039;' }),
+      h('span', { class: 'rb-t', text: title || 'الوثيقة جاهزة' }),
+      h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'طباعة', onClick: function () {
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (e) { openTab(); }
+      } }),
+      h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'فتح في تبويب جديد', onClick: openTab }),
+      h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'حفظ PDF', onClick: function () {
+        toast('في نافذة الطباعة اختر: الوجهة ← حفظ كـ PDF', 'ok');
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { openTab(); }
+      } }),
+      h('button', { class: 'icon-btn', type: 'button', title: 'إخفاء', html: '&times;', onClick: function () { bar.remove(); } })
+    ]);
+    document.body.appendChild(bar);
+    setTimeout(function () { if (bar.parentElement) bar.remove(); }, 30000);
+    return bar;
+  }
+
   function printReport(report) {
     var school = global.Store ? global.Store.school(global.Store.session.schoolId) : {};
     if (report.school) school = report.school;
@@ -527,6 +558,7 @@
     var doc = frame.contentDocument || frame.contentWindow.document;
     doc.open(); doc.write(html); doc.close();
     var go = function () {
+      reportActionBar(html, frame, report.title);
       try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { toast('تعذّر فتح نافذة الطباعة', 'warn'); }
     };
     setTimeout(function () {
@@ -608,6 +640,7 @@
     var doc = frame.contentDocument || frame.contentWindow.document;
     doc.open(); doc.write(html); doc.close();
     var go = function () {
+      reportActionBar(html, frame, 'الوثيقة جاهزة');
       try { frame.contentWindow.focus(); frame.contentWindow.print(); }
       catch (e) { toast('تعذّر فتح نافذة الطباعة', 'warn'); }
     };

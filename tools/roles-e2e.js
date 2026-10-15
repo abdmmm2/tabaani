@@ -394,6 +394,18 @@ async function backupSuite(page, base, hitsFn) {
   const panel = await page.eval('var v = document.querySelector("#view"); if (!v) return { none: true }; var t = v.innerText;' +
     'return { cloud:t.indexOf("الحفظ السحابي") > -1, drive:t.indexOf("Google Drive") > -1, log:t.indexOf("آخر عمليات الرفع") > -1, sched:t.indexOf("موعد النسخة الاحتياطية") > -1 };');
   ok(panel.cloud && panel.drive && panel.log && panel.sched, 'السحابة: اللوحة (الحالة · السجل · زر الربط) ظاهرة للمشرف العام', JSON.stringify(panel));
+  /* زر «طباعة التقرير»: ينتج الوثيقة + شريط إجراءات ظاهر (بدل الفشل الصامت على الجوال) */
+  await page.eval('App.go("schools"); return true;');
+  await B.sleep(900);
+  const repClick = await page.eval('var b=[].slice.call(document.querySelectorAll("#view button")).filter(function(x){return x.innerText.indexOf("طباعة التقرير")>-1;})[0]; if(!b) return "NO"; b.click(); return "OK";');
+  await B.sleep(1000);
+  const rb = await page.eval('var f=document.getElementById("print-frame"); var bar=document.getElementById("report-bar");' +
+    'return { frame:f?f.contentDocument.documentElement.innerHTML.length:0, bar:!!bar,' +
+    ' actions:bar?bar.innerText.replace(/[\\n\\r]+/g," | "):"", err:(window.__E2E.errors||[]).length };');
+  ok(repClick === 'OK' && rb.frame > 1000 && rb.bar,
+    'زر «طباعة التقرير» يُنتج الوثيقة ويُظهر شريط الإجراءات (طباعة · تبويب · PDF)', repClick + ' | frame=' + rb.frame + ' | ' + rb.actions);
+  ok(rb.err === 0, 'لا أخطاء JS عند الطباعة', String(rb.err));
+
   await page.eval('Store.saveDriveConfig({ url: "", enabled: false }); return true;');
   ok(await page.eval('return !Store.driveConfigured();'), 'السحابة: فصل الربط يُوقف الرفع التلقائي');
   return res;
