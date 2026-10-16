@@ -479,6 +479,7 @@
       }
 
       App.route();
+      App.checkStale && App.checkStale();
       global.addEventListener('hashchange', App.route);
     },
 
@@ -607,7 +608,43 @@
         sub ? h('p', { class: 'muted', text: sub }) : null
       ]));
       panel.appendChild(content);
+      var usersN = 0; try { usersN = S.list('users').length; } catch (e) {}
       panel.appendChild(h('p', { class: 'app-ver', text: 'تابعني · الإصدار ' + App.version() }));
+
+      /* 🆘 لو ما دخلت: تشخيص سريع + تحديث قسري (يحل مشكلة النسخة القديمة/التصميم الأول) */
+      var safe = h('div', { class: 'cluster', style: { flexWrap: 'wrap', gap: '8px', marginTop: '10px' } }, [
+        h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🔄 تحديث قسري (مسح الكاش)', onClick: function () { App.hardUpdate(); } }),
+        h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🆘 لماذا لا يعمل الدخول؟', onClick: function () {
+          UI.modal({ title: 'لماذا لا يعمل الدخول؟', wide: true, body: [
+            h('div', { class: 'callout info' }, [
+              h('div', { html: '<b>حسابات هذا الجهاز:</b> ' + usersN + (usersN ? '' : ' — لا يوجد أي حساب هنا!') }),
+              h('div', { html: '<b>نسخة التطبيق:</b> v' + App.version() }),
+              h('div', { html: '<b>الرابط:</b> <span dir="ltr">' + location.origin + location.pathname + '</span>' })
+            ]),
+            usersN ? null : h('div', { class: 'callout warn', text: 'لا توجد حسابات في هذا المكان ⇒ أنت تفتح المنصة في تخزين مختلف عن الذي أنشأت فيه الحسابات ' +
+              '(مثال: تطبيق الشاشة الرئيسية على الآيباد تخزينه منفصل تمامًا عن سفاري، وكذلك النافذة الخاصة). افتحها من نفس المكان دائمًا.' }),
+            h('ol', { class: 'promo-steps' }, [
+              h('li', { text: 'على الآيباد/الآيفون: افتح المنصة من **سفاري** (وليس من أيقونة الشاشة الرئيسية) — أو العكس، لكن لا تخلط بينهما.' }),
+              h('li', { text: 'لا تستخدم «التصفح الخاص/الخفي» إطلاقًا — تخزينه يُمسح.' }),
+              h('li', { text: 'لو ظهرت لك نسخة/تصميم قديم: اضغط «🔄 تحديث قسري» أعلاه.' }),
+              h('li', { text: 'لو الرسالة «اسم المستخدم غير موجود»: أنت في التخزين الصحيح لكن الحساب في مكان آخر — استرجع نسخة احتياطية من شاشة الإعداد.' }),
+              h('li', { text: 'لو الرسالة «دخول المدرسة موقوف»: هذا قرار من إدارة تابعني (اشتراك/إيقاف) — تواصل مع المشرف العام.' })
+            ])
+          ], actions: [
+            { label: '🔄 تحديث قسري', class: 'btn-primary', onClick: function (c) { c(); App.hardUpdate(); } },
+            { label: 'إغلاق', class: 'btn-outline', onClick: function (c) { c(); } }
+          ] });
+        } })
+      ]);
+      void safe;
+      panel.appendChild(h('div', { style: { marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--line)' } }, [
+        h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginBottom: '6px' },
+          text: 'الحسابات في هذا التطبيق: ' + usersN + ' · الإصدار v' + App.version() }),
+        h('div', { class: 'cluster', style: { flexWrap: 'wrap', gap: '8px' } }, [
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🔄 تحديث قسري (مسح الكاش)', onClick: function () { App.hardUpdate(); } }),
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🆘 لماذا لا يعمل الدخول؟', onClick: function () { safe.querySelector('.btn-outline:last-child').click(); } })
+        ])
+      ]));
 
       var aside = h('aside', { class: 'login-aside' }, [
         h('span', { class: 'eyebrow eyebrow-ghost', text: 'تابعني للخدمات الذكية' }),
@@ -1605,6 +1642,45 @@
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k') { e.preventDefault(); App.openSearch(); }
   });
+
+  /* ===================== التحديث القسري وكشف النسخة القديمة ===================== */
+  App.hardUpdate = function (silent) {
+    var done = function () { location.reload(); };
+    var tasks = [];
+    try {
+      if (window.caches && caches.keys) tasks.push(caches.keys().then(function (ks) {
+        return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+      }));
+    } catch (e) {}
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) tasks.push(
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); }));
+        }));
+    } catch (e) {}
+    Promise.all(tasks).then(function () {
+      if (!silent) UI.toast('مُسح الكاش القديم ✓ — يُحدَّث الآن', 'ok');
+      setTimeout(done, silent ? 0 : 700);
+    }, done);
+  };
+
+  /** يقرأ رقم الإصدار من sw.js الحقيقي على الشبكة؛ ولو اختلف عن نسخة الصفحة ⇒ يُحدِّث نفسه مرّة واحدة */
+  App.checkStale = function () {
+    try {
+      if (!navigator.onLine) return;
+      var key = 'tabaani-stale-check';
+      fetch('sw.js', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (txt) {
+        var v = (txt.match(/tabaani-app-v(\d+)/) || [])[1];
+        var mine = String(App.version());
+        if (!v || v === mine) { try { sessionStorage.removeItem(key); } catch (e) {} return; }
+        /* نسخة الصفحة قديمة (كاش/PWA) — حدّث نفسك مرّة واحدة */
+        if (sessionStorage.getItem(key) === '1') return;
+        try { sessionStorage.setItem(key, '1'); } catch (e) {}
+        UI.toast('توجد نسخة أحدث (v' + v + ') — يُحدَّث التطبيق تلقائيًا…', 'ok');
+        setTimeout(function () { App.hardUpdate(true); }, 1200);
+      }).catch(function () {});
+    } catch (e) {}
+  };
 
   global.App = App;
   document.addEventListener('DOMContentLoaded', App.boot);

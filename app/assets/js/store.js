@@ -847,7 +847,8 @@
     genders: [{ id: 'boys', name: 'طلاب (بنين)' }, { id: 'girls', name: 'طالبات (بنات)' }],
     /** جنس المدرسة الحالية */
     gender: function (schoolId) {
-      var sc = store.school(schoolId || store.session.schoolId);
+      var sess = store.session || {};
+      var sc = store.school(schoolId || sess.schoolId);
       return (sc && sc.gender) || 'boys';
     },
     isGirls: function (schoolId) { return store.gender(schoolId) === 'girls'; },

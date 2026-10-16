@@ -1021,10 +1021,14 @@
   function chartSvg(spec) {
     spec = spec || {};
     var escSvg = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-    spec = Object.assign({}, spec, { labels: (spec.labels || []).map(escSvg),
-      series: (spec.series || []).map(function (se) { return Object.assign({}, se, { name: escSvg(se.name) }); }) });
+    var rawSeries = (spec.series && spec.series.length) ? spec.series
+      : [{ name: spec.name || '', values: spec.values || [], color: spec.color || PALETTE[0] }];
+    spec = Object.assign({}, spec, {
+      labels: (spec.labels || []).map(escSvg),
+      series: rawSeries.map(function (se) { return Object.assign({}, se, { name: escSvg(se.name), values: se.values || [] }); })
+    });
     var labels = spec.labels || [];
-    var series = spec.series || [{ name: spec.name || '', values: spec.values || [], color: spec.color || PALETTE[0] }];
+    var series = spec.series;
     var W = spec.width || 780, H = spec.height || 260;
     var padT = 24, padB = 46, padR = 46, padL = 14;
     var max = 1;
