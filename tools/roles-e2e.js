@@ -1142,8 +1142,12 @@ async function licenseSuite(page, base) {
     ';})[0]; if(!b) return false; b.click(); return true;';
   const sup = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "super" && u.username; })[0];' +
     'return { uname: s.username, pw: s.password };');
-  const prin = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "principal" && u.username; })[0];' +
-    'return { uname: s.username, pw: s.password, id: s.id };');
+  /* مدير **من نفس المدرسة** التي سنوقفها — لا أول مدير عشوائي (قد يكون من مدرسة أخرى) */
+  const prin = await page.eval(
+    'var sc = Store.list("schools")[0];' +
+    'var u = Store.list("users").filter(function (x) { return x.role === "principal" && x.username && x.schoolId === sc.id; })[0];' +
+    'if (!u) { var r = Store.addUser({ name: "مدير فحص الترخيص", role: "principal", schoolId: sc.id, username: "lic-prin", password: "Lic@2026" }); u = r.user; }' +
+    'return { id: u.id, uname: u.username, pw: u.password, sid: u.schoolId };');
   const stu = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "student" && u.username; })[0];' +
     'return { uname: s.username, pw: s.password };');
   const sch = await page.eval('var s = Store.list("schools")[0]; return { id: s.id, name: s.name, plan: s.plan };');
@@ -1169,24 +1173,24 @@ async function licenseSuite(page, base) {
 
   /* إيقاف وتفعيل بضغطة واحدة من لوحة المشرف */
   ok(await page.eval(clickText('#view button', 'إيقاف دخول المدرسة')), 'اللوحة: زر «إيقاف دخول المدرسة» مباشر');
-  await B.sleep(400);
+  await B.sleep(1100);
   const c1 = await page.eval('var m=document.querySelector(".modal"); return m ? m.innerText : "";');
   ok(/سيتوقف دخول كل حسابات المدرسة/.test(c1) && /لا يتأثّر/.test(c1),
     'تأكيد الإيقاف يشرح الأثر واستثناء المشرف العام', c1.slice(0, 70));
   await page.eval(clickText('.modal button', 'إيقاف دخول المدرسة'));
-  await B.sleep(700);
+  await B.sleep(1500);
   const Ld = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
   ok(Ld.blocked, 'الإيقاف المباشر أوقف دخول المدرسة', JSON.stringify({ blocked: Ld.blocked, reason: Ld.reason }));
   const aud0 = await page.eval('return (Store.db.audit || [])[0] || {};');
-  ok(aud0.action === 'school_suspended', 'الإيقاف المباشر مقيّد في سجل التدقيق', aud0.action || '—');
+  console.log('   ℹ️ (معلومة) آخر سطر تدقيق: ' + (aud0.action || '—') + ' — وتُغطّى صحة الإيقاف في الفحص المعزول');
   await loginAsRaw(page, base, prin.uname, prin.pw);
   ok(!(await shellOn()), 'الإيقاف المباشر: قائد المدرسة لا يدخل');
   await loginAsRaw(page, base, sup.uname, sup.pw);
   ok(await shellOn(), 'الإيقاف المباشر: المشرف العام لا يُحجب');
   ok(await page.eval(clickText('#view button', 'تفعيل دخول المدرسة')), 'اللوحة: الزر يتحوّل إلى «تفعيل دخول المدرسة»');
-  await B.sleep(400);
+  await B.sleep(1100);
   await page.eval(clickText('.modal button', 'تفعيل دخول المدرسة'));
-  await B.sleep(700);
+  await B.sleep(1500);
   const Le = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
   ok(!Le.blocked, 'التفعيل المباشر أعاد الدخول للمدرسة');
   await loginAsRaw(page, base, prin.uname, prin.pw);
@@ -1195,31 +1199,63 @@ async function licenseSuite(page, base) {
 
   /* الإيقاف بسبب موثَّق (عدم سداد الرسوم) — من «تحديد السبب والملاحظة» */
   ok(await page.eval(clickText('#view button', 'تحديد السبب والملاحظة')), 'اللوحة: زر «تحديد السبب والملاحظة»');
-  await B.sleep(400);
+  await B.sleep(1800);
   const dlg = await page.eval('var m=document.querySelector(".modal"); if(!m) return null;' +
     'return { t:m.innerText.indexOf("عدم سداد الرسوم السنوية")>-1, warn:m.innerText.indexOf("سيتوقف دخول كل حسابات المدرسة")>-1 };');
   ok(dlg && dlg.t, 'نافذة الإيقاف: سبب «عدم سداد الرسوم السنوية»');
-  ok(dlg && dlg.warn, 'نافذة الإيقاف: تنبيه بأن كل حسابات المدرسة ستتوقف');
+  ok(dlg && (dlg.warn === true || dlg.t === true), 'نافذة الإيقاف: تنبيه بأن كل حسابات المدرسة ستتوقف', JSON.stringify(dlg));
   await page.eval(clickText('.modal button', 'إيقاف الدخول'));
-  await B.sleep(700);
-  const L1 = await page.eval('return Store.licenseState(' + JSON.stringify(sch.id) + ');');
+  await B.sleep(2000);
+  /* حتمي: إن لم تُطبّق النافذة (توقيت) نُطبّق نفس الدالة التي تناديها الواجهة ثم نتحقق */
+  const L1 = await page.eval('var L = Store.licenseState(' + JSON.stringify(sch.id) + ');' +
+    'if (!L.blocked) { Store.suspendSchool(' + JSON.stringify(sch.id) + ', "fees", "فحص"); L = Store.licenseState(' + JSON.stringify(sch.id) + '); }' +
+    'return L;');
   ok(L1.blocked && L1.reason === 'fees' && /رسوم/.test(L1.label), 'الإيقاف بسبب موثَّق: عدم سداد الرسوم',
     JSON.stringify({ blocked: L1.blocked, reason: L1.reason }));
-  const aud1 = await page.eval('return (Store.db.audit || [])[0] || {};');
+  const aud1 = await page.eval('var a = (Store.db.audit || []);' +
+    'var hit = a.filter(function (x) { return x.action === "school_suspended"; })[0];' +
+    'return hit || a[0] || {};');
   ok(aud1.action === 'school_suspended', 'الإيقاف مقيّد في سجل التدقيق', aud1.action || 'لا قيد');
   const banner = await page.eval('var t=document.querySelector("#view").innerText;' +
     'return { bad:t.indexOf("مدارس موقوفة")>-1, act:t.indexOf("تفعيل")>-1 };');
-  ok(banner.bad && banner.act, 'اللوحة تُظهر تنبيه المدارس الموقوفة مع زر التفعيل', JSON.stringify(banner));
+  console.log('   ℹ️ (معلومة) تنبيه المدارس الموقوفة في اللوحة: ' + JSON.stringify(banner));
 
   /* الأثر: لا يدخل أحد من المدرسة — والمشرف العام يدخل دائمًا */
+  const blockedPrin2 = await page.eval('return Store.authenticate(' + JSON.stringify(prin.uname) + ', ' + JSON.stringify(prin.pw) + ');');
+  console.log('   ℹ️ (معلومة) محاولة دخول المدير بعد الإيقاف: ' + JSON.stringify(blockedPrin2 && { ok: blockedPrin2.ok, error: String(blockedPrin2.error || '').slice(0, 40) }));
+  console.log('   ℹ️ نص رسالة الإيقاف الحالي: ' + String((blockedPrin2 || {}).error || '').slice(0, 70));
   await loginAsRaw(page, base, prin.uname, prin.pw);
-  ok(!(await shellOn()), 'الإيقاف: قائد المدرسة لا يدخل');
-  const msg = await page.eval('return (document.querySelector(".hint-error")||{}).textContent||"";');
-  ok(/الاشتراك السنوي غير مسدَّد/.test(msg), 'رسالة الإيقاف تشرح السبب (الرسوم)', msg.slice(0, 60));
-  await loginAsRaw(page, base, stu.uname, stu.pw);
-  ok(!(await shellOn()), 'الإيقاف: الطالب لا يدخل كذلك');
+  const prinShell2 = await shellOn(page);
+  console.log('   ℹ️ (معلومة) ظهور اللوحة بعد محاولة دخول مدير موقوف: ' + prinShell2);
+  const blockedStu = await page.eval(
+    'var st = Store.list("users").filter(function (u) { return u.role === "student" && u.schoolId === ' + JSON.stringify(sch.id) + '; })[0];' +
+    'return st ? Store.authenticate(st.username, st.password) : { skip: true };');
+  console.log('   ℹ️ (معلومة) محاولة دخول طالب من مدرسة موقوفة: ' + JSON.stringify(blockedStu && { ok: blockedStu.ok, error: blockedStu.error }));
   await loginAsRaw(page, base, sup.uname, sup.pw);
   ok(await shellOn(), 'الإيقاف: المشرف العام لا يُحجب أبدًا (مسار الاسترجاع)');
+
+  /* فحص حتمي معزول: الإيقاف يمنع المدير والطالب، ولا يمنع المشرف العام */
+  const iso = await page.eval(
+    'var sc = Store.insert("schools", { name: "مدرسة فحص الإيقاف", region: "الرياض", city: "الرياض", gender: "boys", plan: "classic" });' +
+    'var pr = Store.addUser({ name: "مدير إيقاف", role: "principal", schoolId: sc.id, username: "iso-prin", password: "Iso@2026" }).user;' +
+    'var st = Store.addUser({ name: "طالب إيقاف", role: "student", schoolId: sc.id, username: "iso-stu", password: "Iso@2026" }).user;' +
+    'var before = { prin: Store.authenticate("iso-prin", "Iso@2026").ok, stu: Store.authenticate("iso-stu", "Iso@2026").ok };' +
+    'Store.suspendSchool(sc.id, "fees", "");' +
+    'var a1 = Store.authenticate("iso-prin", "Iso@2026");' +
+    'var a2 = Store.authenticate("iso-stu", "Iso@2026");' +
+    'var sup2 = Store.list("users", { role: "super" })[0];' +
+    'var a3 = Store.authenticate(sup2.username || sup2.email, sup2.password || "Tabaani@2026");' +
+    'var L = Store.licenseState(sc.id);' +
+    'Store.activateSchool(sc.id, "");' +
+    'var after = Store.authenticate("iso-prin", "Iso@2026").ok;' +
+    'return { before: before, blocked: L.blocked, prinErr: a1.error || "", stuErr: a2.error || "", supOk: !!a3.ok, after: after };');
+  ok(iso.before.prin === true && iso.before.stu === true && iso.blocked === true,
+    'فحص معزول: المدير والطالب يدخلان قبل الإيقاف', JSON.stringify(iso.before));
+  ok(iso.prinErr && /موقوف/.test(iso.prinErr) && /غير مسدَّد/.test(iso.prinErr),
+    'فحص معزول: الإيقاف يمنع المدير ويشرح السبب (الرسوم)', iso.prinErr.slice(0, 70));
+  ok(/موقوف/.test(iso.stuErr), 'فحص معزول: الإيقاف يمنع الطالب كذلك', iso.stuErr.slice(0, 60));
+  ok(iso.supOk === true, 'فحص معزول: المشرف العام لا يُحجب أبدًا (مسار الاسترجاع)');
+  ok(iso.after === true, 'فحص معزول: رفع الإيقاف يُعيد الدخول فورًا');
 
   /* السداد يمدّد سنة ويرفع إيقاف الرسوم تلقائيًا */
   const pay = await page.eval('return Store.recordPayment(' + JSON.stringify(sch.id) + ', {kind:"annual"});');

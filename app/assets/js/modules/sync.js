@@ -127,13 +127,19 @@
       var wrapped = function () {
         var r = origSave.apply(S, arguments);
         if (!S._inSyncWrite) {
-          S._inSyncWrite = true;
-          try { S.markSyncDirty && S.markSyncDirty('تعديل في المنصة'); } finally { S._inSyncWrite = false; }
-          var cfg = S.syncCfg();
-          if (cfg.auto && cfg.url && cfg.token && navigator.onLine) {
-            clearTimeout(App._autoPushT);
-            App._autoPushT = setTimeout(function () { App.syncPush(); }, 2000);
-          }
+          /* مؤجَّل (debounce): لا نكتب/نعلّم عند كل حفظ — مرة واحدة كل نصف ثانية ⇒ أداء سليم */
+          clearTimeout(App._dirtyT);
+          App._dirtyT = setTimeout(function () {
+            var cfg = S.syncCfg();
+            if (!S.syncDirty()) {
+              S._inSyncWrite = true;
+              try { S.markSyncDirty && S.markSyncDirty('تعديل في المنصة'); } finally { S._inSyncWrite = false; }
+            }
+            if (cfg.auto && cfg.url && cfg.token && navigator.onLine) {
+              clearTimeout(App._autoPushT);
+              App._autoPushT = setTimeout(function () { App.syncPush(); }, 2500);
+            }
+          }, 500);
         }
         return r;
       };
@@ -145,7 +151,8 @@
     var polling = false;
     function checkRemote() {
       var c = S.syncCfg();
-      if (!c.url || !c.token || !navigator.onLine || polling) return;
+      /* السحب التلقائي يعمل فقط في الوضع «تلقائي» — ولا يُقاطع من يكتب ولا يدهس تعديلات غير مرفوعة */
+      if (!c.url || !c.token || !c.auto || !navigator.onLine || polling) return;
       if (document.hidden) return;
       polling = true;
       fetch(c.url.replace(/\/$/, '') + '/api/sync', { headers: { Authorization: 'Bearer ' + c.token } })
