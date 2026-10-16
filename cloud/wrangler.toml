@@ -1,3 +1,4 @@
+account_id = "79cb418fd4b579fe3e2a7b25ccb08d4c"
 # =============================================================================
 # تابعني — إعداد Cloudflare (مجاني تمامًا · بلا بطاقة)
 # النشر:  npx wrangler deploy
@@ -15,7 +16,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "tabaani"
-database_id = "ضع-معرّف-القاعدة-هنا"     # يظهر بعد: npx wrangler d1 create tabaani
+database_id = "3ca10a47-ef35-4e43-b7d5-45dca1928b3e"     # يظهر بعد: npx wrangler d1 create tabaani
 
 [vars]
 SETUP_FEE = "1000"

@@ -46,16 +46,18 @@ async function ensureSchema(env) {
   } catch (e) {
     /* الجداول غير موجودة ⇒ ننشئها من المخطط المدمج */
     try {
-      if (env.DB && typeof env.DB.exec === 'function') {
-        await env.DB.exec(SCHEMA_SQL);
-      } else {
-        for (const stmt of schemaStatements()) {
-          try { await run(env, stmt); } catch (e2) { /* نتجاهل الموجود مسبقًا */ }
+      /* ننفّذ الجمل واحدة واحدة بعد تنقية التعليقات (D1.execute يرفض التعليقات) */
+      let done = 0;
+      for (const stmt of schemaStatements()) {
+        try { await run(env, stmt); done++; }
+        catch (e2) {
+          const m = String((e2 && e2.message) || e2);
+          if (!/already exists|duplicate/i.test(m)) throw e2;   /* الموجود مسبقًا لا يوقفنا */
         }
       }
       await one(env, 'SELECT COUNT(*) AS n FROM users');
       schemaReady = true;
-      return { ok: true, created: true, tables: (SCHEMA_SQL.match(/CREATE TABLE/gi) || []).length };
+      return { ok: true, created: true, statements: done, tables: (SCHEMA_SQL.match(/CREATE TABLE/gi) || []).length };
     } catch (e3) {
       return { ok: false, error: String((e3 && e3.message) || e3) };
     }
@@ -227,23 +229,35 @@ async function handleAckApprove(env, req, ctx) {
   return json({ ok: true, msg: 'اعتُمد إقرار ' + target.name + ' — يعمل حسابه.' });
 }
 
+/** مفتاح المزامنة: مدرسة المستخدم · والمشرف العام له مفتاح المنصة (كل البيانات) */
+function syncKey(ctx, url, body) {
+  if (ctx.user.school_id) return ctx.user.school_id;
+  if (ctx.user.role === 'super') {
+    const q = new URL(url).searchParams.get('schoolId') || (body && body.schoolId) || 'platform';
+    return String(q).slice(0, 60);
+  }
+  return '';
+}
 async function handleSyncGet(env, req, ctx) {
-  if (!ctx.user.school_id) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
-  const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', ctx.user.school_id);
+  const key = syncKey(ctx, req.url, null);
+  if (!key) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', key);
   return json({ ok: true, version: row ? row.version : 0, updatedAt: row ? row.updated_at : 0,
-    data: row ? JSON.parse(row.json) : null, schoolId: ctx.user.school_id });
+    data: row ? JSON.parse(row.json) : null, schoolId: key });
 }
 async function handleSyncPut(env, req, ctx) {
-  if (!ctx.user.school_id) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const body0 = await req.clone().json().catch(() => ({}));
+  const key = syncKey(ctx, req.url, body0);
+  if (!key) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
   if (['teacher', 'student'].indexOf(ctx.user.role) > -1) return json({ ok: false, msg: 'الرفع السحابي متاح لمدير المدرسة ومن ينوب عنه.' }, 403);
-  const body = await req.json().catch(() => ({}));
+  const body = body0;
   const incoming = body && body.data;
   if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
-  const cur = await one(env, 'SELECT version FROM data WHERE school_id = ?', ctx.user.school_id);
+  const cur = await one(env, 'SELECT version FROM data WHERE school_id = ?', key);
   const base = Number(body.baseVersion || 0);
   if (cur && Number(base || 0) < cur.version) {
     /* لا نكتب فوق نسخة أحدث — نُعيد الأحدث ليحلّ المدير التعارض */
-    const latest = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', ctx.user.school_id);
+    const latest = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', key);
     return json({ ok: false, conflict: true, version: cur.version, latest: JSON.parse(latest.json),
       msg: 'توجد نسخة أحدث على الخادم (v' + cur.version + ') — راجعها قبل الرفع.' }, 409);
   }
@@ -251,10 +265,10 @@ async function handleSyncPut(env, req, ctx) {
   const text = JSON.stringify(incoming);
   if (text.length > 4_000_000) return json({ ok: false, msg: 'حجم البيانات كبير (٤ م.ب كحد أقصى للنسخة).' }, 413);
   if (cur) await run(env, 'UPDATE data SET version = ?, json = ?, updated_at = ?, by_user = ? WHERE school_id = ?',
-    version, text, nowMs(), ctx.user.username, ctx.user.school_id);
+    version, text, nowMs(), ctx.user.username, key);
   else await run(env, 'INSERT INTO data (school_id,version,json,updated_at,by_user) VALUES (?,?,?,?,?)',
-    ctx.user.school_id, version, text, nowMs(), ctx.user.username);
-  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'sync_put', 'v' + version, '');
+    key, version, text, nowMs(), ctx.user.username);
+  await audit(env, ctx.user.username, ctx.user.role, key, 'sync_put', 'v' + version, '');
   return json({ ok: true, version, bytes: text.length });
 }
 
@@ -366,7 +380,17 @@ export default {
         else if (p === '/api/sync' && ctx && req.method === 'GET') res = await handleSyncGet(env, req, ctx);
         else if (p === '/api/sync' && ctx && req.method === 'PUT') res = await handleSyncPut(env, req, ctx);
         else if (p === '/api/search' && ctx) res = await handleSearch(env, req, ctx);
-        else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
+        else if (p === '/api/sync/reset' && req.method === 'POST') {
+        const body = await req.json().catch(() => ({}));
+        const k = String(new URL(req.url).searchParams.get('key') || '');
+        if (!env.SEED_KEY || k !== env.SEED_KEY) { res = json({ ok: false, msg: 'مفتاح غير صحيح.' }, 403); }
+        else {
+          const target = String(body.schoolId || 'platform').slice(0, 60);
+          await run(env, 'DELETE FROM data WHERE school_id = ?', target);
+          res = json({ ok: true, msg: 'أُعيد ضبط نسخة ' + target, schoolId: target });
+        }
+      }
+      else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
         else if (p === '/' || p === '/index.html') res = await servePublic(env, req);
