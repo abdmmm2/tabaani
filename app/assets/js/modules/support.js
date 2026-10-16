@@ -127,6 +127,9 @@
             r.offerTicket ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'افتح تذكرة متابعة', onClick: function () {
               openTicketFromChat(t || (image ? 'أرفقت صورة للمشكلة' : ''));
             } }) : null,
+            (!r.openReg && /تسجيل|تأسيس|مدرستي جديد|اسجل/.test(String(chat.lastSubject || '') + String(chat.lastCategory || ''))) ?
+              h('a', { class: 'btn btn-outline btn-sm', target: '_blank', rel: 'noopener',
+                href: 'https://abdmmm2.github.io/tabaani/site/register.html', text: '📝 بوت التسجيل — صفحة تسجيل مدرسة' }) : null,
             h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: r.openReg ? 'يسجّل المدرسة كاملة ويُرسل بيانات الدخول.' : 'تصل «قسم الدعم» و«المشرف العام» فورًا.' })
           ]));
         }

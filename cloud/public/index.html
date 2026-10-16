@@ -57,11 +57,11 @@
   .promo-ov.is-in { opacity: 1; }
   .promo-ov.is-out { opacity: 0; }
   .promo-ov-back { position: absolute; inset: 0; background: rgba(20,16,10,.62); backdrop-filter: blur(2px); }
-  .promo-ov-card { position: relative; background: #fff; border-radius: 18px; max-width: 460px; width: 100%;
+  .promo-ov-card { position: relative; background: #fff; border-radius: 18px; max-width: 560px; width: 100%;
     padding: 16px 16px 14px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.35);
     border: 1.4px solid #F0DFB5; transform: translateY(10px) scale(.97); transition: transform .35s cubic-bezier(.2,.8,.2,1); }
   .promo-ov.is-in .promo-ov-card { transform: translateY(0) scale(1); }
-  .promo-ov-card img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; }
+  .promo-ov-card img { width: 100%; max-height: none; height: auto; object-fit: contain; border-radius: 12px; margin-bottom: 10px; }
   .promo-ov-card .pb-tag { display: inline-block; background: var(--gold, #C69A3E); color: #14100A; font-size: 11px;
     font-weight: 800; border-radius: 999px; padding: 3px 12px; }
   .promo-ov-card h3 { margin: 8px 0 6px; font-size: 19px; color: var(--emerald, #0E5F4C); }
@@ -69,6 +69,28 @@
   .promo-ov-card .pb-x { position: absolute; top: 8px; inset-inline-end: 10px; width: 34px; height: 34px; border-radius: 50%;
     border: none; background: rgba(255,255,255,.9); font-size: 22px; line-height: 1; color: #6B6255; cursor: pointer; }
   .promo-ov-timer { margin-top: 8px; font-size: 11.5px; color: #8C8171; }
+
+  /* الدعم المناوب + بوت التسجيل */
+  .sup-fab { position: fixed; inset-inline-start: 16px; bottom: 16px; z-index: 2400; display: flex; align-items: center; gap: 8px;
+    background: var(--emerald, #0E5F4C); color: #fff; border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer;
+    box-shadow: 0 10px 26px rgba(0,0,0,.25); font: inherit; font-size: 14px; font-weight: 700; }
+  .sup-panel { position: fixed; inset: 0; z-index: 2600; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .sup-panel.is-on { display: flex; }
+  .sup-back { position: absolute; inset: 0; background: rgba(20,16,10,.62); }
+  .sup-card { position: relative; background: #fff; border-radius: 18px; max-width: 420px; width: 100%; padding: 16px;
+    border: 1.4px solid #F0DFB5; box-shadow: 0 24px 60px rgba(0,0,0,.35); text-align: center; }
+  .sup-card img.agent { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold, #C69A3E); }
+  .sup-card h3 { margin: 8px 0 2px; font-size: 17px; color: var(--emerald, #0E5F4C); }
+  .sup-card .role { font-size: 12px; color: var(--muted, #6B6255); }
+  .sup-card .acts { display: grid; gap: 8px; margin-top: 12px; }
+  .sup-card .acts a, .sup-card .acts button { font: inherit; font-size: 14px; padding: 11px 14px; border-radius: 11px;
+    border: 1.4px solid var(--emerald, #0E5F4C); background: #fff; color: var(--emerald, #0E5F4C); text-decoration: none; cursor: pointer; }
+  .sup-card .acts a.primary, .sup-card .acts button.primary { background: var(--emerald, #0E5F4C); color: #fff; }
+  .sup-card .x { position: absolute; top: 8px; inset-inline-end: 10px; width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: #F5F7F6; font-size: 22px; line-height: 1; color: #6B6255; cursor: pointer; }
+  /* صورة الإعلان: كبيرة وواضحة بلا قص */
+  .promo-ov-card img { width: 100%; max-height: none; height: auto; object-fit: contain; border-radius: 12px; margin-bottom: 10px; }
+  .promo-ov-card { max-width: 560px; }
 </style>
 </head>
 <body>
@@ -319,6 +341,7 @@
           '<h3>' + (ad.title || 'عرض تابعني') + '</h3>' +
           (ad.text ? '<p>' + ad.text + '</p>' : '') +
           (ad.link ? '<a class="btn" href="' + ad.link + '" style="font-size:14px;padding:10px 18px">التفاصيل</a>' : '') +
+          '<button class="btn" data-inquire="1" type="button" style="font-size:14px;padding:10px 18px;background:#fff;color:#0E5F4C;border:1.4px solid #0E5F4C;margin-inline-start:8px">🎧 استفسر — الدعم المناوب</button>' +
           '<div class="promo-ov-timer">يُغلق تلقائيًا بعد ' + SECS + ' ثانية</div>' +
         '</div>';
       document.body.appendChild(ov);
@@ -342,6 +365,63 @@
       s.src = 'https://abdmmm2.github.io/tabaani/site/assets/data/promo-config.js'; s.async = false;
       s.onload = function () { setTimeout(render, 400); }; s.onerror = function () {};
       document.head.appendChild(s);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  })();
+</script>
+<script src="https://abdmmm2.github.io/tabaani/site/assets/data/support-config.js"></script>
+<script>
+  /* ===== الدعم المناوب + بوت التسجيل ===== */
+  (function () {
+    var S = window.TABAANI_SUPPORT || {};
+    var panel = null;
+    function agentNow() {
+      var list = (S.agents || []); if (!list.length) return null;
+      var h = new Date().getHours();
+      return list.filter(function (a) {
+        var from = a.from == null ? 8 : a.from, to = a.to == null ? 20 : a.to;
+        return from <= to ? (h >= from && h < to) : (h >= from || h < to);
+      })[0] || list[0];
+    }
+    function build() {
+      var a = agentNow() || {};
+      var reg = S.register || {};
+      var els = [];
+      if (a.img) els.push('<img class="agent" src="' + a.img + '" alt="">');
+      els.push('<h3>' + (a.name || S.title || 'الدعم الفني') + '</h3>');
+      els.push('<div class="role">' + (a.role || 'مناوب الآن') + (a.shift ? ' · ' + a.shift : '') + '</div>');
+      var acts = [];
+      if (a.whatsapp) acts.push('<a class="primary" href="https://wa.me/' + String(a.whatsapp).replace(/[^0-9]/g, '') + '" target="_blank" rel="noopener">💬 واتساب</a>');
+      if (a.phone) acts.push('<a href="tel:' + a.phone + '">📞 اتصال مباشر</a>');
+      if (a.telegram) acts.push('<a href="https://t.me/' + a.telegram + '" target="_blank" rel="noopener">✈️ محادثة تلقرام</a>');
+      acts.push('<button class="primary" type="button" id="supReg">📝 تسجيل مدرسة جديدة (بوت التسجيل)</button>');
+      els.push('<div class="acts">' + acts.join('') + '</div>');
+      els.push('<div style="margin-top:10px;font-size:11.5px;color:#8C8171">' + (reg.telegram ? 'بوت التسجيل: @' + reg.telegram : '') + '</div>');
+      var ov = document.createElement('div');
+      ov.className = 'sup-panel is-on';
+      ov.innerHTML = '<div class="sup-back"></div><div class="sup-card"><button class="x" type="button">&times;</button>' + els.join('') + '</div>';
+      document.body.appendChild(ov);
+      ov.querySelector('.x').addEventListener('click', function () { ov.remove(); panel = null; });
+      ov.querySelector('.sup-back').addEventListener('click', function () { ov.remove(); panel = null; });
+      var rb = ov.querySelector('#supReg');
+      if (rb) rb.addEventListener('click', function () {
+        ov.remove(); panel = null;
+        var form = document.getElementById('step1');
+        if (form) { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); var i = form.querySelector('input'); if (i) setTimeout(function () { i.focus(); }, 500); }
+        else if (reg.telegram) window.open('https://t.me/' + reg.telegram, '_blank');
+      });
+      return ov;
+    }
+    function boot() {
+      var fab = document.createElement('button');
+      fab.className = 'sup-fab'; fab.type = 'button';
+      fab.innerHTML = '🎧 الدعم الفني — المناوب الآن';
+      fab.addEventListener('click', function () { if (panel) { panel.remove(); panel = null; } else panel = build(); });
+      document.body.appendChild(fab);
+      document.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-inquire]') : null;
+        if (t) { e.preventDefault(); if (panel) { panel.remove(); panel = null; } panel = build(); }
+      });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   })();
