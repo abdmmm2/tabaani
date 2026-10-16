@@ -6,6 +6,7 @@
 #   ١) فحوص ساكنة  : صياغة JS · JSON · وجود ملفات sw.js · الموارد المحلية · رقم الإصدار
 #   ٢) فحص الأدوار : node tools/roles-e2e.js    (دخول كل دور · العزل · صفر أخطاء JS)
 #   ٣) فحص الجوال  : node tools/mobile-check.js (تجاوز أفقي · القائمة · أهداف اللمس)
+#   ٤) فحوص السحابة: node tools/check-cloud.js (المرحلة الثانية: منطق Worker/D1 بلا شبكة)
 #
 # التشغيل:  bash tools/matrix.sh
 # إن لم يكن Chrome في موضع معروف:  CHROME_BIN=/path/to/chrome bash tools/matrix.sh
@@ -37,6 +38,7 @@ run_stage () {
 run_stage "فحوص ساكنة"      node tools/static-checks.js
 run_stage "فحص الأدوار والعزل" node tools/roles-e2e.js
 run_stage "فحص الجوال"       node tools/mobile-check.js
+run_stage "فحوص السحابة (المرحلة ٢)" node tools/check-cloud.js
 
 echo
 echo "════════════════════════════════════════════════"

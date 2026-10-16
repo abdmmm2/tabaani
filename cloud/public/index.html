@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تسجيل مدرسة في تابعني للخدمات الذكية</title>
+<meta name="description" content="سجّل مدرستك في تابعني: أدخل بيانات المدرسة، فعّل بريدك بالكود، وسداد رسم التأسيس — ونكمل التهيئة عنك.">
+<style>
+  :root { --ink:#14100A; --emerald:#0E5F4C; --emerald-600:#0B4C3D; --gold:#C69A3E; --line:#E6DFD2; --bg:#FAF8F4; --muted:#6B6255; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans Arabic",-apple-system,"Segoe UI",Tahoma,sans-serif; line-height:1.8; }
+  .wrap { max-width:900px; margin:0 auto; padding:20px 14px 70px; }
+  header.top { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:6px 2px 14px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand img { width:46px; height:46px; object-fit:contain; }
+  .brand b { display:block; font-size:18px; color:var(--emerald); }
+  .brand span { font-size:12px; color:var(--muted); }
+  h1 { font-size:24px; margin:6px 0 4px; }
+  .lead { color:var(--muted); font-size:14.5px; margin:0 0 16px; }
+  .card { background:#fff; border:1.4px solid var(--line); border-radius:14px; padding:18px 16px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+  input, select, textarea { width:100%; font:inherit; font-size:15px; padding:10px 12px; border:1.2px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); }
+  input:focus, select:focus, textarea:focus { outline:2px solid #BFE3D8; border-color:var(--emerald); }
+  .chips { display:flex; flex-wrap:wrap; gap:10px; }
+  .chips label { display:flex; align-items:center; gap:6px; font-size:14px; color:var(--ink); margin:0;
+    border:1.2px solid var(--line); border-radius:999px; padding:7px 12px; cursor:pointer; }
+  .plans { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .plan { border:1.6px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; background:#fff; }
+  .plan.is-on { border-color:var(--emerald); box-shadow:0 0 0 3px #E7F3EF; }
+  .plan b { display:block; font-size:16px; color:var(--emerald); }
+  .plan .fee { font-size:20px; font-weight:800; margin-top:4px; }
+  .plan ul { margin:8px 0 0; padding-inline-start:18px; font-size:13px; color:var(--muted); }
+  .btn { font:inherit; font-size:15px; padding:12px 20px; border-radius:11px; border:1.4px solid var(--emerald);
+    background:var(--emerald); color:#fff; cursor:pointer; }
+  .btn.alt { background:#fff; color:var(--emerald); }
+  .btn:disabled { opacity:.55; cursor:not-allowed; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+  .err { color:#8A1F1F; font-size:12.5px; min-height:16px; }
+  .ok { color:var(--emerald); }
+  .note { background:#FFF8E8; border:1px solid #F0DFB5; border-radius:10px; padding:10px 12px; font-size:13.5px; }
+  .code { display:flex; gap:10px; justify-content:center; direction:ltr; }
+  .code input { width:56px; height:64px; text-align:center; font-size:26px; font-weight:800; letter-spacing:0; }
+  .hide { display:none !important; }
+  .steps { display:flex; gap:8px; flex-wrap:wrap; font-size:13px; color:var(--muted); margin-bottom:14px; }
+  .steps span { border:1px solid var(--line); border-radius:999px; padding:5px 12px; background:#fff; }
+  .steps span.on { border-color:var(--emerald); color:var(--emerald); font-weight:700; }
+  footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:18px; }
+  footer a { color:var(--emerald); }
+  @media (max-width:640px) { .grid, .plans { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <img src="https://abdmmm2.github.io/tabaani/app/assets/img/logo-mark.png" alt="تابعني">
+      <div><b>تابعني للخدمات الذكية</b><span>منصة إدارة المدارس · تسجيل مدرسة</span></div>
+    </div>
+    <a class="btn alt" href="https://abdmmm2.github.io/tabaani/app/">دخول المنصة</a>
+  </header>
+
+  <div class="steps" id="steps">
+    <span class="on" data-s="1">١ · بيانات المدرسة</span>
+    <span data-s="2">٢ · كود التفعيل</span>
+    <span data-s="3">٣ · سداد رسم التأسيس</span>
+    <span data-s="4">٤ · التهيئة</span>
+  </div>
+
+  <h1>سجّل مدرستك في تابعني</h1>
+  <p class="lead">أدخل بيانات المدرسة، فعّل بريدك بالكود الذي سيصلك، وسدّد رسم التأسيس (تحويل بنكي) — ثم نُهيّئ مدرستك ونُرسل بيانات الدخول لمدير المدرسة.</p>
+
+  <!-- ============================ ١) البيانات ============================ -->
+  <section class="card" id="step1">
+    <div class="grid">
+      <div><label for="schoolName">اسم المدرسة</label><input id="schoolName" autocomplete="organization"><div class="err" data-e="schoolName"></div></div>
+      <div><label for="studentsApprox">عدد الطلاب تقريبًا</label><input id="studentsApprox" type="number" min="0" inputmode="numeric"></div>
+      <div><label for="region">المنطقة</label><input id="region" placeholder="مثال: الرياض"></div>
+      <div><label for="city">المدينة</label><input id="city" placeholder="مثال: الرياض"></div>
+    </div>
+    <div class="err" data-e="region"></div><div class="err" data-e="city"></div>
+
+    <div style="margin-top:12px">
+      <label>المراحل</label>
+      <div class="chips" id="stages">
+        <label><input type="checkbox" value="ابتدائي"> ابتدائي</label>
+        <label><input type="checkbox" value="متوسط"> متوسط</label>
+        <label><input type="checkbox" value="ثانوي"> ثانوي</label>
+      </div>
+      <div class="err" data-e="stages"></div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label>النوع</label>
+      <div class="chips" id="gender">
+        <label><input type="radio" name="gender" value="boys"> بنين</label>
+        <label><input type="radio" name="gender" value="girls"> بنات</label>
+      </div>
+      <div class="err" data-e="gender"></div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <div><label for="principalName">اسم مدير المدرسة</label><input id="principalName"><div class="err" data-e="principalName"></div></div>
+      <div><label for="phone">جوال مدير المدرسة</label><input id="phone" inputmode="tel" placeholder="05xxxxxxxx" dir="ltr"><div class="err" data-e="phone"></div></div>
+      <div><label for="email">البريد الإلكتروني (يُرسل عليه كود التفعيل)</label><input id="email" type="email" dir="ltr"><div class="err" data-e="email"></div></div>
+      <div><label for="note">ملاحظات (اختياري)</label><input id="note"></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <label>الباقة</label>
+      <div class="plans" id="plans">
+        <div class="plan is-on" data-plan="classic">
+          <b>تابعني كلاسيك</b>
+          <div class="fee">١٠٠٠ ر.س <span style="font-size:12px;font-weight:400;color:#6B6255">سنويًا</span></div>
+          <ul><li>الحضور والمخالفات والأذونات والتقارير</li><li>حسابات المعلمين والطلاب</li><li>إقرارات الاستخدام وجودة البيانات</li></ul>
+        </div>
+        <div class="plan" data-plan="pro">
+          <b>تابعني برو</b>
+          <div class="fee">١٥٠٠ ر.س <span style="font-size:12px;font-weight:400;color:#6B6255">سنويًا</span></div>
+          <ul><li>كل ما في كلاسيك</li><li>تلقرام للمدرسة + الرسائل الخاصة</li><li>التحقق بمرحلتين والحفظ السحابي والتقارير المتقدمة</li></ul>
+        </div>
+      </div>
+      <div class="note" style="margin-top:12px">رسم التأسيس <b>١٠٠٠ ر.س مرة واحدة</b> (يُسدد عند التسجيل) — الدفع <b>تحويل بنكي</b> ويصلك إشعار بالحساب فور الاعتماد.</div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="sendBtn" type="button">أرسل الطلب ويصلني كود التفعيل</button>
+      <span class="err" id="topErr"></span>
+    </div>
+  </section>
+
+  <!-- ============================ ٢) الكود ============================ -->
+  <section class="card hide" id="step2">
+    <h2 style="font-size:17px;margin:0 0 6px">أدخل كود التفعيل</h2>
+    <p class="lead" id="codeLead">أرسلنا كودًا من ٦ أرقام إلى بريدك. صالح ١٥ دقيقة، و<b>٣ محاولات</b> فقط.</p>
+    <div class="code" id="codeBoxes">
+      <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+      <input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric"><input maxlength="1" inputmode="numeric">
+    </div>
+    <div class="row">
+      <button class="btn" id="verifyBtn" type="button">تحقّق من الكود</button>
+      <button class="btn alt" id="resendBtn" type="button">أعد إرسال الكود</button>
+      <span class="err" id="codeErr"></span>
+    </div>
+    <p class="lead hide ok" id="verifyOk"></p>
+  </section>
+
+  <!-- ============================ ٣) السداد ============================ -->
+  <section class="card hide" id="step3">
+    <h2 style="font-size:17px;margin:0 0 6px">سداد رسم التأسيس</h2>
+    <p class="lead">تمّ التحقق من بريدك ✓ — الخطوة الأخيرة: تحويل <b>١٠٠٠ ر.س</b> (رسم التأسيس) إلى الحساب البنكي أدناه، ثم أرسل صورة الإشعار على بريد المنصة مع طلب التسجيل.</p>
+    <div class="grid">
+      <div><label>اسم المستفيد</label><input readonly value="تابعني للخدمات الذكية"></div>
+      <div><label>البنك</label><input readonly value="يُرسل مع تأكيد الطلب"></div>
+      <div><label>رقم الحساب / الآيبان</label><input readonly value="يُرسل مع تأكيد الطلب" dir="ltr"></div>
+      <div><label>المرجع</label><input readonly id="refNo" dir="ltr"></div>
+    </div>
+    <div class="note" style="margin-top:12px">لا يعمل الحساب إلا بعد اعتماد الطلب وتهيئة المدرسة. ستصلك <b>بيانات الدخول</b> على بريدك عند الاعتماد.</div>
+    <div class="row">
+      <a class="btn" href="https://abdmmm2.github.io/tabaani/app/">اذهب للمنصة</a>
+      <a class="btn alt" href="https://abdmmm2.github.io/tabaani/d21448/">دليل الاستخدام</a>
+    </div>
+  </section>
+
+  <footer>
+    <div>تابعني للخدمات الذكية — بياناتك محفوظة لمدرستك، ولا تُشارك مع أي مدرسة أخرى.</div>
+    <div><a href="https://abdmmm2.github.io/tabaani/app/">المنصة</a> · <a href="https://abdmmm2.github.io/tabaani/d21448/">الدليل</a> · <a href="https://abdmmm2.github.io/tabaani/site/ack.html">نموذج الإقرار</a></div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var API = (location.origin.indexOf('github.io') > -1) ? 'https://tabaani.<account>.workers.dev' : '';
+  var $ = function (s) { return document.querySelector(s); };
+  var state = { regId: '', email: '' };
+
+  function setStep(n) {
+    [1, 2, 3].forEach(function (i) { $('#step' + i).classList.toggle('hide', i !== n); });
+    document.querySelectorAll('#steps span').forEach(function (s) { s.classList.toggle('on', Number(s.getAttribute('data-s')) <= n); });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function err(e, msg) { var el = document.querySelector('[data-e="' + e + '"]'); if (el) el.textContent = msg || ''; }
+  function clearErrs() { document.querySelectorAll('.err').forEach(function (x) { x.textContent = ''; }); }
+
+  function collect() {
+    return {
+      schoolName: $('#schoolName').value, region: $('#region').value, city: $('#city').value,
+      stages: Array.prototype.slice.call(document.querySelectorAll('#stages input:checked')).map(function (x) { return x.value; }),
+      gender: (document.querySelector('#gender input:checked') || {}).value || '',
+      plan: (document.querySelector('.plan.is-on') || {}).getAttribute ? document.querySelector('.plan.is-on').getAttribute('data-plan') : 'classic',
+      principalName: $('#principalName').value, phone: $('#phone').value, email: $('#email').value,
+      note: $('#note').value, studentsApprox: $('#studentsApprox').value
+    };
+  }
+
+  document.querySelectorAll('.plan').forEach(function (p) {
+    p.addEventListener('click', function () {
+      document.querySelectorAll('.plan').forEach(function (x) { x.classList.remove('is-on'); });
+      p.classList.add('is-on');
+    });
+  });
+
+  $('#sendBtn').addEventListener('click', function () {
+    clearErrs(); $('#topErr').textContent = '';
+    var data = collect();
+    var missing = {
+      schoolName: !data.schoolName, region: !data.region, city: !data.city,
+      stages: !data.stages.length, gender: !data.gender, principalName: !data.principalName,
+      phone: !data.phone, email: !data.email
+    };
+    var any = Object.keys(missing).filter(function (k) { return missing[k]; });
+    if (any.length) { any.forEach(function (k) { err(k, 'مطلوب'); }); $('#topErr').textContent = 'أكمل الحقول المطلوبة'; return; }
+    var btn = this; btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
+    fetch(API + '/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false; btn.textContent = 'أرسل الطلب ويصلني كود التفعيل';
+        if (!res.j.ok) {
+          if (res.j.errors) Object.keys(res.j.errors).forEach(function (k) { err(k, res.j.errors[k]); });
+          $('#topErr').textContent = res.j.msg || 'تعذّر الإرسال';
+          return;
+        }
+        state.regId = res.j.regId; state.email = data.email;
+        $('#codeLead').innerHTML = res.j.mailed
+          ? 'أرسلنا كودًا من ٦ أرقام إلى <b>' + data.email + '</b>. صالح ١٥ دقيقة و٣ محاولات.'
+          : 'سُجّل طلبك، لكن تعذّر إرسال الكود آليًا — تواصل معنا وسنرسله لك.';
+        setStep(2);
+        var boxes = document.querySelectorAll('#codeBoxes input');
+        if (boxes[0]) boxes[0].focus();
+      })
+      .catch(function () { btn.disabled = false; btn.textContent = 'أرسل الطلب ويصلني كود التفعيل'; $('#topErr').textContent = 'تعذّر الاتصال بالخادم — تأكّد من الإنترنت.'; });
+  });
+
+  /* خانات الكود */
+  var boxes = document.querySelectorAll('#codeBoxes input');
+  boxes.forEach(function (b, i) {
+    b.addEventListener('input', function () {
+      b.value = b.value.replace(/\D/g, '').slice(0, 1);
+      if (b.value && boxes[i + 1]) boxes[i + 1].focus();
+    });
+    b.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) boxes[i - 1].focus(); });
+    b.addEventListener('paste', function (e) {
+      var t = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+      if (!t) return; e.preventDefault();
+      boxes.forEach(function (x, j) { x.value = t[j] || ''; });
+    });
+  });
+
+  $('#verifyBtn').addEventListener('click', function () {
+    var code = Array.prototype.map.call(boxes, function (b) { return b.value; }).join('');
+    $('#codeErr').textContent = '';
+    if (code.length !== 6) { $('#codeErr').textContent = 'أدخل ٦ أرقام'; return; }
+    var btn = this; btn.disabled = true;
+    fetch(API + '/api/activation/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ regId: state.regId, email: state.email, code: code }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        btn.disabled = false;
+        if (!j.ok) { $('#codeErr').textContent = j.msg || 'كود غير صحيح'; if (j.cancelled) setTimeout(function () { location.reload(); }, 2500); return; }
+        $('#verifyOk').textContent = j.msg || 'تم التحقق ✓';
+        $('#refNo').value = state.regId;
+        setStep(3);
+      })
+      .catch(function () { btn.disabled = false; $('#codeErr').textContent = 'تعذّر الاتصال بالخادم.'; });
+  });
+
+  $('#resendBtn').addEventListener('click', function () {
+    fetch(API + '/api/activation/request', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ regId: state.regId, email: state.email }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { $('#codeErr').textContent = j.msg || ''; })
+      .catch(function () { $('#codeErr').textContent = 'تعذّر الاتصال.'; });
+  });
+})();
+</script>
+</body>
+</html>

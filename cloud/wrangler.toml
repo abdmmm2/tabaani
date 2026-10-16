@@ -1,0 +1,29 @@
+# =============================================================================
+# تابعني — إعداد Cloudflare (مجاني تمامًا · بلا بطاقة)
+# النشر:  npx wrangler deploy
+# =============================================================================
+name = "tabaani"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# الموارد: صفحة التسجيل العامة + worker واحد
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+# قاعدة بيانات D1 (مجانية: 5 جيجا · 100 ألف كتابة/يوم · 5 مليون قراءة/يوم)
+[[d1_databases]]
+binding = "DB"
+database_name = "tabaani"
+database_id = "ضع-معرّف-القاعدة-هنا"     # يظهر بعد: npx wrangler d1 create tabaani
+
+[vars]
+SETUP_FEE = "1000"
+ALLOW_ORIGIN = "https://abdmmm2.github.io"
+
+# الأسرار (لا تُكتب هنا أبدًا):
+#   npx wrangler secret put TOKEN_SECRET     → نص طويل عشوائي لتوقيع الجلسات
+#   npx wrangler secret put MAIL_ENDPOINT    → رابط Apps Script المنشور (لإرسال الأكواد والبريد)
+#   npx wrangler secret put MAIL_KEY         → مفتاح اختياري يقبله Apps Script
+#   npx wrangler secret put TG_TOKEN         → توكن بوت تلقرام (للتنبيهات)
+#   npx wrangler secret put SEED_KEY         → مفتاح لمسار التهيئة /api/seed
