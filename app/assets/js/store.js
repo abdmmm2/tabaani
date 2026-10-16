@@ -1593,6 +1593,112 @@
       save(); return u;
     },
 
+    /* =====================================================================
+       محرك البحث — بنطاق محسوب من الصلاحية نفسها (لا يُبنى على إخفاء الواجهة)
+       نطاقات: all (المشرف العام) · school (مدير/وكيل/مراقب/محاسب/دعم) · self (المعلم: فصوله فقط)
+       ===================================================================== */
+    searchScope: function (userId, role) {
+      var u = userId ? store.user(userId) : (store.session && store.user(store.session.userId));
+      var r = role || (u && u.role);
+      if (r === 'super') return { kind: 'all', schoolId: null };
+      if (r === 'teacher' || r === 'student') return { kind: 'self', schoolId: (u && u.schoolId) || null, userId: u && u.id };
+      return { kind: 'school', schoolId: (u && u.schoolId) || null, userId: u && u.id };
+    },
+    /** فصول المعلم: من classIds ومن الجدول/الإسنادات */
+    teacherClassIds: function (teacherId) {
+      var u = store.user(teacherId); var ids = {};
+      (u && u.classIds || []).forEach(function (c) { ids[c] = 1; });
+      store.list('assignments', { teacherId: teacherId }).forEach(function (a) { if (a.classId) ids[a.classId] = 1; });
+      (db.schedules || []).forEach(function (sc) { if (sc.teacherId === teacherId && sc.classId) ids[sc.classId] = 1; });
+      return Object.keys(ids);
+    },
+    /**
+     * البحث. opts = {q, scope:{kind,...}, limit}
+     * يُعيد [{ label, icon, items:[{title, sub, id, kind, schoolId, badge}] }]
+     */
+    search: function (q, opts) {
+      opts = opts || {};
+      var term = String(q || '').trim().toLowerCase();
+      if (!term || term.length < 1) return { q: q, groups: [], total: 0 };
+      var sc = opts.scope || store.searchScope();
+      var lim = opts.limit || 40;
+      var mine = sc.kind === 'self' && sc.userId ? store.teacherClassIds(sc.userId) : null;
+      var inScope = function (row) {
+        if (sc.kind === 'all') return true;
+        if (!sc.schoolId) return false;
+        if (row.schoolId && row.schoolId !== sc.schoolId) return false;
+        return true;
+      };
+      var ok = function (row) { return inScope(row); };
+      var hit = function (v) { return String(v == null ? '' : v).toLowerCase().indexOf(term) > -1; };
+      var any = function (row, keys) { return keys.some(function (k) { return hit(row[k]); }); };
+      var groups = [], total = 0;
+      var add = function (label, icon, items) {
+        if (!items.length) return;
+        total += items.length;
+        groups.push({ label: label, icon: icon, items: items.slice(0, lim) });
+      };
+
+      /* المدارس — للمشرف العام فقط */
+      if (sc.kind === 'all') {
+        add('المدارس', '🏫', store.list('schools').filter(function (x) { return any(x, ['name', 'region', 'city', 'nationalId', 'licenseNo']); })
+          .map(function (x) { return { kind: 'school', id: x.id, schoolId: x.id, title: x.name, sub: (x.region || '') + ' · ' + (x.city || '') + ' · ' + (x.gender === 'girls' ? 'بنات' : 'بنين'), badge: store.licenseLabel ? store.licenseLabel(x) : '' }; }));
+      }
+      /* المستخدمون */
+      add(sc.kind === 'self' ? 'زملاؤك معلمو فصولك' : 'المستخدمون', '👤',
+        store.list('users').filter(function (u) {
+          if (!ok(u)) return false;
+          if (sc.kind === 'self') {
+            if (u.role !== 'teacher') return false;                       /* المعلم لا يرى غير المعلمين */
+            return (u.classIds || []).some(function (c) { return mine.indexOf(c) > -1; }) || u.id === sc.userId;
+          }
+          return any(u, ['name', 'username', 'phone', 'email', 'nationalId']);
+        }).map(function (u) {
+          return { kind: 'user', id: u.id, schoolId: u.schoolId, title: u.name,
+            sub: store.roleLabel(u.role) + (u.username ? ' · ' + u.username : ''), badge: u.status === 'active' ? '' : 'موقوف' };
+        }));
+      /* الطلاب — المعلم: طلاب فصوله فقط */
+      add('الطلاب', '🎒', store.list('students').filter(function (st) {
+        if (!ok(st)) return false;
+        if (sc.kind === 'self' && mine.indexOf(st.classId) === -1) return false;
+        return any(st, ['name', 'nationalId', 'guardianPhone', 'seat']);
+      }).map(function (st) {
+        var k = store.klass(st.classId) || {};
+        return { kind: 'student', id: st.id, schoolId: st.schoolId, title: st.name,
+          sub: (k.grade || st.grade || '') + ' / ' + (k.section || st.section || '') + ' · مقعد ' + (st.seat || '—') };
+      }));
+      /* الفصول */
+      add('الفصول', '🏛️', store.list('classes').filter(function (k) {
+        if (!ok(k)) return false;
+        if (sc.kind === 'self' && mine.indexOf(k.id) === -1) return false;
+        return any(k, ['grade', 'section', 'room', 'stage']);
+      }).map(function (k) {
+        return { kind: 'class', id: k.id, schoolId: k.schoolId, title: (k.grade || '') + ' / ' + (k.section || ''),
+          sub: (k.room ? 'قاعة ' + k.room + ' · ' : '') + store.studentsOf(k.id).length + ' طالبًا' };
+      }));
+      /* بقية السجلات المدرسية (لا تصفّحها فصول المعلم) */
+      if (sc.kind !== 'self') {
+        var pairs = [
+          ['المخالفات', '⚠️', 'violations', ['type', 'note', 'studentName'], function (x) { return x.studentName || (store.student(x.studentId) || {}).name; }],
+          ['الأذونات', '🚪', 'permissions', ['reason', 'note', 'studentName'], function (x) { return x.studentName || (store.student(x.studentId) || {}).name; }],
+          ['الفواتير', '🧾', 'invoices', ['no', 'customerName'], function (x) { return x.customerName || (store.school(x.schoolId) || {}).name; }],
+          ['طلبات السداد', '💳', 'paymentRequests', ['note', 'method'], function (x) { return (store.school(x.schoolId) || {}).name; }],
+          ['المصروفات', '💸', 'expenses', ['desc', 'category'], function (x) { return x.desc; }],
+          ['تذاكر الدعم', '🎧', 'tickets', ['subject', 'body'], function (x) { return x.subject; }],
+          ['الرسائل', '✉️', 'messages', ['title', 'body'], function (x) { return x.title; }]
+        ];
+        pairs.forEach(function (p) {
+          var label = p[0], icon = p[1], coll = p[2], keys = p[3], titleOf = p[4];
+          add(label, icon, store.list(coll).filter(function (x) { return ok(x) && any(x, keys); })
+            .map(function (x) { return { kind: coll, id: x.id, schoolId: x.schoolId, title: String(titleOf(x) || label), sub: (store.school(x.schoolId) || {}).name || '' }; }));
+        });
+      }
+      /* ترتيب المجموعات: الأهم أولًا */
+      var order = ['المدارس', 'المستخدمون', 'الطلاب', 'الفصول'];
+      groups.sort(function (a, b) { return (order.indexOf(a.label) > -1 ? order.indexOf(a.label) : 99) - (order.indexOf(b.label) > -1 ? order.indexOf(b.label) : 99); });
+      return { q: q, scope: sc.kind, groups: groups, total: total };
+    },
+
     /** لوحة تحكم المشرف العام: إحصاءات + إيرادات + توزيع لكل مدرسة ودور (بنداء واحد) */
     platformDashboard: function () {
       var schools = store.list('schools');

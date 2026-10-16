@@ -417,7 +417,14 @@
         if (sidebar._backdrop) sidebar._backdrop.classList.toggle('is-open', open);
       } }, [h('span', { html: '&#9776;' })]));
       topbar.appendChild(h('h2', { id: 'view-title', text: '' }));
+      var scopeKind = (S.searchScope() || {}).kind;
+      topbar.appendChild(h('div', { class: 'topbar-search hide-sm' }, [
+        h('span', { html: '&#128269;' }),
+        h('input', { class: 'input', type: 'search', placeholder: scopeKind === 'all' ? 'ابحث في كل المدارس…' : (scopeKind === 'self' ? 'ابحث في فصولك…' : 'ابحث في مدرستك…'),
+          onClick: function () { App.openSearch(this.value); } })
+      ]));
       topbar.appendChild(h('div', { class: 'topbar-actions' }, [
+        searchButton(false),
         h('button', { class: 'icon-btn', type: 'button', title: 'الإشعارات', onClick: function () { App.openInbox(); } },
           [h('span', { html: '&#128276;' }), unread ? h('span', { class: 'count', style: { position: 'absolute', transform: 'translate(10px,-10px)', background: 'var(--amber-500)', color: 'var(--on-gold)', borderRadius: '999px', fontSize: '10px', padding: '1px 6px', fontWeight: '700' }, text: String(unread) }) : null]),
         S.isPro() ? h('button', { class: 'icon-btn hide-sm', type: 'button', title: 'سجل رسائل تلقرام', onClick: function () { App.openTelegram(); } },
@@ -1498,6 +1505,86 @@
         ]));
       }
     }
+  });
+
+  /* =========================================================================
+     البحث: صندوق في الشريط العلوي (كل الأدوار) — والنطاق محسوب من الصلاحية
+     المشرف العام: كل المدارس · المدير/الوكيل/المراقب: مدرسته فقط · المعلم: فصوله فقط
+     ========================================================================= */
+  var SCOPE_NOTE = {
+    all: 'نطاقك: كل المدارس والبيانات (مشرف عام)',
+    school: 'نطاقك: مدرستك فقط — لا تظهر بيانات أي مدرسة أخرى',
+    self: 'نطاقك: فصولك أنت فقط — لا تظهر بيانات طلاب أو معلمين آخرين'
+  };
+
+  App.searchItemModal = function (it) {
+    var rows = [], rec = null;
+    if (it.kind === 'student') rec = S.student(it.id);
+    if (it.kind === 'user') rec = S.user(it.id);
+    if (it.kind === 'class') rec = S.klass(it.id);
+    if (it.kind === 'school') rec = S.school(it.id);
+    if (rec) {
+      Object.keys(rec).forEach(function (k) {
+        if (/^(id|schoolId|img|password|passwordHash|salt)$/.test(k)) return;
+        var v = rec[k];
+        if (v === null || v === undefined || v === '' || typeof v === 'object') return;
+        rows.push(h('tr', {}, [h('th', { text: k }), h('td', { text: String(v) })]));
+      });
+    }
+    var body = [h('div', { class: 'muted', style: { marginBottom: '8px' }, text: it.sub || '' })];
+    if (rows.length) body.push(h('table', { class: 'kv' }, rows));
+    else body.push(h('p', { class: 'muted', text: 'لا تفاصيل إضافية.' }));
+    UI.modal({ title: it.title, wide: true, body: body, actions: [{ label: 'إغلاق', class: 'btn-outline', onClick: function (c) { c(); } }] });
+  };
+
+  App.openSearch = function (initial) {
+    var inp = h('input', { class: 'input', type: 'search', placeholder: 'اكتب اسمًا أو رقم هوية أو جوال…', autofocus: true });
+    var note = h('div', { class: 'callout info', style: { margin: '10px 0' }, text: SCOPE_NOTE[(S.searchScope() || {}).kind] || '' });
+    var res = h('div', { class: 'search-res' });
+    var m = null;
+
+    function render() {
+      var out = S.search(inp.value);
+      clear(res);
+      if (!inp.value.trim()) {
+        res.appendChild(h('p', { class: 'muted', text: 'اكتب حرفين على الأقل…' }));
+        return;
+      }
+      if (!out.groups.length) {
+        res.appendChild(h('p', { class: 'muted', text: 'لا نتائج داخل نطاقك.' }));
+        return;
+      }
+      res.appendChild(h('div', { class: 'muted', style: { marginBottom: '6px' }, text: out.total + ' نتيجة' }));
+      out.groups.forEach(function (g) {
+        res.appendChild(h('div', { class: 'search-group' }, [
+          h('div', { class: 'sg-head' }, [h('span', { html: g.icon }), h('strong', { text: g.label }), h('span', { class: 'muted', text: ' (' + g.items.length + ')' })]),
+          h('div', { class: 'sg-items' }, g.items.map(function (it) {
+            return h('button', { class: 'sg-item', type: 'button', onClick: function () {
+              if (m) m.close(); App.searchItemModal(it);
+            } }, [
+              h('span', { class: 'sgi-t', text: it.title }),
+              h('span', { class: 'sgi-s muted', text: (it.sub || '') + (it.badge ? ' · ' + it.badge : '') })
+            ]);
+          }))
+        ]));
+      });
+    }
+    inp.addEventListener('input', render);
+    m = UI.modal({ title: '🔎 البحث', wide: true, body: [inp, note, res] });
+    if (initial) { inp.value = initial; }
+    render();
+    setTimeout(function () { try { inp.focus(); } catch (e) {} }, 120);
+  };
+
+  function searchButton(compact) {
+    return h('button', {
+      class: 'icon-btn' + (compact ? '' : ' hide-sm'), type: 'button', title: 'بحث (Ctrl+K)', onClick: function () { App.openSearch(); }
+    }, [h('span', { html: '&#128269;' })]);
+  }
+  App.searchButton = searchButton;
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k') { e.preventDefault(); App.openSearch(); }
   });
 
   global.App = App;

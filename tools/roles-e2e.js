@@ -562,6 +562,44 @@ async function backupSuite(page, base, hitsFn) {
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
 
+  /* محرك البحث: شامل للمشرف العام · معزول للمدارس · المعلم لفصوله فقط */
+  const sAll = await page.eval(
+    'var sc = Store.searchScope();' +
+    'var r = Store.search("ا");' +
+    'return { kind: sc.kind, schools: r.groups.filter(function (g) { return g.label === "المدارس"; }).length,' +
+    ' groups: r.groups.map(function (g) { return g.label; }).join(","), total: r.total };');
+  ok(sAll.kind === 'all' && sAll.schools === 1 && sAll.total > 0, 'المشرف العام: بحث شامل يضم المدارس وكل الأقسام', JSON.stringify(sAll));
+
+  /* عزل المدرسة: نبحث باسم مدرسة أخرى فلا تظهر */
+  const sIso = await page.eval(
+    'var sch = Store.list("schools");' +
+    'var me = sch[0], other = sch[1] || sch[0];' +
+    'var p = Store.list("users").filter(function (u) { return u.role === "principal"; })[0];' +
+    'if (p) Store.update("users", p.id, { schoolId: me.id });' +
+    'var sc = Store.searchScope(p.id, "principal");' +
+    'var r1 = Store.search(me.name, { scope: sc });' +
+    'var ids1 = r1.groups.reduce(function (a, g) { return a.concat(g.items.map(function (i) { return i.kind + ":" + i.schoolId; })); }, []);' +
+    'var r2 = Store.search("ط", { scope: sc });' +
+    'var bad = r2.groups.reduce(function (a, g) { return a + g.items.filter(function (i) { return i.schoolId && i.schoolId !== me.id; }).length; }, 0);' +
+    'var noSchools = r2.groups.filter(function (g) { return g.label === "المدارس"; }).length;' +
+    'return { kind: sc.kind, other: noSchools, foreign: bad, hitOwn: r1.total, ids1: ids1.length };');
+  ok(sIso.kind === 'school' && sIso.other === 0 && sIso.foreign === 0, 'بحث المدير: نطاق مدرسته فقط — لا نتائج من مدارس أخرى', JSON.stringify(sIso));
+
+  /* المعلم: طلاب فصوله فقط، ولا يرى معلمين/موظفين آخرين */
+  const sTch = await page.eval(
+    'var t = Store.list("users").filter(function (u) { return u.role === "teacher" && (u.classIds || []).length; })[0];' +
+    'var sc = Store.searchScope(t.id, "teacher");' +
+    'var mine = Store.teacherClassIds(t.id);' +
+    'var r = Store.search("ا", { scope: sc });' +
+    'var st = r.groups.filter(function (g) { return g.label === "الطلاب"; })[0];' +
+    'var foreign = st ? st.items.filter(function (i) { return mine.indexOf((Store.student(i.id) || {}).classId) === -1; }).length : 0;' +
+    'var usr = r.groups.filter(function (g) { return g.label.indexOf("المستخدمون") > -1 || g.label.indexOf("زملاؤك") > -1; })[0];' +
+    'var nonTeachers = usr ? usr.items.filter(function (i) { return (Store.user(i.id) || {}).role !== "teacher" && i.id !== t.id; }).length : 0;' +
+    'var noAdmin = r.groups.filter(function (g) { return ["الفواتير", "المصروفات", "تذاكر الدعم", "المخالفات"].indexOf(g.label) > -1; }).length;' +
+    'return { kind: sc.kind, mine: mine.length, students: st ? st.items.length : 0, foreign: foreign, nonTeachers: nonTeachers, adminGroups: noAdmin };');
+  ok(sTch.kind === 'self' && sTch.foreign === 0 && sTch.nonTeachers === 0 && sTch.adminGroups === 0,
+    'المعلم: طلاب فصوله فقط — ولا بيانات إدارية ولا معلمين آخرين', JSON.stringify(sTch));
+
   /* تحديثات المنصة: نشر + استهداف (المشرف العام كامل / الأدوار حسب أقسامها) + لافتة + إرسال حقيقي */
   const upd = await page.eval(
     'var sup = Store.addUpdate({ title: "تحديث للمشرف العام", body: "ميزات جديدة في لوحة التحكم", version: "v62", audience: ["super"] });' +
