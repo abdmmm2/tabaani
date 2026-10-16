@@ -29,6 +29,14 @@ const ERROR_COLLECTOR = [
   '});'
 ].join('\n');
 
+/* إلغاء Service Worker في الفحوص: يمنع تقديم ملفات قديمة مخزّنة (نتائج كاذبة) */
+const SW_OFF = [
+  'if (navigator.serviceWorker) {',
+  '  try { navigator.serviceWorker.register = function () { return Promise.reject(new Error("SW disabled in tests")); }; } catch (_) {}',
+  '  try { navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { try { r.unregister(); } catch (_) {} }); }); } catch (_) {}',
+  '}'
+].join('\n');
+
 /* ------------------------------------------------------- خادم ملفات ثابت بسيط */
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -60,6 +68,11 @@ function serve(dir) {
             'Cache-Control': 'no-store'
           };
           if (pure === '/__cloudfail') { res.writeHead(500, cors); res.end(JSON.stringify({ ok: false, error: 'boom' })); return; }
+          if (payload.action === 'mail') {
+            res.writeHead(200, cors);
+            res.end(JSON.stringify({ ok: true, mailed: payload.to || '', attachments: (payload.attachments || []).length, subject: payload.subject || '' }));
+            return;
+          }
           res.writeHead(200, cors);
           res.end(JSON.stringify({
             ok: true, test: !!payload.test, name: payload.name || '',
@@ -242,7 +255,7 @@ async function openPage(port, opts = {}) {
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
     });
   }
-  await client.send('Page.addScriptToEvaluateOnNewDocument', { source: ERROR_COLLECTOR });
+  await client.send('Page.addScriptToEvaluateOnNewDocument', { source: ERROR_COLLECTOR + '\n' + SW_OFF });
   client.on('Runtime.exceptionThrown', (p) => {
     const d = p.exceptionDetails || {};
     client.errors.push('استثناء: ' + ((d.exception && d.exception.description) || d.text || ''));

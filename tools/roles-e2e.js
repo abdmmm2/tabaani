@@ -509,6 +509,44 @@ async function backupSuite(page, base, hitsFn) {
   ok(ra.prEmail === 'k@school.sa' && /^principal/.test(ra.prUser), 'بيانات المدير (بريد + اسم مستخدم) تُسجَّل على حسابه', ra.prEmail + ' | ' + ra.prUser);
   ok(ra.text > 100 && ra.csv > 40, 'يُنتج نص بيانات الدخول وكشف CSV للإرسال', 'text=' + ra.text + ' csv=' + ra.csv);
 
+  /* التحقق بكود التفعيل: لا يُنشأ ولا يُحفظ أي مدرسة قبل الكود (حماية من الوهمي) */
+  const lock = await page.eval(
+    'var schoolsBefore = Store.list("schools").length;' +
+    'var d = { name: "مدرسة الوهمي", region: "منطقة الرياض", city: "الرياض", gender: "boys", stages: ["primary"], plan: "pro", pname: "مدير", pemail: "fake@school.sa", ptg: "555000" };' +
+    'App.regAgent.newCode();' +
+    'var wrong1 = App.regAgent.checkCode("000000");' +
+    'App.regAgent.checkCode("111111"); var third = App.regAgent.checkCode("222222");' +
+    'var afterTries = Store.list("schools").length;' +
+    'var fresh = App.regAgent.newCode();' +
+    'var okCode = App.regAgent.checkCode(fresh);' +
+    'var schoolsAfterOk = Store.list("schools").length;' +
+    'return { before: schoolsBefore, wrong: wrong1.ok, wrongMsg: wrong1.error, dead: !!third.dead, afterTries: afterTries,' +
+    ' codeLen: String(fresh).length, okOk: okCode.ok, afterOk: schoolsAfterOk, state: App.regAgent.state() };');
+  ok(lock.wrong === false && /كود غير صحيح/.test(lock.wrongMsg), 'الكود الخطأ يُرفض برسالة واضحة', lock.wrongMsg);
+  ok(lock.dead === true, '٣ محاولات خاطئة ⇒ إلغاء التسجيل بلا حفظ', JSON.stringify({ dead: lock.dead, tries: (lock.state || {}).tries }));
+  ok(lock.afterTries === lock.before && lock.afterOk === lock.before, 'لا تُنشأ ولا تُحفظ أي مدرسة قبل كود التفعيل (قفل ضد الوهمي)', 'before=' + lock.before + ' afterTries=' + lock.afterTries + ' afterOk=' + lock.afterOk);
+  ok(lock.codeLen === 6 && lock.okOk === true, 'الكود ٦ أرقام ويُقبل عند صحته', 'len=' + lock.codeLen);
+
+  /* إرسال الكود: تلقرام (بمعرّف المدير) والبريد يحتاج نقطة Apps Script */
+  const send = await page.eval(
+    'window.__sc = null; App.regAgent.sendCode({ name: "مدرسة الكود", ptg: "555000", pemail: "" }, "tg", function (r) { window.__sc = r; }); return true;');
+  void send;
+  await B.sleep(1200);
+  const sc = await page.eval('return window.__sc;');
+  ok(sc && typeof sc.code === 'string' && sc.code.length === 6 && (sc.ok === true || !!sc.error),
+    'أُولّد كود ٦ أرقام ويُرسل على تلقرام — وإن تعذّر فشل الإرسال يُشرح بصراحة', JSON.stringify(sc && { ok: sc.ok, ch: sc.channel, to: sc.to, err: sc.error }));
+  await page.eval('Store.saveDriveConfig({ url: "http://127.0.0.1:1/__none" }); return true;');
+  await page.eval('window.__sm = null; App.regAgent.sendCode({ name: "م", pemail: "a@b.sa", ptg: "" }, "mail", function (r) { window.__sm = r; }); return true;');
+  await B.sleep(1200);
+  const sm = await page.eval('return window.__sm;');
+  ok(sm && sm.ok === false && !!sm.error, 'البريد عند تعذّر الوصول يشرح الفشل (لا نجاح كاذب)', JSON.stringify(sm));
+  await page.eval('Store.saveDriveConfig({ url: location.origin + "/__cloud" }); return true;');
+  await page.eval('window.__sm2 = null; App.regAgent.sendCode({ name: "مدرسة البريد", pemail: "principal@school.sa", ptg: "" }, "mail", function (r) { window.__sm2 = r; }); return true;');
+  await B.sleep(1200);
+  const sm2 = await page.eval('return window.__sm2;');
+  ok(sm2 && sm2.ok === true && sm2.channel === 'البريد' && String(sm2.code).length === 6,
+    'إرسال كود التفعيل على البريد يعمل عبر نقطة الإرسال (٦ أرقام)', JSON.stringify(sm2 && { ok: sm2.ok, ch: sm2.channel, to: sm2.to }));
+
   /* زر موظف التسجيل داخل الدعم الفني + ظهور الوحدة */
   await page.eval('App.go("support"); return true;');
   await B.sleep(1000);
@@ -538,7 +576,9 @@ async function backupSuite(page, base, hitsFn) {
   await chatSend('بنين'); await B.sleep(400);
   await chatSend('برو'); await B.sleep(400);
   const carry = await page.eval('return document.querySelector("#view .chat-log").innerText.slice(-120);');
-  ok(/اسم مدير المدرسة/.test(carry), 'الإكمال بالكتابة يعمل ويظهر السؤال التالي بلا تعطّل', carry.replace(/\n/g, ' | '));
+  await chatSend('تم سداد رسم التأسيس'); await B.sleep(400);
+  const carry2 = await page.eval('return document.querySelector("#view .chat-log").innerText.slice(-90);');
+  ok(/اسم مدير المدرسة/.test(carry2), 'الإكمال بالكتابة يعمل ويظهر السؤال التالي بلا تعطّل', (carry + ' → ' + carry2).replace(/\n/g, ' | '));
   const prompts = await page.eval('var t=document.querySelector("#view .chat-log").innerText; return { gender:t.indexOf("بنين أم بنات")>-1, plan:/الباقة؟/.test(t) };');
   ok(prompts.gender && prompts.plan, 'كل خطوة اختيار لها سؤال نصي صريح', JSON.stringify(prompts));
   await page.eval('var b=[].slice.call(document.querySelectorAll("#view .chat-quick button")).filter(function(x){return x.textContent.indexOf("تسجيل مدرسة أخرى")>-1;})[0]; if(b) b.click(); return true;');
