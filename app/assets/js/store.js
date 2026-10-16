@@ -820,7 +820,14 @@
     },
 
     /* ------------------------- التهيئة الأولى (بلا أي كلمة مرور في الكود) ------------------------- */
-    needsSetup: function () { return !!(store.db.meta && store.db.meta.needsSetup); },
+    needsSetup: function () {
+      /* وجود حساب مشرف عام ⇒ لا حاجة للتهيئة (الراية قد تتأخر عن إنشاء الحساب)، ودخول المدارس يبقى متاحًا */
+      var hasSuper = store.list('users').some(function (u) { return u.role === 'super' && u.status !== 'deleted'; });
+      if (hasSuper) { if (store.db.meta && store.db.meta.needsSetup) { store.db.meta.needsSetup = false; try { save(); } catch (e) {} } return false; }
+      return !!(store.db.meta && store.db.meta.needsSetup);
+    },
+    /** هل يوجد أي حساب يمكن الدخول به؟ (لإظهار زر الدخول دائمًا) */
+    hasAnyAccount: function () { return store.list('users').length > 0; },
     /** إنشاء حساب المشرف العام: demo=true يعني الإبقاء على البيانات التجريبية */
     setupOwner: function (data) {
       data = data || {};

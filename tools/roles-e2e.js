@@ -1460,10 +1460,24 @@ async function twoFactorSuite(page, base) {
   await B.sleep(350);
   ok(!(await shellOn(page)), '2FA: الرمز المنتهي لا يمنح الدخول');
 
-  /* وضع الإلزام يحجب من لا محادثة له */
-  await page.eval('Store.saveTwoFactorConfig({ enforce: true }); Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
+  /* الافتراضي (v73+): لا حجب بلا ربط تلقرام — الدخول مفتوح */
+  await page.eval('Store.saveTwoFactorConfig({ enforce: false }); Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
   await loginAs(acc.uname, acc.pw);
-  ok(!(await shellOn(page)) && !(await tfOn(page)), '2FA: الإلزام يمنع دخول موظف بلا محادثة');
+  ok(await shellOn(page), '2FA: بلا إلزام — موظف بلا محادثة يدخل عاديًا (v73: لا حجب افتراضي)');
+
+  /* وضع المحاكاة: لا حجب حتى مع الإلزام (الإرسال الفعلي غير مُفعّل) */
+  await page.eval('Store.logout(); return true;');
+  await B.sleep(300);
+  await page.eval('var m = Store.telegramConfig().mode; Store.saveTelegramConfig({ mode: "sim" }); Store.saveTwoFactorConfig({ enforce: true }); Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
+  await loginAs(acc.uname, acc.pw);
+  ok(await shellOn(page), '2FA: وضع المحاكاة لا يحجب الدخول');
+
+  /* الإلزام الحقيقي (إرسال فعلي + بلا محادثة) يحجب — كما طُلب عند اختياره عمدًا */
+  await page.eval('Store.logout(); return true;');
+  await B.sleep(300);
+  await page.eval('Store.saveTelegramConfig({ mode: "direct" }); Store.saveTwoFactorConfig({ enforce: true }); Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
+  await loginAs(acc.uname, acc.pw);
+  ok(!(await shellOn(page)) && !(await tfOn(page)), '2FA: الإلزام المُختار عمدًا مع إرسال فعلي يمنع من لا محادثة له');
 
   /* الطالب لا يخضع للتحقق */
   const stu = await page.eval('var s = Store.list("users").filter(function (u) { return u.role === "student" && u.username; })[0];' +

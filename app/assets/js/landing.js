@@ -86,13 +86,20 @@
     ]);
   };
 
-  App.openLogin = function () {
-    if (S.needsSetup()) {
+  App.openLogin = function (showLogin) {
+    /* نعرض نموذج الدخول دائمًا متى وُجد أي حساب — والتهيئة خيار لا حاجز */
+    if (S.needsSetup() && !showLogin && !S.hasAnyAccount()) {
       UI.modal({
         title: 'تهيئة تابعني', body: [
           h('p', { class: 'muted', text: 'هذه أول مرة تُفتح فيها تابعني على هذا الجهاز — أنشئ حساب المشرف العام أولًا ثم سجّل دخولك.' }),
           h('button', { class: 'btn btn-primary btn-block', type: 'button', text: 'إنشاء حساب المشرف العام',
-            onClick: function () { closeAll(); App.setupScreen(); } })
+            onClick: function () { closeAll(); App.setupScreen(); } }),
+          h('div', { style: { marginTop: '10px' } }, [
+            h('button', { class: 'btn btn-outline btn-block', type: 'button', text: 'لدي حساب بالفعل — تسجيل الدخول',
+              onClick: function () { closeAll(); App.openLogin(true); } })
+          ]),
+          h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '8px' },
+            text: 'حسابات هذا الجهاز: ' + S.list('users').length })
         ]
       });
       return;
@@ -101,8 +108,15 @@
       title: 'تسجيل الدخول',
       body: [
         h('div', { class: 'lp-note' }, [h('strong', { text: 'دخول المدارس والأدوار' }),
-          h('span', { text: ' — لكل دور شاشته وصلاحياته.' })]),
-        App.loginPanel()
+          h('span', { text: ' — لكل دور شاشته وصلاحياته.' }),
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '4px' },
+            text: 'حسابات هذا الجهاز: ' + S.list('users').length + ' · الإصدار v' + App.version() })]),
+        App.loginPanel(),
+        h('div', { class: 'cluster', style: { marginTop: '10px', flexWrap: 'wrap', gap: '8px' } }, [
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🔄 تحديث قسري', onClick: function () { closeAll(); App.hardUpdate(); } }),
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🧾 تقرير تشخيص', onClick: function () { closeAll(); App.diagReport(); } }),
+          (S.hasAnyAccount() && S.needsSetup()) ? h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إنشاء حساب المشرف العام', onClick: function () { closeAll(); App.setupScreen(); } }) : null
+        ])
       ]
     });
   };
