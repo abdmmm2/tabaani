@@ -12,7 +12,12 @@
 
 1. سجّل مجانًا: <https://dash.cloudflare.com/sign-up> (بريد + كلمة مرور، لا بطاقة).
 2. **أنشئ التوكن:** <https://dash.cloudflare.com/profile/api-tokens> ← **Create Token** ← اختر قالب
-   **«Edit Cloudflare Workers»** ← Continue ← **Create Token** ← انسخه (يظهر مرة واحدة).
+   **«Edit Cloudflare Workers»** ← **Use template**.
+   - ⚠️ **سطر مهم:** القالب **لا يشمل D1** — اضغط **+ Add more** ← **Account → D1 → Edit** قبل المتابعة.
+   - **Account Resources:** Include → حسابك · **Zone Resources:** Include → Specific zone → نطاقك (أو احذف سطر Zone إن لم يكن عندك نطاق).
+   - Continue ← **Create Token** ← انسخه (يظهر مرة واحدة).
+   - *لو ما قدرت تضيف D1:* أنشئ القاعدة من اللوحة (D1 ← Create database ← الاسم tabaani ← Console ← الصق schema.sql)
+     وانسخ **database_id** من صفحة القاعدة، ثم نفّذ: `D1_ID=<المعرّف> CF_API_TOKEN=... bash cloud/deploy-token.sh`
    *(قالب واحد يكفي: يمنح Workers + D1 — ولا يمنح الفواتير ولا أي شيء آخر.)*
 3. أرسل التوكن، وأنشر أنا: قاعدة D1 · الجداول · الأسرار · الخادم · فحص الحماية · وإنشاء حساب المشرف العام.
 4. **مهم:** بعد أن أخبرك أن النشر تمّ، اضغط **Delete** على التوكن من نفس الصفحة. (التوكن لا يُكتب في أي ملف عندي، ويُستخدم للتنفيذ فقط.)

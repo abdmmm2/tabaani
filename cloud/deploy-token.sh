@@ -26,12 +26,18 @@ node tools/check-cloud.js >/dev/null || { ERR "فحوص المنطق فشلت"; 
 OK "٤٠ فحصًا نظيفة"
 
 echo "٣) قاعدة D1"
-if npx --yes wrangler d1 list 2>/dev/null | grep -qE '\btabaani\b'; then
-  WARN "القاعدة موجودة — نتجاوز الإنشاء"
+ID="${D1_ID:-}"
+if [ -n "$ID" ]; then
+  OK "استخدمت المعرّف المعطى (D1_ID=$ID)"
 else
-  npx --yes wrangler d1 create tabaani 2>&1 | tee /tmp/d1.txt | tail -3
+  if npx --yes wrangler d1 list 2>/dev/null | grep -qE '\btabaani\b'; then
+    WARN "القاعدة موجودة — نتجاوز الإنشاء"
+  else
+    npx --yes wrangler d1 create tabaani 2>&1 | tee /tmp/d1.txt | tail -3 \
+      || WARN "تعذّر الإنشاء (قد يكون التوكن بلا صلاحية D1) — إن أنشأت القاعدة من اللوحة مرّر D1_ID=المعرّف"
+  fi
+  ID=$(npx --yes wrangler d1 list --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const r=a.find(x=>x.name==='tabaani');console.log(r?r.uuid:'')}catch(e){console.log('')}})")
 fi
-ID=$(npx --yes wrangler d1 list --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const r=a.find(x=>x.name==='tabaani');console.log(r?r.uuid:'')}catch(e){console.log('')}})")
 if [ -n "${ID:-}" ]; then
   node -e "const fs=require('fs');let s=fs.readFileSync('cloud/wrangler.toml','utf8');s=s.replace(/database_id = \"[^\"]*\"/,'database_id = \"$ID\"');fs.writeFileSync('cloud/wrangler.toml',s)"
   OK "database_id = $ID"
