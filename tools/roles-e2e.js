@@ -519,6 +519,16 @@ async function backupSuite(page, base, hitsFn) {
     'ملخّص لوحة التحكم يجمع المدارس والطلاب والمعلمين والمستخدمين', JSON.stringify(ctl));
   ok(ctl.rev > 0 && ctl.setup > 0, 'تحسب مبالغ المنصة (اشتراكات سنوية + رسم تأسيس)', 'annual=' + ctl.rev + ' setup=' + ctl.setup);
 
+  /* قياسات إضافية: مبيعات شهرية · طلاب لكل فصل · نسبة السداد */
+  const extra = await page.eval('var d = Store.platformDashboard();' +
+    'var tot = d.revenue.paid + d.revenue.due;' +
+    'return { months: d.monthly.length, sumMonthly: d.monthly.reduce(function (a, m) { return a + m.total; }, 0), paid: d.revenue.paid,' +
+    ' cls: d.classes.count, withKids: d.classes.withKids, avg: d.classes.avg, top: d.classes.top.length, topVal: d.classes.top[0] ? d.classes.top[0].value : 0,' +
+    ' pctv: tot ? Math.round((d.revenue.paid / tot) * 100) : 0 };');
+  ok(extra.months === 6 && extra.sumMonthly >= 0 && extra.paid >= 0, 'المبيعات الشهرية: ٦ أشهر محسوبة', JSON.stringify({ months: extra.months, sum: extra.sumMonthly }));
+  ok(extra.cls >= 1 && extra.avg >= 0 && extra.top >= 1 && extra.topVal >= 0, 'الفصول: العدد والمتوسط وأعلى الفصول', JSON.stringify({ cls: extra.cls, avg: extra.avg, top: extra.top }));
+  ok(extra.pctv >= 0 && extra.pctv <= 100, 'نسبة السداد محسوبة بين ٠ و١٠٠', extra.pctv + '%');
+
   await page.eval('location.hash = "#/dashboard"; App.route && App.route(); return true;');
   await B.sleep(1200);
   const dash = await page.eval('var v = document.querySelector("#view"); return { tiles: v.querySelectorAll(".ctl-tile").length,' +

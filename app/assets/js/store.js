@@ -1560,7 +1560,44 @@
         cities: (db.regions || []).reduce(function (a, r) { return a + (r.cities || []).length; }, 0),
         byRole: byRole, perSchool: perSchool,
         license: store.licenseStats(),
-        revenue: { annual: expected, setup: schools.length * fees.setupFee, paid: paid, due: due, expected: expected + paid }
+        revenue: { annual: expected, setup: schools.length * fees.setupFee, paid: paid, due: due, expected: expected + paid },
+        /* مبيعات شهرية (آخر ٦ أشهر) من الفواتير والطلبات المعتمدة */
+        monthly: (function () {
+          var months = [], nowD = new Date();
+          for (var i = 5; i >= 0; i--) {
+            var d = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1);
+            months.push({ key: d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2), label: d.getMonth() + 1, total: 0 });
+          }
+          var idx = {};
+          months.forEach(function (m, i) { idx[m.key] = i; });
+          store.list('invoices').forEach(function (iv) {
+            var at = iv.paidAt || (iv.status === 'paid' ? iv.issuedAt : '');
+            if (!at) return;
+            var k = String(at).slice(0, 7);
+            if (idx[k] === undefined) return;
+            months[idx[k]].total += store.invoiceTotal(iv);
+          });
+          store.list('paymentRequests').forEach(function (pr) {
+            if (pr.status !== 'approved') return;
+            var k = String(pr.decidedAt || pr.at || '').slice(0, 7);
+            if (idx[k] === undefined) return;
+            months[idx[k]].total += Number(pr.amount || 0) * 0.0;   /* مُحتسب أعلاه عبر الفاتورة */
+          });
+          return months;
+        })(),
+        /* الفصول: عدد الفصول والطلاب لكل فصل */
+        classes: (function () {
+          var ks = store.list('classes');
+          var withKids = ks.filter(function (k) { return (k.students || 0) > 0; });
+          var total = ks.reduce(function (a, k) { return a + (k.students || 0); }, 0);
+          var top = ks.slice().sort(function (a, b) { return (b.students || 0) - (a.students || 0); }).slice(0, 8)
+            .map(function (k) {
+              var sc = store.school(k.schoolId) || {};
+              return { label: (k.grade || '') + ' / ' + (k.section || '') + (sc.name ? ' — ' + sc.name.slice(0, 12) : ''), value: k.students || 0 };
+            });
+          return { count: ks.length, withKids: withKids.length, students: total,
+            avg: withKids.length ? Math.round(total / withKids.length) : 0, top: top };
+        })()
       };
     },
 
