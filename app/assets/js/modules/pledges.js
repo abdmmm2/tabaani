@@ -1,9 +1,9 @@
 /* ==========================================================================
-   خدمة التعهدات — دور «مختص تابعني» (الوكيل الوحيد للتواصل مع تابعني)
+   خدمة الإقرارات — دور «مختص تابعني» (الوكيل الوحيد للتواصل مع تابعني)
    --------------------------------------------------------------------------
    القاعدة: لا خدمة لأي مدرسة إلا بطلب من مديرها، يوافق عليه المشرف العام،
-   ثم ينفّذه مختص تابعني بتعهد يوقّعه هو ومدير المدرسة، ويُرسل عبر بوت
-   «مساعد مدير المدرسة»، ويُرفع التقرير هنا تحت «خدمة التعهدات».
+   ثم ينفّذه مختص تابعني بإقرار يوقّعه هو ومدير المدرسة، ويُرسل عبر بوت
+   «مساعد مدير المدرسة»، ويُرفع التقرير هنا تحت «خدمة الإقرارات».
    ========================================================================== */
 (function () {
   'use strict';
@@ -22,16 +22,16 @@
     } catch (e) { return { wd: '', hij: '', greg: '' }; }
   }
 
-  /** وثيقة التعهد: شعار المنصة + التاريخ واليوم + المسؤول عن المنصة + التوقيعان */
+  /** وثيقة الإقرار: شعار المنصة + التاريخ واليوم + المسؤول عن المنصة + التوقيعان */
   function pledgeDoc(p) {
     var sc = S.school(p.schoolId) || {};
     var owner = S.platformOwner();
     var d = dayLabel();
     return {
-      title: 'تعهد ومواثيق استخدام منصة تابعني — ' + p.no,
+      title: 'إقرار ومواثيق استخدام منصة تابعني — ' + p.no,
       by: owner.name || '',
       meta: [
-        { label: 'رقم التعهد', value: p.no },
+        { label: 'رقم الإقرار', value: p.no },
         { label: 'المدرسة', value: sc.name || '—' },
         { label: 'اليوم', value: d.wd },
         { label: 'التاريخ', value: d.hij + ' هـ — ' + d.greg + ' م' },
@@ -42,7 +42,7 @@
       ],
       sections: [
         { heading: 'البنود', list: p.terms || [] },
-        { heading: 'الإقرار', text: 'أقرّ أنا الموقّع أدناه بصحّة بياناتي، وبأنني قرأت البنود أعلاه وفهمتها، وأتعهد بالالتزام بها، وأن منصة «تابعني للخدمات الذكية» وكل مكوّناتها حق فكري مملوك لها، ويعاقبني النظام عند الإخلال.' }
+        { heading: 'الإقرار', text: 'أقرّ أنا الموقّع أدناه بصحّة بياناتي، وبأنني قرأت البنود أعلاه وفهمتها، وألتزم بها، وأن منصة «تابعني للخدمات الذكية» وكل مكوّناتها حق فكري مملوك لها، ويعاقبني النظام عند الإخلال.' }
       ],
       signatures: [
         'المختص/الوكيل المعتمد: ' + (p.specialistName || '—') + ((p.signs && p.signs.specialist) ? '  (موقّع إلكترونيًا — ' + (p.signs.specialist.at || '').slice(0, 16).replace('T', ' ') + ')' : '  (بانتظار التوقيع)'),
@@ -72,7 +72,7 @@
 
   App.register({
     id: 'pledges',
-    label: 'خدمة التعهدات',
+    label: 'خدمة الإقرارات',
     icon: '&#129309;',
     roles: ['super', 'specialist', 'principal'],
     render: function (view) {
@@ -109,7 +109,7 @@
         ]));
       }
 
-      /* ---------- المشرف العام: مراجعة الطلبات + كل التعهدات ---------- */
+      /* ---------- المشرف العام: مراجعة الطلبات + كل الإقرارات ---------- */
       if (role === 'super') {
         var all = S.serviceRequests();
         host.appendChild(UI.panel('طلبات الخدمة الواردة', all.length + ' طلبًا', null, [
@@ -153,10 +153,10 @@
         /* إعدادات: اسم البوت + المسؤول عن المنصة */
         var bn = UI.field({ name: 'bn', label: 'اسم البوت الذي يُرسل منه', half: true, value: S.botName() });
         var ow = S.platformOwner();
-        var on = UI.field({ name: 'on', label: 'المسؤول عن المنصة (يُطبع على التعهدات)', half: true, value: ow.name });
+        var on = UI.field({ name: 'on', label: 'المسؤول عن المنصة (يُطبع على الإقرارات)', half: true, value: ow.name });
         var ot = UI.field({ name: 'ot', label: 'صفته', half: true, value: ow.title });
         var op = UI.field({ name: 'op', label: 'جواله', half: true, value: ow.phone });
-        host.appendChild(UI.panel('إعدادات التعهدات', 'اسم البوت وبيانات المسؤول عن المنصة (تظهر على كل تعهد).', [
+        host.appendChild(UI.panel('إعدادات الإقرارات', 'اسم البوت وبيانات المسؤول عن المنصة (تظهر على كل إقرار).', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ', onClick: function () {
             S.saveBotName(bn.input.value);
             S.savePlatformOwner({ name: on.input.value, title: ot.input.value, phone: op.input.value });
@@ -165,7 +165,7 @@
         ], [h('div', { class: 'form-grid' }, [bn.wrap, on.wrap, ot.wrap, op.wrap])]));
       }
 
-      /* ---------- قائمة التعهدات (المشرف العام + المختص) ---------- */
+      /* ---------- قائمة الإقرارات (المشرف العام + المختص) ---------- */
       var scope = role === 'specialist' ? { specialistId: S.session.userId } : {};
       var pls = S.list('pledges').filter(function (p) {
         if (scope.specialistId && p.specialistId !== scope.specialistId) return false;
@@ -181,11 +181,11 @@
         var approved = S.serviceRequests({ specialistId: S.session.userId }).concat(S.serviceRequests({ status: 'approved' }));
         var seen = {};
         approved = approved.filter(function (r) { if (seen[r.id]) return false; seen[r.id] = 1; return r.status === 'approved'; });
-        host.appendChild(UI.panel('إنشاء تعهد جديد', 'يُوقّعه المختص ومدير المدرسة، ويُرسل عبر ' + S.botName() + '.', [
-          h('button', { class: 'btn btn-primary', type: 'button', text: 'أنشئ التعهد', onClick: function () {
+        host.appendChild(UI.panel('إنشاء إقرار جديد', 'يُوقّعه المختص ومدير المدرسة، ويُرسل عبر ' + S.botName() + '.', [
+          h('button', { class: 'btn btn-primary', type: 'button', text: 'أنشئ الإقرار', onClick: function () {
             var r = S.addPledge({ schoolId: psc.input.value, principalName: pj.input.value, principalIdNo: pk.input.value, specialistIdNo: pi.input.value });
             if (!r.ok) { UI.toast('تعذّر الإنشاء', 'bad'); return; }
-            UI.toast('أُنشئ التعهد ' + r.pledge.no + ' — وقّعه الآن', 'ok');
+            UI.toast('أُنشئ الإقرار ' + r.pledge.no + ' — وقّعه الآن', 'ok');
             App.route();
           } })
         ], [
@@ -194,7 +194,7 @@
         ]));
       }
 
-      host.appendChild(UI.panel('التعهدات المرفوعة', pls.length + ' تعهدًا', null, pls.length ? [
+      host.appendChild(UI.panel('الإقرارات المرفوعة', pls.length + ' إقرارًا', null, pls.length ? [
         UI.table({ cols: [
           { label: 'الرقم', render: function (p) { return p.no; } },
           { label: 'المدرسة', render: function (p) { return (S.school(p.schoolId) || {}).name || '—'; } },
@@ -219,7 +219,7 @@
         ], rows: pls
         }), h('div', { class: 'muted', style: { marginTop: '8px', fontSize: 'var(--fs-xs)' },
           text: 'الوثيقة المطبوعة تحمل شعار المنصة، واليوم والتاريخ (هجري ثم ميلادي)، واسم المسؤول عن المنصة، والتوقيعات.' })
-      ] : [h('p', { class: 'muted', text: 'لا تعهدات بعد.' })]));
+      ] : [h('p', { class: 'muted', text: 'لا إقرارات بعد.' })]));
 
       view.appendChild(host);
     }

@@ -788,3 +788,15 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .sgi-t { font-weight: 700; color: var(--ink); }
 .sgi-s { font-size: var(--fs-xs); }
 @media (max-width: 820px) { .topbar-search { display: none !important; } }
+
+/* بوابة الإقرار */
+.ack-gate { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.ack-head { display: flex; align-items: center; gap: 14px; background: #FFF8E8; border: 1px solid #F0DFB5;
+  border-radius: var(--r-md); padding: 14px 16px; }
+.ack-badge { font-size: 30px; }
+.ack-head h2 { margin: 0 0 4px; font-size: var(--fs-lg); color: var(--ink); }
+.ack-terms { padding-inline-start: 20px; line-height: 2; font-size: var(--fs-sm); }
+.ack-terms li { margin-bottom: 6px; }
+.ack-school-line { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; font-size: var(--fs-sm); }
+body.ack-locked .side-nav { opacity: .35; pointer-events: none; }
+body.ack-locked .support-fab { display: none !important; }

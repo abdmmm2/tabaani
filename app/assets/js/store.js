@@ -65,7 +65,7 @@
     { id: 'absence_monitor', name: 'مراقب الغياب', nameF: 'مراقبة الغياب', desc: 'متابعة غياب الطلاب — تُضاف خصائصه لاحقًا' },
     { id: 'guard', name: 'حارس البوابة', nameF: 'حارسة البوابة', desc: 'مسح تصاريح الخروج بالكاميرا وتسجيل خروج الطلاب بوقته وسببه' },
     { id: 'accountant', name: 'المحاسب المالي لتابعني', nameF: 'المحاسبة المالية لتابعني', desc: 'السدادات والفواتير والمصروفات والتقارير المالية' },
-    { id: 'specialist', name: 'مختص تابعني', nameF: 'مختصة تابعني', desc: 'الوكيل الوحيد للتواصل مع تابعني — خدمة التعهدات وطلبات المدارس' },
+    { id: 'specialist', name: 'مختص تابعني', nameF: 'مختصة تابعني', desc: 'الوكيل الوحيد للتواصل مع تابعني — خدمة الإقرارات وطلبات المدارس' },
     { id: 'support', name: 'موظف الدعم الفني', nameF: 'موظفة الدعم الفني', desc: 'متابعة تذاكر الدعم والرد على المدارس والزوار' },
     { id: 'student', name: 'طالب', nameF: 'طالبة', desc: 'طلبات النشاط والتطوع والاستئذان' }
   ];
@@ -591,6 +591,7 @@
     db = normalizeDb(db);
     if (!db || !db.schools) db = seed();
     ensureSuper(db);
+    try { store._ackBackfill(db); } catch (e) {}
     return db;
   }
   /* لا تُخزَّن أي كلمة مرور في الكود: إن لم يوجد مشرف عام ⇒ تُطلب التهيئة الأولى */
@@ -620,6 +621,7 @@
       db.users = supers.concat(db.users.filter(function (u) { return u.role !== 'super'; }));
       db.meta = Object.assign({}, db.meta, { needsSetup: false, setupAt: (db.meta && db.meta.setupAt) || now() });
     }
+    store._ackBackfill(db);
     save(); }
 
   /* يبدأ فارغًا تمامًا: بلا مدرسة ولا طالب ولا معلم —
@@ -824,6 +826,8 @@
         if (!data.withDemoAdmin) db.users = db.users.filter(function (u) { return u.role !== 'super'; });
       }
       else { db = emptyDb(); }                          /* مدرسة حقيقية: بلا بيانات تجريبية ولا حسابات */
+      /* بيانات العرض الحالية تُعدّ معتمدة (تُعرض المنصة جاهزة)، وحسابات جديدة تُقفل حتى الاعتماد */
+      store._ackBackfill(db);
       var u = store.insert('users', {
         id: 'u-super-owner', schoolId: null, role: 'super', owner: true,
         name: String(data.name || 'مشرف تابعني').trim(), username: uname, password: String(data.password),
@@ -1595,9 +1599,154 @@
     },
 
     /* =====================================================================
-       خدمة التعهدات ودور «مختص تابعني»
+       الإقرارات الفردية: لكل مستخدم باسمه ووظيفته ومدرسته —
+       لا تعمل أي شاشة/زر قبل تأكيد وصول الإقرار (المدير للموظفين، والمشرف العام للمديرين).
+       ===================================================================== */
+    ACK_TERMS: [
+      'أتعهد بالمحافظة على **أسرار مدرستي**: بيانات الطلاب وأولياء أمورهم، ونتائجهم، وشؤون المعلمين — وألا أُفشيها لأي شخص خارج المدرسة.',
+      'أتعهد بالمحافظة على **أسرار منصة تابعني**: بياناتها وأنظمتها وتقاريرها ورسائلها، وعدم تسريب أي منها.',
+      'أتعهد **بعدم تسريب أي ميزة أو خاصية داخل المنصة** أو شرحها أو تصويرها لأي جهة أو شخص خارج المنصة.',
+      'أتعهد **بعدم تصوير الشاشات** أو تسجيلها — ويُستثنى من ذلك «مختص تابعني» المعتمد إذا طَلَب ذلك رسميًا لمصلحة المدرسة.',
+      'أُقر بأن لمنصة «تابعني للخدمات الذكية» **حماية فكرية وقانونية** على كل مكوّناتها (البرمجيات · التصميم · التقارير · الأكواد)، ولا يجوز نسخها أو تعديلها أو إعادة استخدامها أو بيعها.',
+      'أتعهد باستخدام حسابي الشخصي فقط وعدم مشاركة كلمة المرور أو تمكين غيري من الدخول.',
+      'أتعهد بإبلاغ مدير المدرسة فورًا عند أي محاولة اختراق أو تسريب أو استخدام مخالف أطّلع عليه.',
+      'أُقر بأن أي إخلال بهذا الإقرار يُعرّضني للمساءلة النظامية والتعويض عن الأضرار وفق الأنظمة المرعية.'
+    ],
+    /** إعتماد إقرار مستخدم (يُستخدم للبيانات القائمة وللبيانات التجريبية) */
+    _ackGrant: function (u, by, note) {
+      if (!u) return u;
+      u.ack = u.ack || {};
+      if (u.ack.status === 'approved') return u;
+      u.ack.status = 'approved'; u.ack.approvedAt = now();
+      u.ack.approvedBy = by || 'تهيئة أولى'; u.ack.note = note || '';
+      u.ack.docNo = u.ack.docNo || '';
+      return u;
+    },
+    /** ترقية لمرة واحدة: من كان في القاعدة قبل تفعيل ميزة الإقرارات يُعدّ معتمدًا
+        (لا نقفل حسابات قائمة فجأة). أما الحسابات التي تُضاف/تُستورد بعدها فتُقفل
+        حتى يؤكّد المعتمد وصول الإقرار الموقّع. */
+    _ackBackfill: function (target) {
+      var d = target || db;
+      if (!d || !Array.isArray(d.users)) return;
+      d.meta = d.meta || { version: 1, createdAt: now() };
+      if (d.meta.ackBackfill === 2) return;
+      d.meta.ackBackfill = 2;
+      d.users.forEach(function (u) {
+        if (u.role === 'super') return;
+        store._ackGrant(u, 'تهيئة أولى', 'حساب قائم قبل تفعيل الإقرارات');
+      });
+      save();
+    },
+    ackRequiredEnabled: function () { return !(db.settings && db.settings.ackEnabled === false); },
+    saveAckEnabled: function (on) { db.settings.ackEnabled = !!on; save(); return db.settings.ackEnabled; },
+    ackMigrate: function () {
+      if (!db || db.settings.ackMigrated) return 0;
+      var n = 0;
+      store.list('users').forEach(function (u) {
+        if (!u.ack) { u.ack = { status: 'approved', approvedAt: now(), approvedBy: 'تهيئة أولى', note: 'حساب قائم قبل تفعيل الإقرارات — يُعاد فتحه يدويًا عند الحاجة', docNo: '' }; n++; }
+      });
+      db.settings.ackMigrated = true; save(); return n;
+    },
+    ack: function (userId) {
+      var u = store.user(userId); if (!u) return { status: 'pending' };
+      var a = u.ack || {};
+      return { status: a.status || 'pending', submittedAt: a.submittedAt || '', approvedAt: a.approvedAt || '',
+        approvedBy: a.approvedBy || '', docNo: a.docNo || '', reminders: a.reminders || [], note: a.note || '' };
+    },
+    /** هل يجب إيقاف المنصة على هذا المستخدم حتى يُعتمد إقراره؟ */
+    ackLock: function (userId) {
+      var u = userId ? store.user(userId) : (store.session && store.user(store.session.userId));
+      if (!u || !store.ackRequiredEnabled()) return false;
+      if (u.role === 'super') return false;                       /* المشرف العام هو من يعتمد */
+      if (u.ackExempt === true) return false;                     /* إعفاء صريح */
+      return store.ack(u.id).status !== 'approved';
+    },
+    /** من يعتمد إقرار هذا المستخدم؟ مدير مدرسته، والمدير/المختص يعتمدهم المشرف العام */
+    ackApprover: function (userId) {
+      var u = store.user(userId); if (!u) return null;
+      if (['principal', 'specialist', 'accountant', 'support'].indexOf(u.role) > -1 || !u.schoolId) {
+        return store.list('users', { role: 'super' })[0] || null;
+      }
+      var p = store.list('users', { role: 'principal' }).filter(function (x) { return x.schoolId === u.schoolId; })[0];
+      return p || store.list('users', { role: 'super' })[0] || null;
+    },
+    ackNo: function () {
+      var n = store.list('users').filter(function (u) { return u.ack && u.ack.docNo; }).length + 1;
+      return 'ACR-' + new Date().getFullYear() + '-' + String(n).padStart(3, '0');
+    },
+    submitAck: function (userId) {
+      var u = store.user(userId || (store.session || {}).userId); if (!u) return { ok: false, error: 'لا مستخدم' };
+      u.ack = u.ack || {};
+      u.ack.docNo = u.ack.docNo || store.ackNo();
+      u.ack.status = 'submitted'; u.ack.submittedAt = now();
+      save();
+      var ap = store.ackApprover(u.id);
+      var sc = store.school(u.schoolId) || {};
+      var res = { ok: true, approver: ap ? ap.name : '', sent: null };
+      var msg = '🖊️ إقرار استخدام — ' + u.name + '\nالوظيفة: ' + store.roleLabel(u.role, u.schoolId) + '\nالمدرسة: ' + (sc.name || '—') +
+        '\nرقم الإقرار: ' + u.ack.docNo + '\n\nأقرّ صاحب الإقرار بأنه اطّلع على بنود الإقرار (أسرار المدرسة والمنصة · عدم تسريب الميزات · عدم تصوير الشاشات · الحماية الفكرية) ووقّعه.' +
+        '\n\nفضلاً: بعد وصول الورقة الموقّعة، أكّد وصول الإقرار من قسم «الإقرارات» ليعمل حسابه.';
+      if (ap) {
+        store.assistantSend(msg, u.schoolId, ap.telegramChatId || ap.telegram).then(function (r) { res.sent = r && r.ok; });
+      }
+      return res;
+    },
+    approveAck: function (userId, byId, note) {
+      var u = store.user(userId); if (!u) return null;
+      u.ack = u.ack || {};
+      u.ack.status = 'approved'; u.ack.approvedAt = now();
+      u.ack.approvedBy = (byId ? (store.user(byId) || {}).name : (store.session || {}).name) || '';
+      u.ack.note = String(note || '');
+      save(); return u;
+    },
+    reopenAck: function (userId, note) {
+      var u = store.user(userId); if (!u) return null;
+      u.ack = u.ack || {}; u.ack.status = 'pending'; u.ack.approvedAt = ''; u.ack.note = String(note || '');
+      save(); return u;
+    },
+    remindAck: function (userId, chatOverride) {
+      var u = store.user(userId); if (!u) return Promise.resolve({ ok: false, error: 'لا مستخدم' });
+      u.ack = u.ack || {}; u.ack.reminders = (u.ack.reminders || []).concat([now()]); save();
+      var msg = '🔔 تذكير إقرار الاستخدام — ' + u.name + '\nالوظيفة: ' + store.roleLabel(u.role, u.schoolId) +
+        '\nالمدرسة: ' + ((store.school(u.schoolId) || {}).name || '—') +
+        '\n\nفضلاً اطبع الإقرار ووقّعه ورفعه لمدير المدرسة، ولا يعمل حسابك في المنصة قبل التأكيد.';
+      return store.assistantSend(msg, u.schoolId, chatOverride || u.telegramChatId || u.telegram);
+    },
+    /** قائمة الإقرارات (للمدير: مدرسته · للمشرف العام: الكل) */
+    ackList: function (f) {
+      f = f || {};
+      var sc = store.searchScope();
+      return store.list('users').filter(function (u) {
+        if (u.role === 'super') return false;
+        if (sc.kind === 'school' && u.schoolId !== sc.schoolId) return false;
+        if (f.schoolId && u.schoolId !== f.schoolId) return false;
+        var st = store.ack(u.id).status;
+        if (f.status && st !== f.status) return false;
+        if (f.pendingOnly && st === 'approved') return false;
+        return true;
+      }).map(function (u) {
+        var a = store.ack(u.id);
+        return { id: u.id, name: u.name, role: u.role, roleName: store.roleLabel(u.role, u.schoolId),
+          schoolId: u.schoolId, schoolName: (store.school(u.schoolId) || {}).name || '',
+          status: a.status, submittedAt: a.submittedAt, approvedAt: a.approvedAt, approvedBy: a.approvedBy,
+          docNo: a.docNo, reminders: (a.reminders || []).length, telegram: !!(u.telegramChatId || u.telegram), email: u.email || '' };
+      }).sort(function (a, b) {
+        var w = { pending: 0, submitted: 1, approved: 2 };
+        return (w[a.status] - w[b.status]) || String(a.name).localeCompare(String(b.name));
+      });
+    },
+    ackStats: function (schoolId) {
+      var rows = store.ackList(schoolId ? { schoolId: schoolId } : {});
+      var s = { total: rows.length, pending: 0, submitted: 0, approved: 0 };
+      rows.forEach(function (r) { s[r.status] = (s[r.status] || 0) + 1; });
+      s.pct = s.total ? Math.round((s.approved / s.total) * 100) : 0;
+      return s;
+    },
+
+    /* =====================================================================
+       الإقرارات ودور «مختص تابعني»
        • لا خدمة لأي مدرسة إلا بطلب من مديرها يوافق عليه المشرف العام.
-       • التعهد يوقّعه المختص ومدير المدرسة، ويُرسل عبر بوت «مساعد مدير المدرسة».
+       • الإقرار يوقّعه المختص ومدير المدرسة، ويُرسل عبر بوت «مساعد مدير المدرسة».
        ===================================================================== */
     platformOwner: function () {
       var o = (db.settings && db.settings.platformOwner) || {};
@@ -1648,17 +1797,17 @@
     canRequestService: function () { return ['principal', 'super'].indexOf((store.session || {}).role) > -1; },
 
     PLEDGE_TERMS: [
-      'أتعهد بالمحافظة على سرّية كل ما أطّلع عليه من بيانات ومعلومات داخل منصة «تابعني للخدمات الذكية»، وألا أفشيها لأي جهة أو شخص.',
-      'أتعهد بعدم تصوير الشاشات أو تسجيلها بأي وسيلة، وعدم نسخ أو تصدير أي بيانات إلا بموجب صلاحياتي وبإذن خطّي من مدير المدرسة.',
-      'أتعهد بأن المنصة وكل مكوّناتها (البرمجيات، التصميم، التقارير، الأكواد) حق فكري مملوك لتابعني للخدمات الذكية، ولا يجوز نسخها أو تعديلها أو إعادة استخدامها أو بيعها.',
-      'أتعهد باستخدام حسابي الشخصي فقط، وعدم مشاركة كلمة المرور أو تمكين غيري من الدخول.',
-      'أتعهد بعدم إدخال بيانات غير صحيحة، وبالمحافظة على خصوصية بيانات الطلاب وأولياء أمورهم.',
-      'أتعهد بإبلاغ الإدارة فورًا عند أي محاولة اختراق أو تسريب أو استخدام مخالف أطّلع عليه.',
-      'أُقر بأن أي إخلال بهذا التعهد يُعرّضني للمساءلة النظامية، وللتعويض عن الأضرار وفق الأنظمة المرعية.'
+      'أُقرّ بالمحافظة على سرّية كل ما أطّلع عليه من بيانات ومعلومات داخل منصة «تابعني للخدمات الذكية»، وألا أفشيها لأي جهة أو شخص.',
+      'أُقرّ بعدم تصوير الشاشات أو تسجيلها بأي وسيلة، وعدم نسخ أو تصدير أي بيانات إلا بموجب صلاحياتي وبإذن خطّي من مدير المدرسة.',
+      'أُقرّ بأن المنصة وكل مكوّناتها (البرمجيات، التصميم، التقارير، الأكواد) حق فكري مملوك لتابعني للخدمات الذكية، ولا يجوز نسخها أو تعديلها أو إعادة استخدامها أو بيعها.',
+      'أُقرّ باستخدام حسابي الشخصي فقط، وعدم مشاركة كلمة المرور أو تمكين غيري من الدخول.',
+      'أُقرّ بعدم إدخال بيانات غير صحيحة، وبالمحافظة على خصوصية بيانات الطلاب وأولياء أمورهم.',
+      'أُقرّ بإبلاغ الإدارة فورًا عند أي محاولة اختراق أو تسريب أو استخدام مخالف أطّلع عليه.',
+      'أُقر بأن أي إخلال بهذا الإقرار يُعرّضني للمساءلة النظامية وللتعويض عن الأضرار وفق الأنظمة المرعية.'
     ],
     pledgeNo: function () {
       var y = new Date().getFullYear();
-      return 'TDH-' + y + '-' + String(store.list('pledges').length + 1).padStart(3, '0');
+      return 'EQR-' + y + '-' + String(store.list('pledges').length + 1).padStart(3, '0');
     },
     addPledge: function (d) {
       d = d || {};
@@ -1689,7 +1838,7 @@
     },
     pledgeText: function (p) {
       var owner = store.platformOwner();
-      return '📜 تعهد استخدام منصة تابعني — رقم ' + p.no + '\n' +
+      return '📜 إقرار استخدام منصة تابعني — رقم ' + p.no + '\n' +
         'المدرسة: ' + ((store.school(p.schoolId) || {}).name || '—') + '\n' +
         'المختص/الوكيل: ' + (p.specialistName || '—') + '\n' +
         'مدير المدرسة: ' + (p.principalName || '—') + '\n' +

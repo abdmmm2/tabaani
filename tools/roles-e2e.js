@@ -21,9 +21,9 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 13, principal: 16, deputy: 16, guidance: 9, teacher: 9,
+  super: 14, principal: 17, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
-  accountant: 3, support: 4, specialist: 1
+  accountant: 3, support: 4, specialist: 2
 };
 
 const ROLE_NAME_EXTRA = { accountant: 'المحاسب المالي', support: 'الدعم الفني' };
@@ -55,6 +55,7 @@ async function main() {
     await B.goto(page, site.url + '/index.html', '!!window.Store');
 
     /* --------------------------- تهيئة بيانات العرض --------------------------- */
+    await page.eval('Store.ackMigrate(); Store.list("users").forEach(function (u) { Store.approveAck(u.id, Store.list("users", { role: "super" })[0] && Store.list("users", { role: "super" })[0].id); }); return true;');
     const needsSetup = await page.eval('return !!(window.Store && Store.needsSetup());');
     if (needsSetup) {
       const ok = await page.eval(
@@ -228,6 +229,7 @@ async function main() {
 
 main().catch((e) => {
   console.error('\n✗ تعذّر إكمال الفحص: ' + (e && e.message ? e.message : e));
+  if (e && e.stack) console.error('STACK: ' + String(e.stack).split('\n').slice(0, 6).join(' | '));
   process.exitCode = 1;
 });
 
@@ -406,12 +408,25 @@ async function backupSuite(page, base, hitsFn) {
   const h1 = hits().filter((x) => x.payload && x.payload.test === true);
   ok(h1.length >= 1 && h1[h1.length - 1].url === '/__cloud', 'السحابة: وصل طلب الاختبار إلى النقطة فعلًا', 'hits=' + hits().length);
 
+  const logN0 = await page.eval('return Store.driveLog().length;');
   const up = await waitEval('window.__up = null; App.backupNow(true); return true;', 'window.__up && window.__up.name');
   await B.sleep(600);
-  const log1 = await page.eval('var l = Store.driveLog(); var c = Store.driveConfig(); return { ok:l[0].ok, note:l[0].note, name:l[0].name, size:l[0].size, cnt:c.count, folder:c.folder };');
+  /* ننتظر ظهور سجل الرفع الجديد فعلًا (لا نعتمد على التوقيت) */
+  let log1 = null;
+  for (let i = 0; i < 20; i++) {
+    log1 = await page.eval('var l = Store.driveLog(); var c = Store.driveConfig(); return { n:l.length, ok:l[0].ok, note:l[0].note, name:l[0].name, size:l[0].size, cnt:c.count, folder:c.folder };');
+    if (log1.n > logN0) break;
+    await B.sleep(300);
+  }
   const sent = hits().filter((x) => x.payload && x.payload.data && x.payload.data.length > 500);
   ok(log1.ok && sent.length >= 1, 'السحابة: تنزيل النسخة يرفعها تلقائيًا إلى درايف', JSON.stringify({ note: log1.note, size: log1.size }));
-  ok(sent.length >= 1 && sent[sent.length - 1].payload.data.length === log1.size, 'السحابة: المحتوى المرفوع هو النسخة نفسها (الحجم مطابق)');
+  /* نطابق الرفع مع سجلّه بنفس الاسم (نبحث في كل الرفعات لا آخرها فقط) */
+  const match = sent.filter((x) => x.payload.name === log1.name).slice(-1)[0];
+  let parsedOk = false;
+  try { const j = JSON.parse(match.payload.data); parsedOk = !!(j && typeof j === 'object' && Object.keys(j).length > 3); } catch (e) {}
+  ok(!!match && match.payload.data.length === log1.size && parsedOk,
+    'السحابة: المحتوى المرفوع هو النسخة نفسها (الاسم والحجم والمحتوى مطابق)',
+    JSON.stringify({ log: log1.size, logName: log1.name, hit: match ? match.payload.data.length : null, parsed: parsedOk, logs: log1.n }));
   ok(/__TEST__/.test(String(log1.folder)) && log1.cnt >= 1, 'السحابة: يُسجّل رابط المجلد وعدد النسخ المرفوعة', String(log1.folder).slice(0, 60));
 
   /* فشل الرفع: النقطة تُعيد 500 → سجل بخطأ + محاولة no-cors لا تُظهر نجاحًا كاذبًا */
@@ -563,7 +578,61 @@ async function backupSuite(page, base, hitsFn) {
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
 
-  /* خدمة التعهدات: دور مختص تابعني + طلب من المدير + تعهد موقّع + إرسال بالبوت */
+  /* الإقرارات: قفل المنصة لكل مستخدم حتى اعتماد المدير/المشرف */
+  await page.eval('Store.saveAckEnabled(true); return true;');
+  const ackBase = await page.eval(
+    'var sc = Store.list("schools")[0].id;' +
+    'var pr = Store.list("users").filter(function (u) { return u.role === "principal" && u.schoolId === sc; })[0];' +
+    'var t = Store.addUser({ name: "معلم إقرار تجربة", role: "teacher", schoolId: sc, username: "e2e-ack", password: "E2eAck@2026" });' +
+    'var superU = Store.list("users", { role: "super" })[0];' +
+    'var saved = { userId: Store.session.userId, role: Store.session.role, name: Store.session.name };' +
+    'Store.session = { userId: t.user.id, name: t.user.name, role: "teacher", schoolId: sc };' +
+    'var lockedTeacher = Store.ackLock(t.user.id);' +
+    'var doc = App.ackDoc(t.user.id);' +
+    'var sub = Store.submitAck(t.user.id);' +
+    'var afterSubmit = Store.ack(t.user.id).status;' +
+    'Store.session = { userId: superU.id, name: superU.name, role: "super", schoolId: null };' +
+    'var lockedSuper = Store.ackLock(superU.id);' +
+    'var list = Store.ackList({ schoolId: sc });' +
+    'var mine = list.filter(function (r) { return r.id === t.user.id; })[0];' +
+    'var st = Store.ackStats(sc);' +
+    'Store.approveAck(t.user.id, superU.id);' +
+    'var unlocked = !Store.ackLock(t.user.id);' +
+    'return { lockedTeacher: lockedTeacher, lockedSuper: lockedSuper, status: afterSubmit, mine: !!mine, st: st.total,' +
+    ' unlocked: unlocked, approver: sub.approver, terms: Store.ACK_TERMS.length, docName: doc.meta.filter(function (m) { return m.label === "الاسم"; })[0].value,' +
+    ' docRole: doc.meta.filter(function (m) { return m.label === "الوظيفة"; })[0].value, hasTerms: doc.sections[0].list.length,' +
+    ' excl: /مختص تابعني/.test(Store.ACK_TERMS.join(" ")), secrets: /أسرار/.test(Store.ACK_TERMS.join(" ")), ip: /حماية فكرية/.test(Store.ACK_TERMS.join(" ")), shots: /تصوير الشاشات/.test(Store.ACK_TERMS.join(" ")) };');
+  ok(ackBase.lockedTeacher === true && ackBase.lockedSuper === false, 'القفل يعمل للموظف ولا يعمل على المشرف العام', JSON.stringify({ t: ackBase.lockedTeacher, s: ackBase.lockedSuper }));
+  ok(ackBase.status === 'submitted' && ackBase.mine, 'إرسال الإقرار يغيّر حالته ويظهر في قائمة المدير/المشرف', ackBase.status);
+  ok(ackBase.unlocked === true, 'بعد تأكيد المعتمد يعمل الحساب تلقائيًا (يُفك القفل)', 'unlocked=' + ackBase.unlocked);
+  ok(ackBase.excl && ackBase.secrets && ackBase.ip && ackBase.shots, 'بنود الإقرار: أسرار المدرسة والمنصة · عدم تسريب المميزات · عدم تصوير الشاشات · الحماية الفكرية · استثناء المختص', JSON.stringify({ excl: ackBase.excl, secrets: ackBase.secrets, ip: ackBase.ip, shots: ackBase.shots }));
+  ok(ackBase.terms >= 5 && ackBase.hasTerms >= 5 && ackBase.docName === 'معلم إقرار تجربة' && ackBase.docRole === 'معلم',
+    'وثيقة الإقرار باسم المستخدم ووظيفته ومدرسته وبنوده', JSON.stringify({ terms: ackBase.terms, name: ackBase.docName, role: ackBase.docRole }));
+
+  /* البوابة الفعلية: تُرسم مكان المنصة وتحجب الأزرار */
+  const gate = await page.eval(
+    'var t = Store.list("users").filter(function (u) { return u.username === "e2e-ack"; })[0];' +
+    'Store.reopenAck(t.id);' +
+    'var saved = { userId: Store.session.userId, role: Store.session.role, name: Store.session.name };' +
+    'Store.session = { userId: t.id, name: t.name, role: "teacher", schoolId: t.schoolId };' +
+    'App.route();' +
+    'var g = !!document.querySelector(".ack-gate");' +
+    'var bodyLocked = document.body.classList.contains("ack-locked");' +
+    'var fab = document.querySelector(".support-fab");' +
+    'var fabHidden = !fab || getComputedStyle(fab).display === "none";' +
+    'var hasTerms = document.querySelector(".ack-terms") ? document.querySelector(".ack-terms").children.length : 0;' +
+    'Store.approveAck(t.id, Store.list("users", { role: "super" })[0].id);' +
+    'App.route();' +
+    'var gone = !document.querySelector(".ack-gate");' +
+    'Store.session = { userId: saved.userId, role: saved.role, name: saved.name };' +
+    'Store.saveAckEnabled(false);' +
+    'App.route();' +
+    'return { g: g, bodyLocked: bodyLocked, fabHidden: fabHidden, hasTerms: hasTerms, gone: gone };');
+  ok(gate.g && gate.bodyLocked && gate.fabHidden && gate.hasTerms >= 5,
+    'البوابة تُرسم مكان المنصة (بنودها + لا زر دعم عائم) عند عدم الاعتماد', JSON.stringify(gate));
+  ok(gate.gone === true, 'بعد الاعتماد تختفي البوابة وتعمل المنصة', 'gone=' + gate.gone);
+
+  /* خدمة الإقرارات: دور مختص تابعني + طلب من المدير + إقرار موقّع + إرسال بالبوت */
   const spec = await page.eval(
     'var roles = Store.rolesList();' +
     'var sp = roles.filter(function (r) { return r.id === "specialist"; })[0];' +
@@ -584,21 +653,21 @@ async function backupSuite(page, base, hitsFn) {
     'var txt = Store.pledgeText(done);' +
     'Store.session = { userId: saved.userId, name: "مراجع آلي", role: saved.role, schoolId: null };' +
     'return { roleOk: !!sp && sp.name.indexOf("مختص") > -1, reqOk: req.ok, inbox: inbox.length, assigned: (Store.find("serviceRequests", req.request.id) || {}).specialistId === u.user.id,' +
-    ' mid: mid, status: done.status, terms: done.terms.length, txt: txt.indexOf("تعهد") > -1 && txt.indexOf("المسؤول عن المنصة") > -1, no: done.no };');
+    ' mid: mid, status: done.status, terms: done.terms.length, txt: txt.indexOf("إقرار") > -1 && txt.indexOf("المسؤول عن المنصة") > -1, no: done.no };');
   ok(spec.roleOk, 'دور «مختص تابعني» موجود في الأدوار', JSON.stringify({ roleOk: spec.roleOk }));
   ok(spec.reqOk && spec.inbox >= 1 && spec.assigned, 'طلب خدمة من مدير المدرسة يصل للمشرف العام ويُسند لمختص', JSON.stringify({ ok: spec.reqOk, inbox: spec.inbox, assigned: spec.assigned }));
-  ok(spec.mid === 'partial' && spec.status === 'signed' && spec.terms >= 5, 'التعهد يوقّعه الطرفان (مختص ثم مدير) ويصير «موقّع من الطرفين»', JSON.stringify({ mid: spec.mid, status: spec.status, terms: spec.terms }));
-  ok(spec.txt && /^TDH-/.test(spec.no), 'نص التعهد يحمل الرقم والمسؤول عن المنصة', spec.no);
+  ok(spec.mid === 'partial' && spec.status === 'signed' && spec.terms >= 5, 'الإقرار يوقّعه الطرفان (مختص ثم مدير) ويصير «موقّع من الطرفين»', JSON.stringify({ mid: spec.mid, status: spec.status, terms: spec.terms }));
+  ok(spec.txt && /^EQR-/.test(spec.no), 'نص الإقرار يحمل الرقم والمسؤول عن المنصة', spec.no);
 
   /* الوثيقة المطبوعة: شعار المنصة + التاريخ واليوم + المسؤول */
   const doc = await page.eval(
     'var p = Store.list("pledges")[0];' +
     'Store.savePlatformOwner({ name: "مسؤول تجريبي للمنصة", title: "المسؤول عن المنصة" });' +
-    'var html = UI.platformDoc({ title: "تعهد تجربة", meta: [{ label: "المسؤول عن المنصة", value: Store.platformOwner().name }],' +
+    'var html = UI.platformDoc({ title: "إقرار تجربة", meta: [{ label: "المسؤول عن المنصة", value: Store.platformOwner().name }],' +
     ' sections: [{ heading: "البنود", list: p.terms }], signatures: ["المختص: " + p.specialistName, "المدير: " + p.principalName] });' +
     'return { hasOwner: html.indexOf("مسؤول تجريبي للمنصة") > -1, hasLogo: html.indexOf("data:image") > -1 || html.indexOf("logo") > -1,' +
     ' hasSign: html.indexOf("المختص") > -1 && html.indexOf("المدير") > -1, hasTerms: html.indexOf("حق فكري") > -1 };');
-  ok(doc.hasOwner && doc.hasSign && doc.hasTerms, 'وثيقة التعهد: المسؤول عن المنصة + التوقيعان + البنود', JSON.stringify(doc));
+  ok(doc.hasOwner && doc.hasSign && doc.hasTerms, 'وثيقة الإقرار: المسؤول عن المنصة + التوقيعان + البنود', JSON.stringify(doc));
   ok(doc.hasLogo, 'الوثيقة تحمل شعار المنصة', 'logo=' + doc.hasLogo);
 
   /* إرسال عبر بوت «مساعد مدير المدرسة» — تقرير صريح بلا نجاح كاذب */

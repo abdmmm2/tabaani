@@ -268,14 +268,14 @@
             h('div', { class: 'callout info', text: 'الموعد الافتراضي: الخميس ٤ مساءً. وبعد أخذ النسخة يمكنك استرجاع كل شيء على أي جهاز من «استرجاع من ملف» — فاحفظ الملف في مكان آمن لا يضيع.' })
           ]));
 
-        /* المسؤول عن المنصة — يظهر على التعهدات والوثائق الرسمية */
+        /* المسؤول عن المنصة — يظهر على الإقرارات والوثائق الرسمية */
         var own = S.platformOwner();
         var oName = UI.field({ name: 'oName', label: 'المسؤول عن المنصة', half: true, value: own.name, placeholder: 'الاسم الكامل' });
         var oTitle = UI.field({ name: 'oTitle', label: 'الصفة', half: true, value: own.title });
         var oPhone = UI.field({ name: 'oPhone', label: 'الجوال', half: true, value: own.phone });
         var oMail = UI.field({ name: 'oMail', label: 'البريد', half: true, value: own.email });
         var oBot = UI.field({ name: 'oBot', label: 'اسم البوت المراسل', half: true, value: S.botName() });
-        host.appendChild(UI.panel('المسؤول عن المنصة', 'يُطبع هذا الاسم على التعهدات والوثائق الرسمية (خدمة التعهدات).', [
+        host.appendChild(UI.panel('المسؤول عن المنصة', 'يُطبع هذا الاسم على الإقرارات والوثائق الرسمية (خدمة الإقرارات).', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ', onClick: function () {
             S.savePlatformOwner({ name: oName.input.value, title: oTitle.input.value, phone: oPhone.input.value, email: oMail.input.value });
             S.saveBotName(oBot.input.value);

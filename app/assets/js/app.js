@@ -436,11 +436,12 @@
 
       /* زر الدعم الفني العائم (كل الأدوار): بوت بلهجة سعودية + فتح تذكرة */
       App._removeSupportFab();
+      if (S.ackLock && S.ackLock()) { App.rebuildNav && App.rebuildNav(); }
       var agentNow = S.agentNow();
       document.body.appendChild(h('button', {
         class: 'support-fab', type: 'button', id: 'support-fab',
         title: 'الدعم الفني — ' + agentNow.name + ' (' + agentNow.shift + ')',
-        onClick: function () { App.openSupport({ greet: true }); }
+        onClick: function () { if (S.ackLock && S.ackLock()) { UI.toast('أكمل إقرارك أولًا ليعمل حسابك', 'warn'); return; } App.openSupport({ greet: true }); }
       }, [
         h('img', { src: agentNow.img, alt: '', width: '40', height: '40' }),
         h('span', {}, [
@@ -516,6 +517,24 @@
 
     /* ------------------------------------------------------------- التوجيه */
     route: function () {
+      try { S.ackMigrate && S.ackMigrate(); } catch (e) {}
+      /* بوابة الإقرار: لا تعمل أي شاشة أو زر قبل اعتماد الإقرار */
+      var view0 = document.getElementById('view');
+      if (S.ackLock && S.ackLock() && view0 && App.ackGate) {
+        clear(view0);
+        App._removeSupportFab && App._removeSupportFab();
+        document.body.classList.add('ack-locked');
+        var sb0 = document.getElementById('sidebar');
+        if (sb0) sb0.classList.add('is-locked');
+        App.current = 'ack';
+        App.setTitle('إقرار الاستخدام');
+        view0.appendChild(App.ackGate());
+        S.genderizeDom(view0);
+        return;
+      }
+      document.body.classList.remove('ack-locked');
+      var sb1 = document.getElementById('sidebar');
+      if (sb1) sb1.classList.remove('is-locked');
       var id = (location.hash || '#/dashboard').replace('#/', '') || 'dashboard';
       var mod = App.modules[id];
       if (!mod || !App.can(mod)) { id = 'dashboard'; mod = App.modules.dashboard; if (location.hash !== '#/dashboard') { location.replace('#/dashboard'); return; } }
