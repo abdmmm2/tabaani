@@ -47,8 +47,8 @@
       if (!d.ptg) return cb({ ok: false, error: 'لا يوجد معرّف تلقرام للمدير — اختر البريد أو أضف المعرّف.' });
       Promise.resolve(S.telegramSend(msg, '', d.ptg)).then(function (r) {
         if (r && r.ok) return cb({ ok: true, channel: 'تلقرام', to: d.ptg, code: code });
-        cb({ ok: false, error: (r && (r.error || r.note)) || 'تعذّر إرسال الكود على تلقرام — تأكد من ربط البوت (بيانات تابعني ← الربط بتلقرام) أو اختر البريد' });
-      }).catch(function (e) { cb({ ok: false, error: (e && e.message) || 'تعذّر إرسال الكود على تلقرام — تأكد من ربط البوت (بيانات تابعني ← الربط بتلقرام)' }); });
+        cb({ ok: false, code: code, error: (r && (r.error || r.note)) || 'تعذّر إرسال الكود على تلقرام — تأكد من ربط البوت (بيانات تابعني ← الربط بتلقرام) أو اختر البريد' });
+      }).catch(function (e) { cb({ ok: false, code: code, error: (e && e.message) || 'تعذّر إرسال الكود على تلقرام — تأكد من ربط البوت (بيانات تابعني ← الربط بتلقرام)' }); });
       return;
     }
     if (!d.pemail) return cb({ ok: false, error: 'لا يوجد بريد للمدير — اختر تلقرام أو أضف بريدًا.' });
