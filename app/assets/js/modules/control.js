@@ -22,12 +22,12 @@
   /* ------------------------------------------------------------ الرئيسية */
   function home(d) {
     var kids = [
-      UI.statCard('المدارس', String(d.schools), d.regions + ' منطقة · ' + d.cities + ' مدينة'),
-      UI.statCard('الطلاب', String(d.students), 'في كل المدارس'),
-      UI.statCard('المعلمون', String(d.teachers), d.staff + ' موظفًا إجمالًا'),
+      UI.statCard('المدارس', String(d.schools), d.regions + ' منطقة · ' + d.cities + ' مدينة', 'mint'),
+      UI.statCard('الطلاب', String(d.students), 'في كل المدارس', 'brand'),
+      UI.statCard('المعلمون', String(d.teachers), d.staff + ' موظفًا إجمالًا', 'amber'),
       UI.statCard('إجمالي المستخدمين', String(d.users), 'كل الأدوار', 'gold'),
-      UI.statCard('الاشتراكات السنوية المتوقّعة', money(d.revenue.annual), d.license.pro + ' برو · ' + d.license.classic + ' كلاسيك'),
-      UI.statCard('رسم التأسيس المتوقّع', money(d.revenue.setup), 'مرة واحدة لكل مدرسة'),
+      UI.statCard('الاشتراكات السنوية المتوقّعة', money(d.revenue.annual), d.license.pro + ' برو · ' + d.license.classic + ' كلاسيك', 'brand'),
+      UI.statCard('رسم التأسيس المتوقّع', money(d.revenue.setup), 'مرة واحدة لكل مدرسة', 'amber'),
       UI.statCard('المحصّل فعليًا', money(d.revenue.paid), d.revenue.due ? money(d.revenue.due) + ' غير محصّل' : 'لا متأخرات', 'mint'),
       UI.statCard('اشتراكات موقوفة/متأخّرة', String(d.license.suspended + d.license.overdue), d.license.suspended || d.license.overdue ? 'تحتاج متابعة' : 'كلها سارية', (d.license.suspended || d.license.overdue) ? 'gold' : null)
     ];
@@ -110,7 +110,19 @@
 
   /* ------------------------------------------------------------ المستخدمون */
   function usersView(d) {
-    var users = S.list('users').filter(function (u) { return !state.schoolId || u.schoolId === state.schoolId; });
+    var filter = state.role || '';
+    var users = S.list('users').filter(function (u) {
+      if (state.schoolId && u.schoolId !== state.schoolId) return false;
+      if (filter === 'admin') return ['principal', 'deputy', 'guidance', 'teachers_deputy', 'absence_monitor', 'volunteer', 'activity', 'guard', 'accountant', 'support'].indexOf(u.role) > -1;
+      if (filter === 'teacher') return u.role === 'teacher';
+      if (filter === 'student') return u.role === 'student';
+      return true;
+    });
+    var roleSel = h('select', { class: 'input', style: { maxWidth: '220px' } });
+    [['', 'كل الوظائف'], ['admin', 'المدراء والوكلاء والإداريون'], ['teacher', 'المعلمون'], ['student', 'الطلاب']]
+      .forEach(function (o) { roleSel.appendChild(h('option', { value: o[0], text: o[1] })); });
+    roleSel.value = filter;
+    roleSel.addEventListener('change', function () { state.role = roleSel.value; state.picked = {}; draw(); });
     var picker = h('select', { class: 'input', style: { maxWidth: '260px' } });
     picker.appendChild(h('option', { value: '', text: 'كل المدارس' }));
     S.list('schools').forEach(function (s) { picker.appendChild(h('option', { value: s.id, text: s.name })); });
@@ -138,7 +150,7 @@
       h('div', { class: 'between' }, [
         h('div', {}, [h('strong', { text: 'المستخدمون (' + users.length + ')' }), h('div', { class: 'muted', text: 'اختر أفرادًا ثم ولّد كلمات مرور لهم فقط' })]),
         h('div', { class: 'cluster' }, [
-          picker,
+          picker, roleSel,
           h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'توليد كلمات مرور للمحدد (' + picked.length + ')', onClick: function () {
             if (!picked.length) { UI.toast('حدّد مستخدمًا واحدًا على الأقل', 'warn'); return; }
             var rows = S.generatePasswords({ ids: picked });

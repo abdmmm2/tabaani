@@ -859,9 +859,18 @@
       return g ? 'طالبة' : 'طالب';
     },
     /** تأنيث نص كامل (يُستخدم على النصوص الظاهرة) */
-    gtext: function (text) {
+    /** جنس المستخدم نفسه (فردي) مع الرجوع لجنس مدرسته */
+    userGender: function (userId) {
+      var u = userId ? store.user(userId) : null;
+      if (u && (u.gender === 'f' || u.gender === 'm')) return u.gender;
+      if (u && u.schoolId) { var sc = store.school(u.schoolId) || {}; if (sc.gender) return sc.gender === 'girls' ? 'f' : 'm'; }
+      return store.isGirls() ? 'f' : 'm';
+    },
+    isFemale: function (userId) { return store.userGender(userId) === 'f'; },
+    gtext: function (text, gender) {
       var out = String(text == null ? '' : text);
-      if (!store.isGirls()) return out;
+      var fem = gender ? gender === 'f' : store.isFemale(store.session && store.session.userId);
+      if (!fem) return out;
       FEM_WORDS.forEach(function (pair) {
         out = out.replace(new RegExp('(^|[^\u0621-\u064A]|[وفبلك])' + pair[0] + '(?![\u0621-\u064A])', 'g'),
           function (m, p1) { return p1 + pair[1]; });
@@ -873,7 +882,7 @@
     },
     /** يطبّق التأنيث على شجرة عناصر */
     genderizeDom: function (root) {
-      if (!root || !store.isGirls()) return;
+      if (!root || !store.isFemale(store.session && store.session.userId)) return;
       var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
       var nodes = [];
       while (walker.nextNode()) nodes.push(walker.currentNode);
@@ -3126,7 +3135,8 @@
         phone: pick(/جوال|هاتف|phone|mobile/i),
         email: pick(/بريد|email|mail/i),
         role: pick(/دور|وظيفة|مسمى|role/i),
-        username: pick(/اسم المستخدم|مستخدم|username|user/i)
+        username: pick(/اسم المستخدم|مستخدم|username|user/i),
+        gender: pick(/جنس|نوع|gender|sex/i)
       };
     },
 
@@ -3326,6 +3336,9 @@
         if (!name) { skipped++; return; }
         var nid = val('id'), email = val('email'), phone = val('phone');
         var role = defaultRole;
+        var gTxt = String(val('gender') || '').trim();
+        var gender = (/انثى|أنثى|معلمه|معلمة|طالبه|طالبة|female|^f$/i.test(gTxt)) ? 'f'
+          : (/ذكر|معلم|طالب|male|^m$/i.test(gTxt) && gTxt ? 'm' : '');
         var roleTxt = val('role');
         if (roleTxt) {
           var hit = roles.find(function (x) { return x.name === roleTxt || x.id === roleTxt || (x.nameF && x.nameF === roleTxt); });
@@ -3342,7 +3355,7 @@
         var subjects = val('subject') ? val('subject').split(/[,،\/]+/).map(function (x) { return x.trim(); }).filter(Boolean) : [];
         var u = store.insert('users', {
           schoolId: role === 'super' ? null : schoolId, role: role, name: name, nationalId: nid,
-          phone: phone, email: email, username: uname, password: pw, mustChange: true, passwordSetAt: now(),
+          phone: phone, email: email, username: uname, password: pw, mustChange: true, passwordSetAt: now(), gender: gender,
           status: 'active', canLogin: true, subjects: subjects, qualified: subjects.slice(),
           source: opts.source || 'nur', importedAt: now()
         });
@@ -3373,6 +3386,7 @@
         schoolId: role === 'super' ? null : (d.schoolId || store.session.schoolId || (store.list('schools')[0] || {}).id),
         role: role, name: name, username: username, password: pw,
         email: String(d.email || '').trim(), phone: String(d.phone || '').trim(), telegram: String(d.phone || '').trim(),
+        gender: (d.gender === 'f' || d.gender === 'm') ? d.gender : '',
         telegramChatId: String(d.telegramChatId || '').trim(),
         status: d.status || 'active', canLogin: (d.status || 'active') === 'active',
         mustChange: !!d.mustChange, createdAt: new Date().toISOString(), createdBy: store.session.name || 'مشرف تابعني'

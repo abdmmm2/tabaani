@@ -562,6 +562,34 @@ async function backupSuite(page, base, hitsFn) {
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
 
+  /* جنس المستخدم الفردي + فلتر الوظائف في لوحة التحكم */
+  await loginAsRaw(page, base, OWNER.username, OWNER.password);   /* البلوك يحتاج جلسة مشرف عام */
+  await B.sleep(500);
+  const gen = await page.eval(
+    'var t = Store.list("users").filter(function (u) { return u.role === "teacher"; })[0];' +
+    'Store.update("users", t.id, { gender: "f" });' +
+    'var fem = Store.gtext("معلم", Store.userGender(t.id));' +
+    'Store.update("users", t.id, { gender: "m" });' +
+    'var male = Store.gtext("معلم", Store.userGender(t.id));' +
+    'var perUser = Store.userGender(t.id);' +
+    'return { fem: fem, male: male, perUser: perUser, fem2: Store.gtext("المعلمون", "f"), m2: Store.gtext("المعلمون", "m") };');
+  ok(gen.fem === 'معلمة' && gen.male === 'معلم' && gen.fem2 === 'المعلمات' && gen.m2 === 'المعلمون',
+    'جنس المستخدم يحدد الصيغة (معلم/معلمة · المعلمون/المعلمات)', JSON.stringify(gen));
+  await page.eval('location.hash = "#/dashboard"; App.route && App.route(); return true;');
+  await B.sleep(900);
+  const filt = await page.eval(
+    'var tiles=[].slice.call(document.querySelectorAll(".ctl-tile")); var t=tiles.filter(function(x){return x.textContent.indexOf("المستخدمون")>-1;})[0]; t.click(); return true;');
+  void filt;
+  await B.sleep(800);
+  const fl = await page.eval('var v=document.querySelector("#view"); var sels=v.querySelectorAll("select");' +
+    'var before=v.querySelectorAll(".ctl-user").length;' +
+    'var rs=[].slice.call(sels)[sels.length-1]; rs.value="teacher"; rs.dispatchEvent(new Event("change",{bubbles:true}));' +
+    'return { sels: sels.length, before: before, options: [].map.call(rs.options, function(o){return o.text;}).join(" · ") };');
+  await B.sleep(700);
+  const fl2 = await page.eval('var v=document.querySelector("#view"); return { after: v.querySelectorAll(".ctl-user").length, onlyTeachers: v.innerText.indexOf("الطلاب")===-1 };');
+  ok(fl.sels >= 2 && /كل الوظائف/.test(fl.options) && /المعلمون/.test(fl.options) && fl2.after <= fl.before,
+    'قسم المستخدمين: قائمة منسدلة بالوظائف (مدراء · معلمون · طلاب) تفilter النتائج', JSON.stringify(fl) + ' → ' + JSON.stringify(fl2));
+
   /* بوت الدعم: ترحيب بالوقت + مؤشر كتابة + سرعة الرد + فهم «تسجيل مدرسة» + إصلاح الإغلاق */
   const bot = await page.eval(
     'var g = Store.botReply("");' +
