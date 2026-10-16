@@ -1756,6 +1756,12 @@
     L.push('الوضع: ' + (env.standalone ? 'تطبيق مثبّت (شاشة رئيسية)' : 'متصفح') + ' · iOS: ' + (env.ios ? 'نعم' : 'لا'));
     L.push('الجلسة الحالية: ' + (S.session ? (S.session.role + ' — ' + S.session.name) : 'لا يوجد (شاشة دخول)'));
     L.push('حسابات هذا الجهاز: ' + users.length);
+    L.push('أسماء المستخدمين وأدوارهم (بلا كلمات مرور):');
+    users.slice(0, 40).forEach(function (u) {
+      var scn = ''; try { scn = (S.school(u.schoolId) || {}).name || u.schoolId; } catch (e) { scn = u.schoolId || ''; }
+      L.push('  - ' + (u.username || '(بلا اسم مستخدم)') + ' — ' + (u.name || '') + ' — ' + u.role + (u.schoolId ? ' — ' + scn : ''));
+    });
+    if (users.length > 40) L.push('  … و' + (users.length - 40) + ' حسابًا آخر');
     L.push('أنواع الحسابات: ' + JSON.stringify(users.reduce(function (a, u) { a[u.role] = (a[u.role] || 0) + 1; return a; }, {})));
     L.push('مدارس: ' + (st.schools || 0) + ' · طلاب: ' + (st.students || 0) + ' · فصول: ' + (st.classes || 0));
     L.push('الإقرارات: مفعّلة=' + (set.ackEnabled !== false) + ' · مهيّأة=' + !!set.ackMigrated + ' · وقت التهيئة=' + (set.ackMigratedAt || '—'));
@@ -1768,7 +1774,12 @@
     var txt = L.join('\n');
     UI.modal({ title: 'تقرير تشخيص', wide: true, body: [
       h('p', { class: 'muted', text: 'انسخ التقرير وأرسله لي (لا يحتوي كلمات مرور).' }),
-      h('textarea', { readonly: true, rows: '14', class: 'input', dir: 'ltr', style: { fontFamily: 'monospace', fontSize: '12px' }, value: txt }),
+      (function () {
+        var ta = h('textarea', { readonly: true, rows: '16', class: 'input', dir: 'ltr', style: { fontFamily: 'monospace', fontSize: '12px' } });
+        ta.value = txt;              /* الخلل السابق: value كسمة لا تُملأ في textarea — الآن نضعها خاصيةً */
+        ta.textContent = txt;
+        return ta;
+      })(),
       h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
         h('button', { class: 'btn btn-primary', type: 'button', text: '📋 انسخ التقرير', onClick: function () {
           (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(

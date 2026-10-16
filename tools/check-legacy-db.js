@@ -122,6 +122,24 @@ const ok = (c, l, e) => { if (c) { pass++; console.log('  ✓ ' + l + (e ? '  ' 
   ok(guards.teachLocked === true, 'المعلم يُحجب قبل اعتماد إقراره (المطلوب أصلًا)', 'teacherLocked=' + guards.teachLocked);
   ok(guards.rep === true, 'تقرير التشخيص يعمل ويحتوي الإصدار والمحجوبين', 'status=' + guards.ver);
 
+  /* الأهم: ما يراه المستخدم فعلًا — الصندوق مليء بالنص لا فارغًا */
+  const diagDom = await page.eval(
+    'var out = {};' +
+    'try {' +
+    '  App.diagReport();' +
+    '  var ta = document.querySelector(".modal textarea, .ui-modal textarea") || [].slice.call(document.querySelectorAll("textarea")).pop();' +
+    '  out.exists = !!ta;' +
+    '  out.len = ta ? String(ta.value || "").length : 0;' +
+    '  out.hasVersion = ta ? /نسخة التطبيق/.test(ta.value || "") : false;' +
+    '  out.hasUsers = ta ? /أسماء المستخدمين/.test(ta.value || "") : false;' +
+    '  out.hasName = ta ? /legacy-root|مدير|معلم/.test(ta.value || "") : false;' +
+    '  var btns = [].slice.call(document.querySelectorAll("button")); var c = btns.filter(function (b) { return /إغلاق|حسنًا|تم/.test(b.textContent || ""); })[0]; if (c) c.click();' +
+    '} catch (e) { out.err = e.message; }' +
+    'return out;');
+  ok(diagDom.exists && diagDom.len > 200 && diagDom.hasVersion && diagDom.hasUsers,
+    'تقرير التشخيص يظهر مليئًا في الصندوق (لا فارغًا) ويحمل أسماء الحسابات',
+    JSON.stringify({ len: diagDom.len, ver: diagDom.hasVersion, users: diagDom.hasUsers, err: diagDom.err }));
+
   const migrated = await page.eval(
     'var out = {};' +
     'try {' +
