@@ -752,12 +752,18 @@
               h('span', { text: 'إلى محادثتك الخاصة على تلقرام' + to + ' — صالح ' + ttl + ' دقائق.' })
             ]));
           } else {
+            var noToken = !S.telegramSendable();
             status.appendChild(h('div', { class: 'callout', style: { marginTop: '0', borderInlineStartColor: 'var(--amber-500)' } }, [
-              h('strong', { text: 'تعذّر الإرسال فعليًا: ' }),
-              h('span', { text: r.error || 'خطأ غير معروف' }),
+              h('strong', { text: noToken ? 'لم يُرسل على تلقرام — الإرسال غير مُفعّل في هذا التطبيق: ' : 'تعذّر الإرسال فعليًا: ' }),
+              h('span', { text: noToken ? 'التوكن غير محفوظ هنا (أو الوضع «محاكاة»). اضبطه من «سجل تلقرام» ثم أعد المحاولة.' : (r.error || 'خطأ غير معروف') }),
               r.simCode ? h('div', { style: { marginTop: '6px' } }, [
-                h('span', { text: 'رمز المعاينة (يظهر لأن الإرسال غير مُفعّل — في الإنتاج يُرسل لتلقرام فقط): ' }),
+                h('span', { text: 'رمز المعاينة (مؤقت — استخدمه الآن للدخول): ' }),
                 h('code', { text: r.simCode })
+              ]) : null,
+              noToken ? h('div', { class: 'cluster', style: { marginTop: '8px' } }, [
+                h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '⚙️ افتح إعداد تلقرام الآن', onClick: function () {
+                  UI.toast('سجّل الدخول أولًا ثم افتح «سجل تلقرام» واضبط التوكن ومعرّف محادثتك', 'info');
+                } })
               ]) : null
             ]));
           }
