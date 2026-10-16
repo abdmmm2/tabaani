@@ -116,6 +116,69 @@
     }
   };
 
+  /* ==========================================================================
+     اللحظية: (١) أي تعديل في أي شاشة يُعلَّم ويُرفع تلقائيًا
+              (٢) سحب تلقائي كل ٢٠ ثانية وعند العودة للتطبيق — فتظهر تعديلات غيرك بسرعة
+     ========================================================================== */
+  (function autoSync() {
+    /* (١) اعتراض الحفظ العام: أي كتابة ⇒ تعديل معلّق (مع منع التكرار اللانهائي) */
+    var origSave = S.save;
+    if (typeof origSave === 'function' && !origSave.__syncWrapped) {
+      var wrapped = function () {
+        var r = origSave.apply(S, arguments);
+        if (!S._inSyncWrite) {
+          S._inSyncWrite = true;
+          try { S.markSyncDirty && S.markSyncDirty('تعديل في المنصة'); } finally { S._inSyncWrite = false; }
+          var cfg = S.syncCfg();
+          if (cfg.auto && cfg.url && cfg.token && navigator.onLine) {
+            clearTimeout(App._autoPushT);
+            App._autoPushT = setTimeout(function () { App.syncPush(); }, 2000);
+          }
+        }
+        return r;
+      };
+      wrapped.__syncWrapped = true;
+      S.save = wrapped;
+    }
+
+    /* (٢) سحب تلقائي: كل ٢٠ ثانية + عند عودة التركيز للتطبيق */
+    var polling = false;
+    function checkRemote() {
+      var c = S.syncCfg();
+      if (!c.url || !c.token || !navigator.onLine || polling) return;
+      if (document.hidden) return;
+      polling = true;
+      fetch(c.url.replace(/\/$/, '') + '/api/sync', { headers: { Authorization: 'Bearer ' + c.token } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          polling = false;
+          if (!j || !j.ok) return;
+          if (!j.version || j.version <= (c.lastVersion || 0)) return;        /* لا جديد */
+          if (S.syncDirty()) {                                                /* عندي تعديلات: لا أدهسها */
+            if (!App._syncNoticeShown) {
+              App._syncNoticeShown = 1;
+              UI.toast('توجد تعديلات جديدة على السحابة — افتح «المزامنة السحابية» واختر «نزّل نسخة الخادم»', 'warn', 6000);
+            }
+            return;
+          }
+          var before = document.activeElement && document.activeElement.tagName;
+          if (before === 'INPUT' || before === 'TEXTAREA') return;            /* لا نقاطع من يكتب */
+          var res = S.applyServerData(j.data);
+          if (res.ok) {
+            S.saveSyncCfg({ lastVersion: j.version, lastAt: new Date().toISOString() });
+            UI.toast('تم تحديث البيانات من السحابة (v' + j.version + ') ✓', 'ok');
+            App._syncNoticeShown = 0;
+            App.route();
+          }
+        })
+        .catch(function () { polling = false; });
+    }
+    App.syncCheckRemote = checkRemote;
+    setInterval(checkRemote, 20000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) checkRemote(); });
+    window.addEventListener('focus', checkRemote);
+  })();
+
   App.register({
     id: 'sync',
     label: 'المزامنة السحابية',
@@ -127,8 +190,8 @@
       var nameF = UI.field({ name: 'u', label: 'حساب الخادم (ليس حساب دخولك للمنصة)', half: true, value: c.username || 'admin' });
       var passF = UI.field({ name: 'p', label: 'كلمة مرور حساب الخادم', type: 'password', half: true });
       var urlF = UI.field({ name: 'url', label: 'رابط الخادم (Worker)', half: false, value: c.url, placeholder: 'https://tabaani.<حسابك>.workers.dev' });
-      var autoF = UI.field({ name: 'auto', label: 'رفع تلقائي بعد كل تعديل مهم', type: 'select', half: true, value: c.auto ? '1' : '0',
-        options: [{ value: '0', label: 'يدوي (أرفع بنفسي)' }, { value: '1', label: 'تلقائي' }] });
+      var autoF = UI.field({ name: 'auto', label: 'المزامنة اللحظية', type: 'select', half: true, value: c.auto ? '1' : '0',
+        options: [{ value: '1', label: 'تلقائية — رفع بعد كل تعديل + سحب كل ٢٠ ثانية ⚡' }, { value: '0', label: 'يدوية — أرفع/أنزّل بنفسي' }] });
 
       host.appendChild(UI.panel('إقران المزامنة',
         c.token ? ('مقرون ✓ — آخر رفع: ' + (c.lastAt ? UI.fmtDateTime(c.lastAt) : 'لم يُرفع بعد') + ' · إصدار الخادم v' + c.lastVersion) : 'اربط نسخة مدرستك على الخادم ليدخل الجميع من أي جهاز بنفس البيانات.',
