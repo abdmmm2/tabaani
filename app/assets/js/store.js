@@ -3020,7 +3020,7 @@
       keys = keys || [];
       function pick(re) { return keys.find(function (k) { return re.test(String(k)); }) || ''; }
       return { name: pick(/اسم|name/i), id: pick(/هوية|سجل|national|id/i), phone: pick(/جوال|هاتف|phone|mobile/i),
-        stage: pick(/مرحلة|stage/i), grade: pick(/صف|grade/i), section: pick(/شعبة|فصل|section/i), seat: pick(/مقعد|رقم|seat/i) };
+        stage: pick(/مرحلة|stage/i), grade: pick(/صف|grade/i), section: pick(/شعبة|فصل|section/i), seat: pick(/مقعد|تسلسل|seat/i) };
     },
     /** المرحلة من نص الملف */
     stageFromText: function (txt) {
