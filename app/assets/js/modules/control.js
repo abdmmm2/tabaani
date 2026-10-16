@@ -69,6 +69,19 @@
       UI.panel('مبالغ المنصة (ر.س)', 'الاشتراكات السنوية · رسم التأسيس · المحصّل', null, [
         UI.chart({ type: 'bar', labels: moneyLabels, series: [{ name: 'المبالغ', values: moneyValues }], height: 200 })
       ]),
+      /* اختصار واضح: اربط المزامنة السحابية (يظهر حتى تُربط) */
+      if (!S.syncConfigured || !S.syncConfigured()) {
+        host.appendChild(UI.panel('☁️ اربط المزامنة السحابية', 'نسخة من بياناتك في السحابة + دخول من أي جهاز + حماية من الضياع.', [
+          h('button', { class: 'btn btn-primary', type: 'button', text: '⚡ اربط الآن (٤ خانات)', onClick: function () { App.go('sync'); } })
+        ], [
+          h('div', { class: 'callout info' }, [
+            h('div', { html: '<b>رابط الخادم:</b> <span dir="ltr">https://tabaani.tabaani.workers.dev</span>' }),
+            h('div', { html: '<b>حساب الخادم:</b> admin &nbsp;·&nbsp; <b>كلمة المرور:</b> Tabaani@2026' }),
+            h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '4px' },
+              text: 'هذه بيانات حساب الخادم — وليست حساب دخولك للمنصة. افتح «☁️ المزامنة السحابية» واملأها ثم اضغط «أقرن الآن».' })
+          ])
+        ]));
+      }
       toolsPanel(d)
     ];
   }
