@@ -137,6 +137,24 @@ function ok(cond, label, extra) {
   const reg = fs.readFileSync(path.join(ROOT, 'site', 'register.html'), 'utf8');
   ok(/api\/register/.test(reg) && /tabaani-cloud-url/.test(reg),
     'نسخة GitHub Pages: تسجيل عام + خانة رابط الخادم المحفوظة في المتصفح');
+  /* الملف المدموج للنشر من اللوحة (بلا توكن) — نتحقق أنه محدَّث ولا يتخلّف عن المصدر */
+  const { execFileSync } = require('child_process');
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'tools', 'build-worker-single.js')], { stdio: 'pipe' });
+    const single = fs.readFileSync(path.join(ROOT, 'cloud', 'worker-single.js'), 'utf8');
+    const libSrc = fs.readFileSync(path.join(ROOT, 'cloud', 'lib.js'), 'utf8');
+    const workerSrc = fs.readFileSync(path.join(ROOT, 'cloud', 'worker.js'), 'utf8');
+    ok(single.indexOf('export default') > -1 && single.indexOf('scopedSearch') > -1 && single.indexOf('/api/register') > -1 &&
+      single.indexOf('import ') === -1,
+      'الملف المدموج worker-single.js صالح للنشر من اللوحة (بلا استيراد)');
+    const libFns = (libSrc.match(/export (?:async )?function (\w+)/g) || []).map((m) => m.split(' ').pop());
+    const missingFns = libFns.filter((f) => single.indexOf('function ' + f) === -1);
+    ok(missingFns.length === 0, 'كل دوال lib.js موجودة في الملف المدموج (' + libFns.length + ')', missingFns.join(', '));
+    const routes = (workerSrc.match(/'\/api\/[a-z\/]+'/g) || []).filter((v, i, a) => a.indexOf(v) === i);
+    const missingRoutes = routes.filter((r) => single.indexOf(r) === -1);
+    ok(missingRoutes.length === 0, 'كل مسارات الخادم موجودة في الملف المدموج (' + routes.length + ')', missingRoutes.join(', '));
+  } catch (e) { ok(false, 'توليد/فحص الملف المدموج', e.message); }
+
   const wr = fs.readFileSync(path.join(ROOT, 'cloud', 'wrangler.toml'), 'utf8');
   ok(/d1_databases/.test(wr) && /\[\[d1_databases\]\]/.test(wr), 'wrangler.toml فيه ربط قاعدة D1');
 
