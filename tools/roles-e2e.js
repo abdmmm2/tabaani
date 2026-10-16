@@ -21,9 +21,9 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 10, principal: 15, deputy: 16, guidance: 9, teacher: 9,
+  super: 11, principal: 15, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
-  accountant: 3, support: 3
+  accountant: 3, support: 4
 };
 
 const ROLE_NAME_EXTRA = { accountant: 'المحاسب المالي', support: 'الدعم الفني' };
@@ -490,6 +490,34 @@ async function backupSuite(page, base, hitsFn) {
   ok(imp.allLogin === true, 'كل حساب مستورد يستطيع الدخول فعلًا (اسم المستخدم + كلمة المرور)');
   ok(imp.mustChange === true && imp.passLen >= 8 && imp.school, 'إلزام تغيير كلمة المرور + ربط الحساب بالمدرسة', 'pass=' + imp.passLen);
   ok(/موجّه/.test(imp.roles), 'الدور يُقرأ من الملف (موجّه التوجيه والإرشاد)', imp.roles);
+
+  /* ============ موظف التسجيل (المحادثة) ============ */
+  const ra = await page.eval(
+    'var d1 = App.regAgent.detectFileType(["المرحلة","الصف","الشعبة","الغرفة"]);' +
+    'var d2 = App.regAgent.detectFileType(["الاسم","الدور","المادة","رقم الهوية"]);' +
+    'var d3 = App.regAgent.detectFileType(["الاسم","رقم الهوية","الجوال","المرحلة","الصف","الشعبة"]);' +
+    'var r = App.regAgent.submit({ name: "ثانوية موظف التسجيل", region: "منطقة الجوف", city: "سكاكا", gender: "boys", stages: ["secondary"], plan: "pro",' +
+    '  pname: "أ. خالد المدير", pphone: "+966506660001", pemail: "k@school.sa", ptg: "" },' +
+    '  { students: { rows: [{ "الاسم": "طالب ١", "رقم الهوية": "7000000001", "المرحلة": "ثانوي", "الصف": "الأول الثانوي", "الشعبة": "أ" }], map: Store.guessStudentMap(["الاسم","رقم الهوية","المرحلة","الصف","الشعبة"]) } });' +
+    'var pr = Store.list("users", { role: "principal", schoolId: r.schoolId })[0] || {};' +
+    'var t = App.regAgent.makeTicket ? "ok" : "no";' +
+    'return { d1: d1, d2: d2, d3: d3, ok: r.ok, students: r.stats.students, creds: r.stats.credentials,' +
+    ' prEmail: pr.email || "", prUser: pr.username || "", text: App.regAgent.credsText(r, { name: "ثانوية موظف التسجيل", plan: "pro" }).length,' +
+    ' csv: App.regAgent.credsCsv(r).length, school: (Store.school(r.schoolId) || {}).name };');
+  ok(ra.d1 === 'classes' && ra.d2 === 'staff' && ra.d3 === 'students', 'موظف التسجيل يميّز نوع الملف تلقائيًا (فصول · موظفون · طلاب)', JSON.stringify({ d1: ra.d1, d2: ra.d2, d3: ra.d3 }));
+  ok(ra.ok && ra.students === 1 && ra.creds >= 1 && ra.school === 'ثانوية موظف التسجيل', 'التسجيل عبر المحادثة ينشئ المدرسة والمدير والطلاب', JSON.stringify(ra));
+  ok(ra.prEmail === 'k@school.sa' && /^principal/.test(ra.prUser), 'بيانات المدير (بريد + اسم مستخدم) تُسجَّل على حسابه', ra.prEmail + ' | ' + ra.prUser);
+  ok(ra.text > 100 && ra.csv > 40, 'يُنتج نص بيانات الدخول وكشف CSV للإرسال', 'text=' + ra.text + ' csv=' + ra.csv);
+
+  /* زر موظف التسجيل داخل الدعم الفني + ظهور الوحدة */
+  await page.eval('App.go("support"); return true;');
+  await B.sleep(1000);
+  const supBtn = await page.eval('var v = document.querySelector("#view"); return v ? v.innerText.indexOf("موظف التسجيل") > -1 : false;');
+  ok(supBtn === true, 'زر «موظف التسجيل» ظاهر داخل الدعم الفني');
+  await page.eval('App.go("regagent"); return true;');
+  await B.sleep(1000);
+  const raUi = await page.eval('var t = document.querySelector("#view").innerText; return { chat: t.indexOf("محادثة التسجيل") > -1, ask: t.indexOf("ما اسم المدرسة") > -1, log: t.indexOf("أنا موظف التسجيل") > -1 };');
+  ok(raUi.chat && raUi.ask && raUi.log, 'محادثة موظف التسجيل تبدأ بالسؤال الصحيح', JSON.stringify(raUi));
 
   /* ============ التأسيس الآلي: مدرسة كاملة من ملفات العميل ============ */
   const onb = await page.eval(

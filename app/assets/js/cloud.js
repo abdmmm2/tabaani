@@ -23,6 +23,7 @@
     '  var it = DriveApp.getFoldersByName(FOLDER);',
     '  var f = it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER);',
     '  if (p.test) return out({ ok: true, test: true, folder: f.getUrl() });',
+    '  if (p.action === "mail") return sendMail(p, f);',
     '  var name = p.name || ("tabaani-" + new Date().toISOString().slice(0, 10) + ".json");',
     '  var file = f.createFile(name, p.data, "application/json");',
     '  var files = [], all = f.getFiles();',
@@ -33,7 +34,19 @@
     '               folder: f.getUrl(), kept: Math.min(files.length, KEEP) });',
     '}',
     '',
-    'function doGet() { return out({ ok: true, msg: "نقطة رفع نسخ تابعني جاهزة." }); }',
+    'function sendMail(p, folder) {',
+    '  var opts = { htmlBody: p.html || "" };',
+    '  var atts = [];',
+    '  (p.attachments || []).forEach(function (a) {',
+    '    var name = a.name || "report.txt";',
+    '    var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(a.b64), a.mime || "text/plain", name));',
+    '    atts.push(file);',
+    '  });',
+    '  if (atts.length) opts.attachments = atts;',
+    '  GmailApp.sendEmail(p.to, p.subject || "تابعني — بيانات الدخول", p.body || "بيانات الدخول في المرفق.", opts);',
+    '  return out({ ok: true, mailed: p.to, attachments: atts.length });',
+    '}', '',
+    'function doGet() { return out({ ok: true, msg: "نقطة تابعني جاهزة." }); }',
     '',
     'function out(o) {',
     '  return ContentService.createTextOutput(JSON.stringify(o))',
@@ -127,6 +140,21 @@
       try { document.execCommand('copy'); UI.toast('نُسخ الكود ✓', 'ok'); }
       catch (e) { UI.toast('انسخه يدويًا', 'warn'); }
       ta.remove();
+    },
+
+    /** إرسال إيميل (يتم من بريدك عبر Apps Script) — مع كشف بيانات الدخول مرفقًا */
+    mail: function (d, cb) {
+      d = d || {};
+      post({
+        action: 'mail', to: String(d.to || '').trim(), subject: String(d.subject || 'تابعني — بيانات الدخول'),
+        body: String(d.body || ''), html: String(d.html || ''),
+        attachments: (d.attachments || []).map(function (a) { return { name: a.name, mime: a.mime || 'text/plain', b64: a.b64 }; })
+      }, function (err, res) {
+        if (err) return cb(err);
+        if (res && res.unverified) return cb({ message: 'أُرسل الطلب بلا تحقق من الرد — راجع بريدك.' });
+        if (res && res.ok && res.mailed) return cb(null, res);
+        cb({ message: (res && res.raw) || 'ردّ غير متوقع من نقطة الإرسال — تأكد من نشر كود الإرسال.' });
+      });
     },
 
     /** اختبار صارم: يجب أن يعود ردّ JSON صريح {ok:true} */

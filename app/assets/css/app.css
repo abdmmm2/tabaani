@@ -719,3 +719,16 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .setup-restore { margin-top: 20px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: var(--r-md); background: var(--bg-soft); }
 .setup-restore strong { display: block; margin-bottom: 6px; }
 .setup-restore .btn { margin-top: 10px; }
+
+/* موظف التسجيل — محادثة */
+.chat-log { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 10px; }
+.chat-row { display: flex; }
+.chat-row.chat-me { justify-content: flex-start; }
+.chat-b { max-width: 82%; padding: 9px 12px; border-radius: 12px; font-size: var(--fs-sm); line-height: 1.9; white-space: pre-line; }
+.chat-agent .chat-b { background: #E9F6F1; color: #0E5F4C; border: 1px solid #CFE9DF; }
+.chat-me .chat-b { background: #F3F4F6; color: #111827; border: 1px solid #E5E7EB; }
+.chat-sys .chat-b { background: #FFF8E8; color: #8A5A1E; border: 1px solid #EBD3A8; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chat-input { display: flex; gap: 8px; align-items: center; }
+.chat-input .input { flex: 1; }

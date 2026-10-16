@@ -207,7 +207,8 @@
               ]);
             })),
             h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
-              h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تجربة المساعد', onClick: function () { App.openSupport({ greet: true }); } })
+              h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تجربة المساعد', onClick: function () { App.openSupport({ greet: true }); } }),
+              h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '🤖 موظف التسجيل — تسجيل مدرسة', onClick: function () { App.go('regagent'); } })
             ])
           ])
         ]));
