@@ -34,6 +34,15 @@
         var fMode = UI.field({ name: 'tgMode', label: 'وضع الإرسال', type: 'select', half: true, value: cfg0.mode || 'sim',
           options: [{ value: 'sim', label: 'محاكاة (تسجيل فقط)' }, { value: 'direct', label: 'إرسال حقيقي (توكن)' }] });
         var statusSlot = h('div', { class: 'callout info', text: 'الحالة: ' + (S.telegramReady && S.telegramReady() ? 'جاهز للإرسال الحقيقي ✓' : 'غير جاهز — يحتاج توكن + معرّف محادثة + الوضع «إرسال حقيقي»') });
+        /* لوحة حالة مختصرة: ما هو محفوظ فعلًا الآن */
+        var savedTok = String(cfg0.botToken || '');
+        var stateLine = h('div', { class: 'callout ' + (savedTok ? 'tip' : 'warn') }, [
+          h('div', { html: '<b>المحفوظ الآن:</b> ' +
+            'التوكن: ' + (savedTok ? ('محفوظ ✓ (' + savedTok.slice(0, 6) + '…' + savedTok.slice(-4) + ')') : 'غير محفوظ ✗') +
+            ' · الوضع: ' + (cfg0.mode === 'direct' ? 'إرسال حقيقي' : (cfg0.mode === 'relay' ? 'عبر وسيط' : 'محاكاة (لا إرسال)')) +
+            ' · معرّف محادثتك: ' + (meU.telegramChatId || cfg0.chatId || 'غير مربوط ✗') }),
+          savedTok ? null : h('div', { class: 'muted', text: 'لو عندك بوت من قبل: @BotFather ← /mybots ← اختر بوتك ← API Token ← انسخه والصقه بالأعلى.' })
+        ]);
         function saveTg() {
           S.saveTelegramConfig({ botToken: fTok.input.value.trim(), chatId: fChat.input.value.trim(), mode: fMode.input.value });
           if (S.session.userId && fChat.input.value.trim()) S.update('users', S.session.userId, { telegramChatId: fChat.input.value.trim() });
@@ -75,14 +84,67 @@
               ] });
             }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — راجع التوكن', 'bad'); });
           } }),
+          h('button', { class: 'btn btn-primary', type: 'button', text: '📥 ربط جماعي (شاشة واحدة)', onClick: function () {
+            var t = fTok.input.value.trim() || S.telegramConfig().botToken || '';
+            if (!t) { UI.toast('ضع التوكن أولًا', 'warn'); return; }
+            UI.toast('جارٍ قراءة المحادثات من تلقرام…', 'info');
+            fetch('https://api.telegram.org/bot' + t + '/getUpdates').then(function (r) { return r.json(); }).then(function (j) {
+              var chats = S.tgChatsFromUpdates(j);
+              if (!chats.length) {
+                UI.modal({ title: 'ربط جماعي', body: [
+                  h('p', { class: 'muted', text: 'لم أجد أي محادثة. الطريقة الصحيحة:' }),
+                  h('ol', { class: 'promo-steps' }, [
+                    h('li', { text: 'أرسل لهم رابط البوت («🔗 رابط البوت للمشاركة»).' }),
+                    h('li', { text: 'كل واحد يفتح البوت ويضغط Start ويرسل أي كلمة.' }),
+                    h('li', { text: 'بعدها اضغط «📥 ربط جماعي» مرّة واحدة — تظهر أسماء من راسلوا البوت وتربطونهم بضغطة.' })
+                  ]),
+                  h('div', { class: 'callout warn', text: 'ملاحظة تلقرام: لا يمكن للبوت مراسلة أي شخص لم يضغط Start — هذه قاعدة تلقرام لا خيار في المنصة.' })
+                ] });
+                return;
+              }
+              var rows = S.tgSuggestLinks(chats);
+              var users = S.list('users').filter(function (u) { return u.role !== 'student' && u.status !== 'deleted'; });
+              var picks = {};
+              var tbl = h('div', { class: 'stack-sm' });
+              rows.forEach(function (r, i) {
+                picks[i] = r.userId || '';
+                var sel = h('select', { class: 'input', style: { maxWidth: '260px' } });
+                sel.appendChild(h('option', { value: '', text: '— اختر المستخدم —' }));
+                users.forEach(function (u) { sel.appendChild(h('option', { value: u.id, text: u.name + ' — ' + S.roleLabel(u.role, u.schoolId) })); });
+                sel.value = picks[i];
+                sel.addEventListener('change', function () { picks[i] = sel.value; });
+                tbl.appendChild(h('div', { class: 'cluster', style: { borderBottom: '1px solid var(--line)', padding: '8px 0', flexWrap: 'wrap' } }, [
+                  h('div', { style: { minWidth: '190px' } }, [
+                    h('div', { html: '<b>' + (r.name || 'بلا اسم') + '</b>' + (r.username ? ' <span class="muted" dir="ltr">@' + r.username + '</span>' : '') }),
+                    h('div', { class: 'muted', dir: 'ltr', style: { fontSize: 'var(--fs-xs)' }, text: String(r.chatId) })
+                  ]),
+                  sel,
+                  r.confident ? h('span', { class: 'chip chip-ok', text: 'مقترح تلقائيًا' }) : h('span', { class: 'chip', text: 'راجعه' })
+                ]));
+              });
+              UI.modal({ title: 'ربط جماعي — ' + rows.length + ' محادثة', wide: true, body: [
+                h('p', { class: 'muted', text: 'اختر المستخدم لكل محادثة (المقترح جاهز)، ثم «احفظ الربط». غير المختار يبقى «غير مفعّل» — ويعمل حسابه بلا تلقرام.' }),
+                tbl
+              ], actions: [
+                { label: '💾 احفظ الربط المحدد', class: 'btn-primary', onClick: function (close) {
+                  var n = 0;
+                  Object.keys(picks).forEach(function (k) {
+                    if (picks[k]) { S.setTelegramChatId(picks[k], String(rows[k].chatId)); S.setTgOff(picks[k], false); n++; }
+                  });
+                  UI.toast(n ? ('رُبط ' + n + ' مستخدمًا ✓') : 'لم تختر أحدًا', n ? 'ok' : 'warn');
+                  close(); App.route();
+                } },
+                { label: 'إغلاق', class: 'btn-outline', onClick: function (close) { close(); } }
+              ] });
+            }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — راجع التوكن والاتصال', 'bad'); });
+          } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: '🔍 فحص الجاهزية (من لديه معرّف؟)', onClick: function () {
-            var us = S.list('users').filter(function (u) { return u.role !== 'student'; });
-            var withId = us.filter(function (u) { return String(u.telegramChatId || '').trim(); });
-            var without = us.filter(function (u) { return !String(u.telegramChatId || '').trim(); });
+            var R = S.tgReadiness();
             UI.modal({ title: 'جاهزية تلقرام', wide: true, body: [
-              h('div', { class: 'callout info', text: 'مربوطون: ' + withId.length + ' · بلا معرّف: ' + without.length }),
-              h('div', { class: 'muted', text: 'مربوطون: ' + (withId.map(function (u) { return u.name; }).join(' · ') || '—') }),
-              h('div', { class: 'muted', style: { marginTop: '6px' }, text: 'بلا معرّف: ' + (without.map(function (u) { return u.name; }).join(' · ') || '—') }),
+              h('div', { class: 'callout info', text: 'مربوطون: ' + R.linked.length + ' · بانتظار Start: ' + R.pending.length + ' · غير مفعّل (معفى): ' + R.off.length }),
+              h('div', { class: 'muted', text: 'مربوطون: ' + (R.linked.map(function (u) { return u.name; }).join(' · ') || '—') }),
+              h('div', { class: 'muted', style: { marginTop: '6px' }, text: 'بانتظار Start: ' + (R.pending.map(function (u) { return u.name; }).join(' · ') || '—') }),
+              h('div', { class: 'muted', style: { marginTop: '6px' }, text: 'غير مفعّل: ' + (R.off.map(function (u) { return u.name; }).join(' · ') || '—') }),
               h('div', { class: 'callout warn', style: { marginTop: '10px' }, text: 'الطريقة: أرسل رابط البوت لهم ← يضغطون Start ← ثم ضع معرّف كل واحد في جدول «ربط حسابات تلقرام» أو اضغط «اجلب معرّف محادثتي» لكل واحد وهو معك.' })
             ] });
           } }),
@@ -104,6 +166,7 @@
             ])
           ]),
           h('div', { class: 'form-grid' }, [fTok.wrap, fChat.wrap, fMode.wrap]),
+          stateLine,
           statusSlot,
           h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'نفس التوكن يُستخدم لتنبيهات الإقرارات والتحديثات وبوت «مساعد مدير المدرسة» وللرسائل الشخصية لكل مستخدم (بمعرّفه من إدارة المستخدمين).' })
         ]));

@@ -679,6 +679,32 @@ async function backupSuite(page, base, hitsFn, syncFn) {
   ok(gr.saved && gr.sheets >= 1 && gr.rows === 2 && gr.after === gr.before + 4,
     'حفظ الكشف يزيد رصيد الطالب في العمود الصحيح', JSON.stringify({ before: gr.before, after: gr.after, rows: gr.rows }));
 
+  /* الربط الجماعي: استخراج المحادثات + الاقتراح التلقائي + حالة «غير مفعّل» */
+  const bulk = await page.eval(
+    'var upd = { result: [ { message: { chat: { id: 111, type: "private", first_name: "محمد", last_name: "النفيعي", username: "moh" } } },' +
+    ' { message: { chat: { id: 222, type: "private", first_name: "نورة", last_name: "العتيبي" } } },' +
+    ' { message: { chat: { id: -100999, type: "group", title: "مدرسة" } } } ] };' +
+    'var chats = Store.tgChatsFromUpdates(upd);' +
+    'var sc = Store.list("schools")[0] ? Store.list("schools")[0].id : null;' +
+    'var users = Store.list("users").filter(function (u) { return u.role !== "student"; });' +
+    'users.forEach(function (u) { Store.update("users", u.id, { telegramChatId: "" }); });' +
+    'Store.update("users", users[0].id, { name: "محمد النفيعي" });' +
+    'var sug = Store.tgSuggestLinks(chats, users);' +
+    'var first = sug.filter(function (x) { return x.chatId === 111; })[0];' +
+    '/* معفى: لا يُقترح */ Store.setTgOff(users[0].id, true);' +
+    'var sug2 = Store.tgSuggestLinks(chats, users);' +
+    'var ok1 = sug.filter(function (x) { return x.chatId === 111 && x.userId === users[0].id; }).length;' +
+    'var ok2 = sug2.filter(function (x) { return x.chatId === 111 && x.userId === users[0].id; }).length;' +
+    'Store.setTgOff(users[0].id, false);' +
+    'Store.setTelegramChatId(users[0].id, "111");' +
+    'var R = Store.tgReadiness();' +
+    'return { chats: chats.length, confident: first ? first.confident : false, matched: ok1 === 1, skippedOff: ok2 === 0,' +
+    ' linked: R.linked.length, pending: R.pending.length, off: R.off.length };');
+  ok(bulk.chats === 2 && bulk.confident && bulk.matched,
+    'الربط الجماعي: يُستخرج المحادثات الخاصة فقط ويقترح المستخدم بالاسم', JSON.stringify({ chats: bulk.chats, conf: bulk.confident, matched: bulk.matched }));
+  ok(bulk.skippedOff === true, 'المستخدم «غير المفعّل» لا يُقترح له ربط (معفى)', 'skipped=' + bulk.skippedOff);
+  ok(bulk.linked >= 1 && bulk.pending >= 0, 'فحص الجاهزية يقسّم: مربوط · بانتظار Start · معفى', JSON.stringify({ l: bulk.linked, p: bulk.pending, off: bulk.off }));
+
   /* ربط تلقرام للمشرف العام: خطوات + حقول + فحص حقيقي بلا نجاح كاذب */
   const tg = await page.eval(
     'var before = Store.telegramConfig();' +

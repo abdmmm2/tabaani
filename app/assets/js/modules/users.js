@@ -39,6 +39,8 @@
           phone: UI.field({ name: 'uPhone', label: 'الجوال', half: true, value: cur.phone || '', help: 'يُستخدم لتنبيهات تلقرام.' }),
           tgChat: UI.field({ name: 'uTgChat', label: 'محادثة تلقرام الشخصية (chat_id)', half: true, value: cur.telegramChatId || '',
             help: 'اختياري — للرسائل الخاصة (مثل إذن دخول الفصل). اتركها فارغة ليصل التنبيه إلى مجموعة المدرسة.' }),
+          tgOff: UI.field({ name: 'uTgOff', label: 'تلقرام', type: 'select', half: true, value: cur.tgOff ? '1' : '0',
+            options: [{ value: '0', label: 'مفعّل (يُربط بالبوت)' }, { value: '1', label: 'غير مفعّل (معفى من تلقرام)' }] }),
           idType: UI.field({ name: 'uIdType', label: 'نوع الهوية', type: 'select', half: true, value: cur.idType || 'national',
             options: S.ID_TYPES.map(function (t) { return { value: t.id, label: t.label }; }) }),
           idNo: UI.field({ name: 'uIdNo', label: 'رقم الهوية / الإقامة', half: true, dir: 'ltr', value: cur.idNo || '', placeholder: '١٠ أرقام' }),
@@ -61,7 +63,7 @@
           title: isNew ? 'إضافة مستخدم جديد' : 'تعديل المستخدم',
           wide: true,
           body: [
-            h('div', { class: 'grid-2-app' }, [f.name.wrap, f.username.wrap, f.role.wrap, f.school.wrap, f.idType.wrap, f.idNo.wrap, f.gender.wrap, f.email.wrap, f.phone.wrap, f.tgChat.wrap, f.password.wrap, f.status.wrap]),
+            h('div', { class: 'grid-2-app' }, [f.name.wrap, f.username.wrap, f.role.wrap, f.school.wrap, f.tgOff.wrap, f.idType.wrap, f.idNo.wrap, f.gender.wrap, f.email.wrap, f.phone.wrap, f.tgChat.wrap, f.password.wrap, f.status.wrap]),
             h('label', { class: 'checkline' }, [mustChange, h('span', { text: 'إلزامه بتغيير كلمة المرور عند أول دخول' })]),
             h('p', { class: 'muted-block', style: { marginTop: '10px', fontSize: 'var(--fs-xs)' },
               text: 'ملاحظة: هذا نموذج أولي — كلمات المرور تُخزَّن داخل المتصفح (localStorage) بلا تشفير. في الإنتاج تُخزَّن مُشفَّرة (hash) على الخادم.' }),
@@ -78,6 +80,7 @@
                 telegramChatId: f.tgChat.input.value.trim(),
                 gender: f.gender.input.value || '',
                 idType: f.idType.input.value, idNo: String(f.idNo.input.value || '').replace(/\D/g, ''),
+                tgOff: f.tgOff.input.value === '1',
                 status: f.status.input.value, mustChange: mustChange.checked
               };
               if (isNew) {

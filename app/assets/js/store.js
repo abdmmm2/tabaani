@@ -1913,6 +1913,72 @@
     botName: function () { return (db.settings && db.settings.botName) || 'مساعد مدير المدرسة'; },
     saveBotName: function (n) { db.settings.botName = String(n || '').trim() || 'مساعد مدير المدرسة'; save(); return db.settings.botName; },
 
+    /* =====================================================================
+       تلقرام: الربط الجماعي + حالة «غير مفعّل/معفى» لكل مستخدم
+       ===================================================================== */
+    normName: function (t) {
+      return String(t == null ? '' : t).replace(/[أإآٱ]/g, 'ا').replace(/[ىي]/g, 'ي').replace(/ة/g, 'ه')
+        .replace(/[^\u0621-\u064A\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    },
+    /** يقترح أي مستخدم يملك كل محادثة (بالاسم أو اسم المستخدم) */
+    tgSuggestLinks: function (chats, users) {
+      var us = users || store.list('users').filter(function (u) { return u.role !== 'student'; });
+      var taken = {};
+      us.forEach(function (u) { if (String(u.telegramChatId || '').trim()) taken[u.telegramChatId] = u.id; });
+      return (chats || []).map(function (c) {
+        var label = store.normName(c.name || c.username || '');
+        var best = null, score = 0;
+        if (taken[String(c.id)]) { best = store.user(taken[String(c.id)]); score = 100; }
+        if (!best && label) {
+          us.forEach(function (u) {
+            if (String(u.telegramChatId || '').trim() || u.tgOff) return;
+            var n = store.normName(u.name), un = store.normName(u.username);
+            var s2 = 0;
+            if (c.username && un && store.normName(c.username) === un) s2 = 95;
+            else if (n && label) {
+              var parts = label.split(' ').filter(function (x) { return x.length > 2; });
+              var hits = parts.filter(function (w) { return n.indexOf(w) > -1; }).length;
+              s2 = parts.length ? Math.round((hits / parts.length) * 80) : 0;
+              if (n.indexOf(label) > -1 || label.indexOf(n) > -1) s2 = Math.max(s2, 75);
+            }
+            if (s2 > score) { score = s2; best = u; }
+          });
+        }
+        return { chatId: c.id, name: c.name || '', username: c.username || '', userId: best ? best.id : null,
+          userName: best ? best.name : '', score: score, confident: score >= 70 };
+      });
+    },
+    /** حالة الجاهزية: مربوط · بانتظار Start · معفى */
+    tgReadiness: function () {
+      var us = store.list('users').filter(function (u) { return u.role !== 'student' && u.status !== 'deleted'; });
+      var out = { linked: [], pending: [], off: [] };
+      us.forEach(function (u) {
+        var chat = String(u.telegramChatId || u.telegram || '').trim();
+        var row = { id: u.id, name: u.name, role: store.roleLabel(u.role, u.schoolId), chat: chat };
+        if (u.tgOff) out.off.push(row);
+        else if (chat) out.linked.push(row);
+        else out.pending.push(row);
+      });
+      return out;
+    },
+    setTgOff: function (userId, off) {
+      var u = store.user(userId); if (!u) return null;
+      u.tgOff = !!off; save(); return u;
+    },
+    /** يستخرج المحادثات الخاصة من ردّ تلقرام getUpdates */
+    tgChatsFromUpdates: function (json) {
+      var seen = {}, out = [];
+      ((json && json.result) || []).forEach(function (up) {
+        var m = up.message || up.edited_message || up.channel_post || {};
+        var c = m.chat || {};
+        if (!c.id || c.type !== 'private') return;
+        if (seen[c.id]) return;
+        seen[c.id] = 1;
+        out.push({ id: c.id, name: ((c.first_name || '') + ' ' + (c.last_name || '')).trim(), username: c.username || '' });
+      });
+      return out;
+    },
+
     requestService: function (d) {
       d = d || {};
       var subject = String(d.subject || '').trim();
