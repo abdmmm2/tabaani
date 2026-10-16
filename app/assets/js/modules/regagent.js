@@ -51,7 +51,7 @@
       }).catch(function (e) { cb({ ok: false, code: code, error: (e && e.message) || 'تعذّر إرسال الكود على تلقرام — تأكد من ربط البوت (بيانات تابعني ← الربط بتلقرام)' }); });
       return;
     }
-    if (!d.pemail) return cb({ ok: false, error: 'لا يوجد بريد للمدير — اختر تلقرام أو أضف بريدًا.' });
+    if (!d.pemail) return cb({ ok: false, code: code, error: 'لا يوجد بريد للمدير — كود التفعيل يُرسل على البريد الإلكتروني، أضف بريدًا صحيحًا.' });
     if (!S.driveConfigured()) return cb({ ok: false, error: 'الإيميل يحتاج ربط نقطة الإرسال (Apps Script) من: بيانات تابعني ← الحفظ السحابي — أو اختر تلقرام.' });
     App.cloud.mail({ to: d.pemail, subject: 'تابعني — كود تفعيل تسجيل مدرستك', body: msg,
       html: '<div dir="rtl" style="font-family:Tahoma"><p>' + msg.replace(/\n/g, '<br>') + '</p></div>' }, function (err) {
@@ -223,19 +223,19 @@
           quickBtn('كلاسيك 1000', function () { say('كلاسيك'); data.plan = 'classic'; go('paid', 'هل تم سداد رسم التأسيس (1000 ر.س)؟'); });
         }
         if (step === 'files') {
-          quickBtn('تابع بلا ملفات', function () { say('تابع بلا ملفات'); go('channel', 'على أي قناة أرسل كود التفعيل؟ «تلقرام» أو «البريد».'); });
-          quickBtn('تم — التالي', function () { say('تم'); go('channel', 'على أي قناة أرسل كود التفعيل؟ «تلقرام» أو «البريد».'); });
+          quickBtn('تابع بلا ملفات', function () { say('تابع بلا ملفات'); askSendCode(); });
+          quickBtn('تم — التالي', function () { say('تم'); askSendCode(); });
         }
         if (step === 'paid') {
           quickBtn('تم سداد رسم التأسيس ✓', function () { say('تم سداد رسم التأسيس'); data.paid = true; go('pname', 'ممتاز — اسم مدير المدرسة؟'); }, 'btn btn-primary btn-sm');
           quickBtn('لم يُسدد بعد', function () { say('لم يُسدد بعد'); halt('لم يُثبَت سداد رسم التأسيس. لن أكمل التسجيل ولن يُحفظ شيء — أرسل الإيصال ثم ابدأ من جديد.'); });
         }
         if (step === 'channel') {
-          quickBtn('تلقرام', function () { say('تلقرام'); pickChannel('tg'); }, 'btn btn-primary btn-sm');
-          quickBtn('البريد الإلكتروني', function () { say('البريد'); pickChannel('mail'); }, 'btn btn-primary btn-sm');
+          quickBtn('أرسل الكود على البريد ✉', function () { say('أرسل'); sendMailCode(); }, 'btn btn-primary btn-sm');
+          quickBtn('تغيير البريد', function () { say('تغيير البريد'); data.needEmail = true; go('pemail', 'اكتب بريد المدير الصحيح:'); });
         }
         if (step === 'code') {
-          quickBtn('أرسل كودًا جديدًا', function () { pickChannel(reg.channel === 'tg' ? 'tg' : 'mail'); });
+          quickBtn('أرسل كودًا جديدًا على البريد', function () { sendMailCode(); });
           quickBtn('إلغاء التسجيل', function () { say('إلغاء'); halt('أُلغي التسجيل — لم يُحفظ أي شيء.'); });
         }
         if (step === 'halted') {
@@ -271,12 +271,16 @@
         }
         if (step === 'pname') { data.pname = text; return go('pphone', 'جوال مدير المدرسة؟'); }
         if (step === 'pphone') { data.pphone = text; return go('pemail', 'بريد المدير؟ (لإرسال بيانات الدخول بالإيميل — اكتب «تخطَّ» إن لم يوجد)'); }
-        if (step === 'pemail') { data.pemail = /تخط|لا يوجد|بدون/.test(text) ? '' : text; return go('ptg', 'معرّف تلقرام المدير؟ (رقم الجوال أو chat id — أو «تخطَّ»)'); }
+        if (step === 'pemail') {
+          data.pemail = /تخط|لا يوجد|بدون/.test(text) ? '' : text;
+          if (!/@/.test(data.pemail)) { sys('البريد غير صحيح — كود التفعيل يُرسل على بريد المدير، فهو إلزامي. اكتب البريد الصحيح.'); return renderLog(); }
+          if (data.needEmail) { data.needEmail = false; return sendMailCode(); }
+          return go('ptg', 'معرّف تلقرام المدير؟ (رقم الجوال أو chat id — أو «تخطَّ» · تُرسل عليه بيانات الدخول فقط)');
+        }
         if (step === 'ptg') { data.ptg = /تخط|لا يوجد|بدون/.test(text) ? '' : text; return go('files', 'ارفع ملفات العميل (فصول · معلمون · طلاب) بزر «📎 ارفق ملف» — أو اضغط «تابع بلا ملفات».'); }
         if (step === 'channel') {
-          if (/تلقرام|تليقرام|تلجرام|جوال/.test(text)) return pickChannel('tg');
-          if (/بريد|ايميل|إيميل|mail/.test(text)) return pickChannel('mail');
-          sys('اختر قناة الكود: «تلقرام» أو «البريد».'); return renderLog();
+          if (/ارسل|أرسل|تم|نعم/.test(text)) return sendMailCode();
+          sys('اكتب «أرسل» لإرسال كود التفعيل على بريد المدير، أو «تغيير البريد».'); return renderLog();
         }
         if (step === 'code') {
           var chk = checkCode(text);
@@ -320,7 +324,7 @@
           if (/كلاسيك|classic|عادي/.test(text)) { data.plan = 'classic'; return go('paid', 'هل تم سداد رسم التأسيس (1000 ر.س)؟'); }
           sys('اكتب «برو» أو «كلاسيك» — أيّهما؟'); return renderLog();
         }
-        if (step === 'files') { if (/^تم|تابع|سجل|تسجيل|ارفع|خلاص/.test(text)) return go('channel', 'على أي قناة أرسل كود التفعيل؟ «تلقرام» أو «البريد».'); sys('ارفع الملفات بزر «📎 ارفق ملف»، أو اكتب «تم» للتسجيل الآن.'); return renderLog(); }
+        if (step === 'files') { if (/^تم|تابع|سجل|تسجيل|ارفع|خلاص/.test(text)) return askSendCode(); sys('ارفع الملفات بزر «📎 ارفق ملف»، أو اكتب «تم» للتسجيل الآن.'); return renderLog(); }
         if (step === 'send') return chooseByText(text);
         sys('الطلب مسجّل — استخدم الأزرار أسفل المحادثة.');
         renderLog();
@@ -377,6 +381,36 @@
           finish();
         });
       }
+      /** بعد الملفات: نعرض البريد ونتأكد قبل إرسال الكود */
+      function askSendCode() {
+        if (!data.pemail || !/@/.test(data.pemail)) {
+          data.needEmail = true;
+          return go('pemail', 'كود التفعيل يُرسل على بريد المدير — اكتب البريد الإلكتروني:');
+        }
+        go('channel', 'أرسل كود التفعيل على بريد المدير: ' + data.pemail + ' ؟');
+      }
+
+      /** كود التفعيل على بريد المدير فقط (حسب طلب المالك) */
+      function sendMailCode() {
+        if (!data.pemail || !/@/.test(data.pemail)) {
+          data.needEmail = true;
+          return go('pemail', 'كود التفعيل يُرسل على بريد المدير — اكتب البريد الإلكتروني:');
+        }
+        reg.channel = 'mail';
+        sys('جارٍ إرسال كود التفعيل على ' + data.pemail + '…');
+        renderLog();
+        sendCode(data, 'mail', function (res) {
+          if (!res.ok) {
+            sys('⚠️ ' + res.error);
+            sys('إن تعذّر البريد: تحقق من ربط نقطة الإرسال (Apps Script) في: بيانات تابعني ← الحفظ السحابي.');
+            step = 'channel'; return renderLog();
+          }
+          step = 'code';
+          say('أرسلت كود التفعيل (٦ أرقام) على البريد ' + data.pemail + ' — اكتبه هنا لإتمام التسجيل:', 'agent');
+          sys('لن تُنشأ المدرسة ولن تُحفظ قبل إدخال الكود (حماية من التسجيلات الوهمية).');
+          renderLog(); renderQuick();
+        });
+      }
       function pickChannel(channel) {
         reg.channel = channel;
         sys('جارٍ إرسال كود التفعيل…');
@@ -410,7 +444,7 @@
       function greet() {
         say('أهلاً بك 👋 أنا موظف التسجيل — أسجّل لك مدرسة كاملة من الصفر: المدرسة · الفصول · الموظفين بحساباتهم · الطلاب، ثم أرسل بيانات الدخول للمدير على تلقرام والإيميل.');
         sys('يمكنك الإجابة بالكتابة في المربع أسفل، أو بالضغط على الأزرار التي تظهر — ثم «إرسال».');
-        sys('ملاحظة الحماية: لن تُنشأ المدرسة ولن يُحفظ أي طلب قبل استكمال (البيانات + الملفات + السداد + كود التفعيل على البريد أو تلقرام).');
+        sys('ملاحظة الحماية: لن تُنشأ المدرسة ولن يُحفظ أي طلب قبل استكمال (البيانات + الملفات + السداد + كود التفعيل على بريد المدير).');
         say('1) ما اسم المدرسة؟');
       }
 

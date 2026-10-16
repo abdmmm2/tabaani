@@ -528,13 +528,13 @@ async function backupSuite(page, base, hitsFn) {
   ok(lock.codeLen === 6 && lock.okOk === true, 'الكود ٦ أرقام ويُقبل عند صحته', 'len=' + lock.codeLen);
 
   /* إرسال الكود: تلقرام (بمعرّف المدير) والبريد يحتاج نقطة Apps Script */
-  const send = await page.eval(
-    'window.__sc = null; App.regAgent.sendCode({ name: "مدرسة الكود", ptg: "555000", pemail: "" }, "tg", function (r) { window.__sc = r; }); return true;');
-  void send;
-  await B.sleep(1200);
-  const sc = await page.eval('return window.__sc;');
-  ok(sc && typeof sc.code === 'string' && sc.code.length === 6 && (sc.ok === true || !!sc.error),
-    'أُولّد كود ٦ أرقام ويُرسل على تلقرام — وإن تعذّر فشل الإرسال يُشرح بصراحة', JSON.stringify(sc && { ok: sc.ok, ch: sc.channel, to: sc.to, err: sc.error }));
+  /* كود التفعيل: على البريد فقط — وبدون بريد يشرح بصراحة ولا يوهم بالنجاح */
+  const noMail = await page.eval('window.__sc0 = null; App.regAgent.sendCode({ name: "بلا بريد", ptg: "555000", pemail: "" }, "mail", function (r) { window.__sc0 = r; }); return true;');
+  void noMail;
+  await B.sleep(600);
+  const sc0 = await page.eval('return window.__sc0;');
+  ok(sc0 && sc0.ok === false && String(sc0.code || '').length === 6 && /بريد/.test(sc0.error || ''),
+    'بلا بريد: يُولّد الكود لكن يشرح أن البريد مطلوب (لا نجاح كاذب)', JSON.stringify(sc0));
   await page.eval('Store.saveDriveConfig({ url: "http://127.0.0.1:1/__none" }); return true;');
   await page.eval('window.__sm = null; App.regAgent.sendCode({ name: "م", pemail: "a@b.sa", ptg: "" }, "mail", function (r) { window.__sm = r; }); return true;');
   await B.sleep(1200);
@@ -581,6 +581,9 @@ async function backupSuite(page, base, hitsFn) {
   ok(/اسم مدير المدرسة/.test(carry2), 'الإكمال بالكتابة يعمل ويظهر السؤال التالي بلا تعطّل', (carry + ' → ' + carry2).replace(/\n/g, ' | '));
   const prompts = await page.eval('var t=document.querySelector("#view .chat-log").innerText; return { gender:t.indexOf("بنين أم بنات")>-1, plan:/الباقة؟/.test(t) };');
   ok(prompts.gender && prompts.plan, 'كل خطوة اختيار لها سؤال نصي صريح', JSON.stringify(prompts));
+  /* البريد إلزامي (كود التفعيل عليه) */
+  const mailReq = await page.eval('return { hasEmailField: !!document.querySelector("#view .chat-input input"), log: document.querySelector("#view .chat-log").innerText.slice(-80) };');
+  ok(mailReq.hasEmailField, 'المحادثة تقبل البريد الإلكتروني (كود التفعيل عليه)', mailReq.log.replace(/\n/g, ' | '));
   await page.eval('var b=[].slice.call(document.querySelectorAll("#view .chat-quick button")).filter(function(x){return x.textContent.indexOf("تسجيل مدرسة أخرى")>-1;})[0]; if(b) b.click(); return true;');
   await B.sleep(400);
 
