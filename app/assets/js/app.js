@@ -760,11 +760,45 @@
                 h('span', { text: 'رمز المعاينة (مؤقت — استخدمه الآن للدخول): ' }),
                 h('code', { text: r.simCode })
               ]) : null,
-              noToken ? h('div', { class: 'cluster', style: { marginTop: '8px' } }, [
-                h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '⚙️ افتح إعداد تلقرام الآن', onClick: function () {
-                  UI.toast('سجّل الدخول أولًا ثم افتح «سجل تلقرام» واضبط التوكن ومعرّف محادثتك', 'info');
-                } })
-              ]) : null
+              (function () {
+                /* إصلاح مباشر من شاشة الرمز: التوكن + معرّف المحادثة + إعادة الإرسال */
+                var cfg0 = S.telegramConfig();
+                var tok = h('input', { class: 'input', dir: 'ltr', placeholder: '123456789:AAE… (توكن البوت)', value: cfg0.botToken || '' });
+                var st = h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' } });
+                function retry() {
+                  var t = tok.value.trim();
+                  if (!t) { st.textContent = 'الصق التوكن أولًا'; return; }
+                  S.saveTelegramConfig({ botToken: t, mode: 'direct' });
+                  st.textContent = 'جارٍ إرسال الرمز…';
+                  S.loginOtpSend(user.id).then(function (r2) {
+                    st.textContent = r2.ok ? ('أُرسل الرمز إلى تلقرام ✓ (' + (r2.sentTo || '') + ')')
+                      : ('لم يُرسل: ' + (r2.error || '') + ' — اضغط «اجلب معرّفي» ثم أعد المحاولة');
+                    if (r2.ok) UI.toast('وصل الرمز على تلقرام ✓', 'ok');
+                  });
+                }
+                var save = h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '💾 احفظ التوكن وأرسل الرمز', onClick: retry });
+                var fetchId = h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '⬇️ اجلب معرّفي من تلقرام', onClick: function () {
+                  var t = tok.value.trim() || S.telegramConfig().botToken || '';
+                  if (!t) { st.textContent = 'الصق التوكن أولًا'; return; }
+                  st.textContent = 'جارٍ القراءة من تلقرام…';
+                  fetch('https://api.telegram.org/bot' + t + '/getUpdates').then(function (r) { return r.json(); }).then(function (j) {
+                    var ups = (j && j.result) || [];
+                    var last = ups.length ? (ups[ups.length - 1].message || {}).chat : null;
+                    if (!last || !last.id) { st.textContent = 'لا رسائل بعد — افتح محادثة البوت واضغط Start ثم أرسل أي كلمة'; return; }
+                    S.update('users', user.id, { telegramChatId: String(last.id) });
+                    S.saveTelegramConfig({ botToken: t, chatId: String(last.id), mode: 'direct' });
+                    st.textContent = 'وجدتك: ' + last.id + ' — جارٍ الإرسال…';
+                    S.loginOtpSend(user.id).then(function (r2) {
+                      st.textContent = r2.ok ? ('أُرسل الرمز ✓ (' + r2.sentTo + ')') : ('لم يُرسل: ' + (r2.error || ''));
+                      if (r2.ok) UI.toast('وصل الرمز على تلقرام ✓', 'ok');
+                    });
+                  }).catch(function () { st.textContent = 'تعذّر الوصول لتلقرام — تأكّد من التوكن والاتصال'; });
+                } });
+                return h('div', { style: { marginTop: '10px', borderTop: '1px dashed #EFE9DC', paddingTop: '10px' } }, [
+                  h('div', { style: { fontWeight: 700, fontSize: 'var(--fs-sm)', marginBottom: '6px' }, text: '🛠️ ضبط الإرسال من هنا (مرة واحدة)' }),
+                  tok, h('div', { class: 'cluster', style: { marginTop: '8px' } }, [save, fetchId]), st
+                ]);
+              })()
             ]));
           }
         });
