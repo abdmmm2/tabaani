@@ -1432,7 +1432,7 @@ async function twoFactorSuite(page, base) {
     'return { id: t.id, uname: t.username, pw: t.password };');
 
   /* موظف بلا محادثة: لا مرحلة ثانية */
-  await page.eval('Store.saveTwoFactorConfig({ enabled: true, enforce: false });' +
+  await page.eval('Store.saveTwoFactorConfig({ enabled: true, enforce: false, skipInSim: false });' +
     'Store.setTelegramChatId(' + JSON.stringify(acc.id) + ', ""); return true;');
   await loginAs(acc.uname, acc.pw);
   ok(await shellOn(page) && !(await tfOn(page)), '2FA: موظف بلا محادثة يدخل بكلمة المرور فقط');

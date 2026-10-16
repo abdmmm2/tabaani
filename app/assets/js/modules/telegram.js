@@ -56,6 +56,36 @@
               UI.toast('وجدته: ' + chat + ' — حُفظ ✓', 'ok');
             }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — تأكّد من التوكن والاتصال', 'bad'); });
           } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '🔗 رابط البوت للمشاركة', onClick: function () {
+            var t = fTok.input.value.trim();
+            if (!t) { UI.toast('ضع التوكن أولًا', 'warn'); return; }
+            fetch('https://api.telegram.org/bot' + t + '/getMe').then(function (r) { return r.json(); }).then(function (j) {
+              var un = j && j.result && j.result.username;
+              if (!un) { UI.toast('لم أقرأ اسم البوت — تأكّد من التوكن', 'bad'); return; }
+              var link = 'https://t.me/' + un;
+              UI.modal({ title: 'رابط البوت', body: [
+                h('p', { class: 'muted', text: 'أرسل هذا الرابط للمعلمين والموظفين: يفتحونه ← Start ← يرسلون أي كلمة، وبعدها يمكن ربط حساباتهم.' }),
+                h('code', { dir: 'ltr', style: { display: 'block', wordBreak: 'break-all' }, text: link }),
+                h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
+                  h('a', { class: 'btn btn-primary', href: link, target: '_blank', rel: 'noopener', text: 'افتح البوت' }),
+                  h('button', { class: 'btn btn-outline', type: 'button', text: 'انسخ', onClick: function () {
+                    (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { UI.toast('نُسخ ✓', 'ok'); }, function () { UI.toast('انسخه يدويًا', 'warn'); });
+                  } })
+                ])
+              ] });
+            }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — راجع التوكن', 'bad'); });
+          } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '🔍 فحص الجاهزية (من لديه معرّف؟)', onClick: function () {
+            var us = S.list('users').filter(function (u) { return u.role !== 'student'; });
+            var withId = us.filter(function (u) { return String(u.telegramChatId || '').trim(); });
+            var without = us.filter(function (u) { return !String(u.telegramChatId || '').trim(); });
+            UI.modal({ title: 'جاهزية تلقرام', wide: true, body: [
+              h('div', { class: 'callout info', text: 'مربوطون: ' + withId.length + ' · بلا معرّف: ' + without.length }),
+              h('div', { class: 'muted', text: 'مربوطون: ' + (withId.map(function (u) { return u.name; }).join(' · ') || '—') }),
+              h('div', { class: 'muted', style: { marginTop: '6px' }, text: 'بلا معرّف: ' + (without.map(function (u) { return u.name; }).join(' · ') || '—') }),
+              h('div', { class: 'callout warn', style: { marginTop: '10px' }, text: 'الطريقة: أرسل رابط البوت لهم ← يضغطون Start ← ثم ضع معرّف كل واحد في جدول «ربط حسابات تلقرام» أو اضغط «اجلب معرّف محادثتي» لكل واحد وهو معك.' })
+            ] });
+          } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: '✈️ أرسل لي رسالة تجريبية الآن', onClick: function () {
             saveTg();
             S.telegramSendTo(fChat.input.value.trim(), '🤖 تجربة ربط تلقرام — تابعني\nإن وصلتك هذه الرسالة فالربط صحيح ✓').then(function (r) {

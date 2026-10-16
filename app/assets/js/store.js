@@ -705,6 +705,7 @@
       return {
         enabled: t.enabled !== false,     /* مفعّل */
         enforce: t.enforce === true,      /* الإلزام **اختياري**: لا يُحجب أحد لعدم ربط تلقرام إلا لو اختاره المشرف عمدًا */
+        skipInSim: t.skipInSim !== false, /* في وضع المحاكاة (بلا إرسال فعلي) لا نطلب رمزًا — لا قيمة أمنية وهو يزعج الموظفين */
         ttl: n(t.ttl, 5),                 /* دقائق صلاحية الرمز */
         attempts: n(t.attempts, 5)        /* أقصى عدد محاولات */
       };
@@ -726,9 +727,13 @@
       if (!c.enabled) return { applies: false, blocked: false, reason: 'التحقق بمرحلتين مُعطَّل من الإعدادات' };
       var chat = String(u.telegramChatId || '').trim();
       if (chat) return { applies: true, blocked: false, chat: chat };
-      /* وضع المحاكاة: الإرسال الفعلي غير مُفعّل ⇒ الحجب بلا معنى (يظهر الرمز على الشاشة) */
+      /* وضع المحاكاة: لا إرسال فعلي ⇒ لا قيمة للتحقق (الرمز يُطبع على نفس الشاشة) — نتخطّاه افتراضيًا */
+      if (store.telegramConfig().mode === 'sim' && c.skipInSim) {
+        return { applies: false, blocked: false, sim: true,
+          reason: 'الإرسال الفعلي إلى تلقرام غير مُفعّل — الدخول مفتوح. فعّل الإرسال (توكن البوت) ليعمل التحقق بمرحلتين فعليًا.' };
+      }
       if (store.telegramConfig().mode === 'sim') {
-        return { applies: false, blocked: false, sim: true, reason: 'الإرسال الفعلي إلى تلقرام غير مُفعّل — الدخول مفتوح، واربط محادثتك لتفعيل التحقق' };
+        return { applies: false, blocked: false, sim: true, reason: 'الإرسال الفعلي إلى تلقرام غير مُفعّل — الدخول مفتوح' };
       }
       if (c.enforce) {
         /* بوتقة أمان: لا يُحجب المشرف العام أبدًا — وإلا تعذّر إصلاح تابعني */

@@ -782,7 +782,19 @@
           resend,
           h('button', { class: 'btn-link', type: 'button', text: 'رجوع لتسجيل الدخول',
             onClick: function () { S.loginOtpClear(); App.login(); } })
-        ])
+        ]),
+        (S.telegramConfig().mode === 'sim') ? h('div', { class: 'muted-block', style: { marginTop: '10px' } }, [
+          h('div', { text: 'الإرسال الفعلي إلى تلقرام غير مُفعّل، فالرمز يظهر على هذه الشاشة (بلا قيمة أمنية حقيقية).' }),
+          h('button', { class: 'btn btn-outline btn-sm', style: { marginTop: '8px' }, type: 'button',
+            text: '⏭️ تخطّي هذه الخطوة (وضع المحاكاة)',
+            onClick: function () {
+              try { S.saveTwoFactorConfig({ skipInSim: true }); } catch (e) {}
+              S.loginOtpClear();
+              UI.toast('تم تخطّي التحقق — يُطلب تلقائيًا عند تفعيل الإرسال الفعلي', 'ok');
+              App.enter(user.id);
+              onDone();
+            } })
+        ]) : null
       ]);
 
       App.authShell('التحقق بمرحلتين', 'خطوة أمان إضافية لحماية حسابك.', h('div', { class: 'stack' }, [form]));
@@ -1723,6 +1735,14 @@
             function () { UI.toast('نُسخ ✓ — أرسله لي', 'ok'); }, function () { UI.toast('حدّد النص وانسخه يدويًا', 'warn'); });
         } }),
         h('button', { class: 'btn btn-outline', type: 'button', text: '🔄 تحديث قسري', onClick: function () { App.hardUpdate(); } })
+        ,h('button', { class: 'btn btn-link', type: 'button', text: 'تخطّي التحقق (وضع المحاكاة — بلا إرسال فعلي)', onClick: function () {
+          UI.confirm('الإرسال الفعلي إلى تلقرام غير مُفعّل، لذلك الرمز يظهر على الشاشة (لا قيمة أمنية حقيقية). تخطّي؟', function () {
+            try { S.saveTwoFactorConfig({ skipInSim: true }); } catch (e) {}
+            App.route && App.route();
+            if (App.current === 'login' || document.querySelector('.login-wrap')) App.openLogin(true);
+            else App.route();
+          });
+        } })
       ])
     ] });
     return txt;
