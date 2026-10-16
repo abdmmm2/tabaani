@@ -397,57 +397,147 @@
 </script>
 <script src="assets/data/support-config.js"></script>
 <script>
-  /* ===== الدعم المناوب + بوت التسجيل ===== */
+  /* ===== الدعم المناوب (محادثة) + بوت التسجيل ===== */
   (function () {
     var S = window.TABAANI_SUPPORT || {};
     var panel = null;
+
     function agentNow() {
       var list = (S.agents || []); if (!list.length) return null;
       var h = new Date().getHours();
       return list.filter(function (a) {
-        var from = a.from == null ? 8 : a.from, to = a.to == null ? 20 : a.to;
-        return from <= to ? (h >= from && h < to) : (h >= from || h < to);
+        var f = a.from == null ? 8 : a.from, t = a.to == null ? 20 : a.to;
+        return f <= t ? (h >= f && h < t) : (h >= f || h < t);
       })[0] || list[0];
     }
+    function greetWord() { var h = new Date().getHours(); return h < 12 ? 'صباح الخير' : (h < 17 ? 'مساء النور' : 'مساء الخير'); }
+    function esc(t) { return String(t == null ? '' : t).replace(/[<>&]/g, function (c) { return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]; }); }
+
+    var KB = [
+      { k: ['تسجيل', 'اسجل', 'أفعل مدرسة', 'افتتاح', 'تأسيس', 'مدرستي جديدة', 'ابدا', 'ابدأ'],
+        a: 'حياك الله! تسجيل مدرسة جديدة يستقبل **بوت التسجيل** — ياخذ بيانات المدرسة والمدير ويُرسل بيانات الدخول على البريد. أتجهّز لك الآن 👌', reg: true },
+      { k: ['سعر', 'اسعار', 'باقات', 'كم', 'رسم', 'تكلفة', 'فلوس'],
+        a: 'أبشر! الرسوم واضحة: **كلاسيك ١٠٠٠ ر.س سنويًا** · **برو ١٥٠٠ ر.س سنويًا**، ورسم تأسيس **١٠٠٠ ر.س مرة واحدة**. والدفع تحويل بنكي وإصدار فاتورة. تبي أوديك لبوت التسجيل؟' },
+      { k: ['دعم', 'مشكلة', 'خطا', 'خطأ', 'ما يفتح', 'معلق', 'بطيء'],
+        a: 'تم! عطني تفاصيل المشكلة وأنا أتابعها معك، ولو احتجنا نفتح لك تذكرة متابعة.' },
+      { k: ['تلقرام', 'تلجرام', 'اشعار', 'إشعار'],
+        a: 'تلقرام متاح في باقة **برو**: تجيك إشعارات الحضور والمخالفات والأذونات على محادثتك، ومجموعة المدرسة كذلك.' }
+    ];
+    function answer(t) {
+      var s = String(t || '');
+      var hit = KB.filter(function (x) { return x.k.some(function (k) { return s.indexOf(k) > -1; }); })[0];
+      return hit || null;
+    }
+
     function build() {
-      var a = agentNow() || {};
-      var reg = S.register || {};
-      var els = [];
-      if (a.img) els.push('<img class="agent" src="' + a.img + '" alt="">');
-      els.push('<h3>' + (a.name || S.title || 'الدعم الفني') + '</h3>');
-      els.push('<div class="role">' + (a.role || 'مناوب الآن') + (a.shift ? ' · ' + a.shift : '') + '</div>');
-      var acts = [];
-      if (a.whatsapp) acts.push('<a class="primary" href="https://wa.me/' + String(a.whatsapp).replace(/[^0-9]/g, '') + '" target="_blank" rel="noopener">💬 واتساب</a>');
-      if (a.phone) acts.push('<a href="tel:' + a.phone + '">📞 اتصال مباشر</a>');
-      if (a.telegram) acts.push('<a href="https://t.me/' + a.telegram + '" target="_blank" rel="noopener">✈️ محادثة تلقرام</a>');
-      acts.push('<button class="primary" type="button" id="supReg">📝 تسجيل مدرسة جديدة (بوت التسجيل)</button>');
-      els.push('<div class="acts">' + acts.join('') + '</div>');
-      els.push('<div style="margin-top:10px;font-size:11.5px;color:#8C8171">' + (reg.telegram ? 'بوت التسجيل: @' + reg.telegram : '') + '</div>');
+      var a = agentNow() || {}, reg = S.register || {};
       var ov = document.createElement('div');
       ov.className = 'sup-panel is-on';
-      ov.innerHTML = '<div class="sup-back"></div><div class="sup-card"><button class="x" type="button">&times;</button>' + els.join('') + '</div>';
+      ov.innerHTML =
+        '<div class="sup-back"></div>' +
+        '<div class="sup-card" style="text-align:start">' +
+          '<button class="x" type="button" title="إغلاق">&times;</button>' +
+          '<div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid #EFE9DC;padding-bottom:10px">' +
+            (a.img ? '<img class="agent" src="' + a.img + '" alt="" style="width:52px;height:52px">' : '') +
+            '<div><div style="font-weight:800">' + esc(a.name || 'الدعم الفني') + '</div>' +
+            '<div style="font-size:12px;color:#6B6255">' + esc(a.role || 'مناوب الآن') + ' · ' + esc(a.shift || '') + '</div></div>' +
+          '</div>' +
+          '<div id="supThread" style="max-height:46vh;overflow:auto;padding:10px 2px;display:grid;gap:8px"></div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="supQuick"></div>' +
+          '<div style="display:flex;gap:8px">' +
+            '<input id="supIn" placeholder="اكتب استفسارك…" style="flex:1 1 auto;font:inherit;padding:10px 12px;border:1.2px solid #EFE9DC;border-radius:10px">' +
+            '<button id="supSend" type="button" style="font:inherit;padding:10px 16px;border-radius:10px;border:none;background:#0E5F4C;color:#fff;font-weight:700">إرسال</button>' +
+          '</div>' +
+        '</div>';
       document.body.appendChild(ov);
+      var thread = ov.querySelector('#supThread'), inp = ov.querySelector('#supIn'), quick = ov.querySelector('#supQuick');
+
+      function bubble(text, who) {
+        var d = document.createElement('div');
+        d.style.cssText = 'max-width:86%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.8;' +
+          (who === 'me' ? 'background:#0E5F4C;color:#fff;margin-inline-start:auto;border-start-end-radius:4px'
+                        : 'background:#F5F7F6;color:#14100A;border-start-start-radius:4px');
+        d.innerHTML = esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+        thread.appendChild(d); thread.scrollTop = thread.scrollHeight; return d;
+      }
+      function typing() {
+        var d = document.createElement('div');
+        d.style.cssText = 'font-size:12.5px;color:#6B6255';
+        d.textContent = (a.name || 'الدعم') + ' يكتب…';
+        thread.appendChild(d); thread.scrollTop = thread.scrollHeight; return d;
+      }
+      function regButtons() {
+        quick.innerHTML = '';
+        var b1 = document.createElement('button');
+        b1.type = 'button'; b1.textContent = '📝 افتح بوت التسجيل';
+        b1.style.cssText = 'font:inherit;font-size:13px;padding:8px 12px;border-radius:10px;border:none;background:#0E5F4C;color:#fff;cursor:pointer';
+        b1.addEventListener('click', function () {
+          ov.remove(); panel = null;
+          var form = document.getElementById('step1');
+          if (form) { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); var i = form.querySelector('input'); if (i) setTimeout(function () { i.focus(); }, 500); }
+          else if (reg.telegram) window.open('https://t.me/' + reg.telegram, '_blank');
+        });
+        quick.appendChild(b1);
+        if (reg.telegram) {
+          var b2 = document.createElement('a');
+          b2.href = 'https://t.me/' + reg.telegram; b2.target = '_blank'; b2.rel = 'noopener';
+          b2.textContent = '✈️ بوت التسجيل على تلقرام';
+          b2.style.cssText = 'font:inherit;font-size:13px;padding:8px 12px;border-radius:10px;border:1.2px solid #0E5F4C;color:#0E5F4C;text-decoration:none';
+          quick.appendChild(b2);
+        }
+      }
+      function send(txt) {
+        var t = String(txt || '').trim(); if (!t) return;
+        bubble(t, 'me'); inp.value = '';
+        var ty = typing();
+        var hit = answer(t);
+        setTimeout(function () {
+          ty.remove();
+          if (hit) {
+            bubble(hit.a, 'bot');
+            if (hit.reg) { setTimeout(function () { bubble('تمّ تحويلك إلى بوت التسجيل ✓ — أكمل البيانات وسنرجع لك خلال دقائق.', 'bot'); regButtons(); }, 700); }
+          } else {
+            bubble('وصلني استفسارك ✓ — ' + (a.name || 'المناوب') + ' يردّ عليك الآن. ولو تبي تسجيل مدرسة جديدة قل لي «تسجيل» وأحوّلك لبوت التسجيل.', 'bot');
+            quick.innerHTML = '';
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = '📝 تسجيل مدرسة';
+            b.style.cssText = 'font:inherit;font-size:13px;padding:8px 12px;border-radius:10px;border:1.2px solid #0E5F4C;color:#0E5F4C;background:#fff;cursor:pointer';
+            b.addEventListener('click', function () { send('ابي اسجل مدرسة'); });
+            quick.appendChild(b);
+          }
+        }, 1100);
+      }
+      ov.querySelector('#supSend').addEventListener('click', function () { send(inp.value); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(inp.value); } });
       ov.querySelector('.x').addEventListener('click', function () { ov.remove(); panel = null; });
       ov.querySelector('.sup-back').addEventListener('click', function () { ov.remove(); panel = null; });
-      var rb = ov.querySelector('#supReg');
-      if (rb) rb.addEventListener('click', function () {
-        ov.remove(); panel = null;
-        var form = document.getElementById('step1');
-        if (form) { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); var i = form.querySelector('input'); if (i) setTimeout(function () { i.focus(); }, 500); }
-        else if (reg.telegram) window.open('https://t.me/' + reg.telegram, '_blank');
-      });
+
+      /* ترحيب بشري حسب الوقت + ساعات الدوام */
+      bubble(greetWord() + ' 🌿 أنا ' + (a.name || 'الدعم الفني') + ' من فريق تابعني — ' + (a.role === 'مناوبة الآن' ? 'مناوبة' : 'مناوب') + ' الآن. وش أقدر أساعدك؟', 'bot');
+      var q1 = document.createElement('button');
+      q1.type = 'button'; q1.textContent = '📝 تسجيل مدرسة جديدة';
+      q1.style.cssText = 'font:inherit;font-size:13px;padding:8px 12px;border-radius:10px;border:none;background:#0E5F4C;color:#fff;cursor:pointer';
+      q1.addEventListener('click', function () { send('تسجيل مدرسة جديدة'); });
+      var q2 = document.createElement('button');
+      q2.type = 'button'; q2.textContent = '💬 استفسار عن الباقات';
+      q2.style.cssText = 'font:inherit;font-size:13px;padding:8px 12px;border-radius:10px;border:1.2px solid #0E5F4C;color:#0E5F4C;background:#fff;cursor:pointer';
+      q2.addEventListener('click', function () { send('كم الأسعار والباقات؟'); });
+      quick.appendChild(q1); quick.appendChild(q2);
+      setTimeout(function () { try { inp.focus(); } catch (e) {} }, 300);
       return ov;
     }
+
     function boot() {
       var fab = document.createElement('button');
       fab.className = 'sup-fab'; fab.type = 'button';
-      fab.innerHTML = '🎧 الدعم الفني — المناوب الآن';
+      fab.innerHTML = '🎧 الدعم الفني — ' + ((agentNow() || {}).name || 'مناوب الآن');
       fab.addEventListener('click', function () { if (panel) { panel.remove(); panel = null; } else panel = build(); });
       document.body.appendChild(fab);
       document.addEventListener('click', function (e) {
         var t = e.target && e.target.closest ? e.target.closest('[data-inquire]') : null;
         if (t) { e.preventDefault(); if (panel) { panel.remove(); panel = null; } panel = build(); }
       });
+      /* فتح تلقائي عند طلب ?support=1 أو #support */
+      if (/[?&]support=1/.test(location.search) || location.hash === '#support') setTimeout(function () { panel = build(); }, 600);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   })();
