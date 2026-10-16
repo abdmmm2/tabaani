@@ -517,6 +517,15 @@ async function backupSuite(page, base, hitsFn) {
   ok(/middle:الأول المتوسط:أ/.test(onb.stageIds) && onb.stages === 'middle,secondary', 'المراحل والصفوف والشعب تُترجم تلقائيًا من نص الملف', onb.stageIds);
   ok(onb.regionSaved === true && onb.citySaved === true, 'المنطقة والمدينة الجديدتان تُنشآن وتُحفظان');
   ok(onb.plan === 'pro' && onb.creds >= 3 && onb.login === true, 'الرخصة + حسابات الدخول (مدير + موظفون) تعمل فعلًا', 'creds=' + onb.creds);
+
+  /* اسم مستخدم المدير المولَّد يكون principal لا teacher (بعد إصلاح v53) */
+  const manUser = await page.eval(
+    'var before = Store.list("users").length;' +
+    'var r = Store.onboardSchool({ school: { name: "مدرسة يدوية", regionName: "منطقة الرياض", city: "الرياض", gender: "boys", stages: ["secondary"], plan: "classic" }, principal: { name: "أ. عبدالله المدير" } }, {});' +
+    'var p = r.creds[0];' +
+    'return { added: Store.list("users").length - before, user: p.username, login: Store.authenticate(p.username, p.password).ok, classes: r.stats.classes };');
+  ok(/^principal/.test(manUser.user) && manUser.login === true && manUser.added === 1,
+    'التأسيس بالكتابة اليدوية فقط: مدير بحساب دخول يعمل واسم مستخدم مناسب', JSON.stringify(manUser));
   ok(onb.seated === 6 && onb.counters === 6, 'كل الطلاب موزّعون على فصولهم وعدّادات الفصول صحيحة');
 
   /* وحدة «التأسيس الآلي» ظاهرة للمشرف العام */

@@ -3084,7 +3084,7 @@
       /* مدير المدرسة */
       var pr = cfg.principal || {};
       if (pr.name) {
-        var pun = store.suggestUsername(pr.name, '', {});
+        var pun = store.suggestUsername(pr.name, '', {}, 'principal');
         var ppw = store.randomPassword();
         store.insert('users', {
           schoolId: school.id, role: 'principal', name: String(pr.name).trim(), username: pun, password: ppw,
@@ -3173,10 +3173,13 @@
     },
 
     /** اسم مستخدم فريد مقترح من الاسم (أو من الهوية إن كان الاسم عربيًا) */
-    suggestUsername: function (name, nid, used) {
+    suggestUsername: function (name, nid, used, role) {
       used = used || {};
+      /* ضمان الفرادة على مستوى المنصة: لا يتكرر اسم مستخدم مع أي حساب قائم */
+      store.list('users').forEach(function (u) { if (u.username) used[String(u.username).toLowerCase()] = 1; });
       var base = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (base.length < 3) base = (nid ? 't' + String(nid).replace(/\D/g, '').slice(-4) : 'teacher');
+      /* اسم عربي بلا حروف لاتينية ⇒ نستخدم آخر ٤ من الهوية، وإلا اسم الدور (principal · teacher …) */
+      if (base.length < 3) base = (nid ? 't' + String(nid).replace(/\D/g, '').slice(-4) : String(role || 'user'));
       base = base.slice(0, 14);
       var u = base, i = 1;
       while (used[String(u).toLowerCase()]) { i++; u = base.slice(0, 12) + i; }
@@ -3209,7 +3212,7 @@
                   (phone && existing.some(function (u) { return u.phone && u.phone === phone; }));
         if (dup) { skipped++; return; }
         var want = val('username').toLowerCase();
-        var uname = (want && !used[want]) ? want : store.suggestUsername(name, nid, used);
+        var uname = (want && !used[want]) ? want : store.suggestUsername(name, nid, used, role);
         used[String(uname).toLowerCase()] = 1;
         var pw = store.randomPassword();
         var subjects = val('subject') ? val('subject').split(/[,،\/]+/).map(function (x) { return x.trim(); }).filter(Boolean) : [];
