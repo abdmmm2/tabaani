@@ -21,14 +21,15 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 12, principal: 15, deputy: 16, guidance: 9, teacher: 9,
+  super: 13, principal: 16, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
-  accountant: 3, support: 4
+  accountant: 3, support: 4, specialist: 1
 };
 
 const ROLE_NAME_EXTRA = { accountant: 'المحاسب المالي', support: 'الدعم الفني' };
 
 const ROLE_NAME = {
+  specialist: 'مختص تابعني',
   super: 'مشرف تابعني', principal: 'مدير المدرسة', deputy: 'وكيل شؤون الطلاب',
   guidance: 'التوجيه والإرشاد', teacher: 'معلم', teachers_deputy: 'وكيل شؤون المعلمين',
   volunteer: 'ساعات التطوع', activity: 'النشاط الطلابي', absence_monitor: 'مراقب الغياب',
@@ -561,6 +562,54 @@ async function backupSuite(page, base, hitsFn) {
     'return { n: rows.length, changed: after !== oldp, untouched: !other || otherAfter === oldOther, before: before };');
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
+
+  /* خدمة التعهدات: دور مختص تابعني + طلب من المدير + تعهد موقّع + إرسال بالبوت */
+  const spec = await page.eval(
+    'var roles = Store.rolesList();' +
+    'var sp = roles.filter(function (r) { return r.id === "specialist"; })[0];' +
+    'var pr = Store.addUser({ name: "مدير مدرسة التجربة", role: "principal", schoolId: Store.list("schools")[0].id, username: "e2e-prin", password: "E2ePrin@2026" });' +
+    'var u = Store.addUser({ name: "مختص تابعني — تجربة", role: "specialist", schoolId: Store.list("schools")[0].id, username: "e2e-spec", password: "E2eSpec@2026" });' +
+    'var saved = { role: Store.session.role, userId: Store.session.userId };' +
+    'Store.session = { userId: pr.user.id, name: pr.user.name, role: "principal", schoolId: pr.user.schoolId };' +
+    'var req = Store.requestService({ subject: "طلب تدريب", details: "تدريب المعلمين" });' +
+    'Store.session = { userId: saved.userId, name: "مراجع آلي", role: "super", schoolId: null };' +
+    'var inbox = Store.serviceRequests({ status: "new" });' +
+    'Store.decideServiceRequest(req.request.id, "approved", { specialistId: u.user.id });' +
+    'Store.session = { userId: u.user.id, name: u.user.name, role: "specialist", schoolId: u.user.schoolId };' +
+    'var pl = Store.addPledge({ schoolId: Store.list("schools")[0].id, principalName: "مدير مدرسة التجربة", principalIdNo: "1010101010", specialistIdNo: "2020202020" });' +
+    'Store.signPledge(pl.pledge.id, "specialist", u.user.name);' +
+    'var mid = Store.find("pledges", pl.pledge.id).status;' +
+    'Store.signPledge(pl.pledge.id, "principal", "مدير مدرسة التجربة");' +
+    'var done = Store.find("pledges", pl.pledge.id);' +
+    'var txt = Store.pledgeText(done);' +
+    'Store.session = { userId: saved.userId, name: "مراجع آلي", role: saved.role, schoolId: null };' +
+    'return { roleOk: !!sp && sp.name.indexOf("مختص") > -1, reqOk: req.ok, inbox: inbox.length, assigned: (Store.find("serviceRequests", req.request.id) || {}).specialistId === u.user.id,' +
+    ' mid: mid, status: done.status, terms: done.terms.length, txt: txt.indexOf("تعهد") > -1 && txt.indexOf("المسؤول عن المنصة") > -1, no: done.no };');
+  ok(spec.roleOk, 'دور «مختص تابعني» موجود في الأدوار', JSON.stringify({ roleOk: spec.roleOk }));
+  ok(spec.reqOk && spec.inbox >= 1 && spec.assigned, 'طلب خدمة من مدير المدرسة يصل للمشرف العام ويُسند لمختص', JSON.stringify({ ok: spec.reqOk, inbox: spec.inbox, assigned: spec.assigned }));
+  ok(spec.mid === 'partial' && spec.status === 'signed' && spec.terms >= 5, 'التعهد يوقّعه الطرفان (مختص ثم مدير) ويصير «موقّع من الطرفين»', JSON.stringify({ mid: spec.mid, status: spec.status, terms: spec.terms }));
+  ok(spec.txt && /^TDH-/.test(spec.no), 'نص التعهد يحمل الرقم والمسؤول عن المنصة', spec.no);
+
+  /* الوثيقة المطبوعة: شعار المنصة + التاريخ واليوم + المسؤول */
+  const doc = await page.eval(
+    'var p = Store.list("pledges")[0];' +
+    'Store.savePlatformOwner({ name: "مسؤول تجريبي للمنصة", title: "المسؤول عن المنصة" });' +
+    'var html = UI.platformDoc({ title: "تعهد تجربة", meta: [{ label: "المسؤول عن المنصة", value: Store.platformOwner().name }],' +
+    ' sections: [{ heading: "البنود", list: p.terms }], signatures: ["المختص: " + p.specialistName, "المدير: " + p.principalName] });' +
+    'return { hasOwner: html.indexOf("مسؤول تجريبي للمنصة") > -1, hasLogo: html.indexOf("data:image") > -1 || html.indexOf("logo") > -1,' +
+    ' hasSign: html.indexOf("المختص") > -1 && html.indexOf("المدير") > -1, hasTerms: html.indexOf("حق فكري") > -1 };');
+  ok(doc.hasOwner && doc.hasSign && doc.hasTerms, 'وثيقة التعهد: المسؤول عن المنصة + التوقيعان + البنود', JSON.stringify(doc));
+  ok(doc.hasLogo, 'الوثيقة تحمل شعار المنصة', 'logo=' + doc.hasLogo);
+
+  /* إرسال عبر بوت «مساعد مدير المدرسة» — تقرير صريح بلا نجاح كاذب */
+  const botRes = await page.eval(
+    'var p = Store.list("pledges")[0]; var got = null;' +
+    'Store.assistantSend(Store.pledgeText(p), p.schoolId).then(function (r) { window.__botr = r; });' +
+    'return { bot: Store.botName() };');
+  await B.sleep(2200);
+  const botr = await page.eval('return window.__botr;');
+  ok(botRes.bot === 'مساعد مدير المدرسة', 'البوت اسمه «مساعد مدير المدرسة»', botRes.bot);
+  ok(botr && typeof botr === 'object' && !(botr.ok === true && !botr.messageId), 'الإرسال يعيد نتيجة صريحة (لا نجاح كاذب)', JSON.stringify(botr && { ok: botr.ok, error: botr.error || botr.note }));
 
   /* محرك البحث: شامل للمشرف العام · معزول للمدارس · المعلم لفصوله فقط */
   const sAll = await page.eval(

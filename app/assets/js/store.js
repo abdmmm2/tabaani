@@ -65,6 +65,7 @@
     { id: 'absence_monitor', name: 'مراقب الغياب', nameF: 'مراقبة الغياب', desc: 'متابعة غياب الطلاب — تُضاف خصائصه لاحقًا' },
     { id: 'guard', name: 'حارس البوابة', nameF: 'حارسة البوابة', desc: 'مسح تصاريح الخروج بالكاميرا وتسجيل خروج الطلاب بوقته وسببه' },
     { id: 'accountant', name: 'المحاسب المالي لتابعني', nameF: 'المحاسبة المالية لتابعني', desc: 'السدادات والفواتير والمصروفات والتقارير المالية' },
+    { id: 'specialist', name: 'مختص تابعني', nameF: 'مختصة تابعني', desc: 'الوكيل الوحيد للتواصل مع تابعني — خدمة التعهدات وطلبات المدارس' },
     { id: 'support', name: 'موظف الدعم الفني', nameF: 'موظفة الدعم الفني', desc: 'متابعة تذاكر الدعم والرد على المدارس والزوار' },
     { id: 'student', name: 'طالب', nameF: 'طالبة', desc: 'طلبات النشاط والتطوع والاستئذان' }
   ];
@@ -120,7 +121,7 @@
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
       reports: [], telegram: [], audit: [], notif: [], exits: [],
-      entryPermits: [], messages: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [],
       educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
@@ -560,7 +561,7 @@
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
       faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
-      entryPermits: [], messages: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
       letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
         mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
     };
@@ -571,7 +572,7 @@
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
     'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages',
-    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates'];
+    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates', 'serviceRequests', 'pledges'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -1591,6 +1592,115 @@
       u.sentTo = u.sentTo || [];
       if (u.sentTo.indexOf(to) === -1) u.sentTo.push(to);
       save(); return u;
+    },
+
+    /* =====================================================================
+       خدمة التعهدات ودور «مختص تابعني»
+       • لا خدمة لأي مدرسة إلا بطلب من مديرها يوافق عليه المشرف العام.
+       • التعهد يوقّعه المختص ومدير المدرسة، ويُرسل عبر بوت «مساعد مدير المدرسة».
+       ===================================================================== */
+    platformOwner: function () {
+      var o = (db.settings && db.settings.platformOwner) || {};
+      return { name: o.name || '', title: o.title || 'المسؤول عن المنصة', phone: o.phone || '', email: o.email || '' };
+    },
+    savePlatformOwner: function (o) {
+      db.settings.platformOwner = {
+        name: String((o && o.name) || '').trim(), title: String((o && o.title) || '').trim() || 'المسؤول عن المنصة',
+        phone: String((o && o.phone) || '').trim(), email: String((o && o.email) || '').trim()
+      };
+      save(); return db.settings.platformOwner;
+    },
+    botName: function () { return (db.settings && db.settings.botName) || 'مساعد مدير المدرسة'; },
+    saveBotName: function (n) { db.settings.botName = String(n || '').trim() || 'مساعد مدير المدرسة'; save(); return db.settings.botName; },
+
+    requestService: function (d) {
+      d = d || {};
+      var subject = String(d.subject || '').trim();
+      if (!subject) return { ok: false, error: 'موضوع الطلب مطلوب' };
+      var me = store.session || {};
+      var schoolId = d.schoolId || me.schoolId || null;
+      if (!schoolId) return { ok: false, error: 'لا مدرسة مرتبطة بحسابك' };
+      var r = store.insert('serviceRequests', {
+        schoolId: schoolId, subject: subject, details: String(d.details || '').trim(),
+        by: me.userId || '', byName: me.name || '', role: me.role || '',
+        status: 'new', at: now(), note: '', supervisorAt: '', specialistId: ''
+      });
+      save(); return { ok: true, request: r };
+    },
+    serviceRequests: function (f) {
+      f = f || {};
+      return store.list('serviceRequests').filter(function (r) {
+        if (f.schoolId && r.schoolId !== f.schoolId) return false;
+        if (f.status && r.status !== f.status) return false;
+        if (f.specialistId && r.specialistId !== f.specialistId) return false;
+        return true;
+      }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    },
+    decideServiceRequest: function (id, status, opts) {
+      opts = opts || {};
+      var r = store.find('serviceRequests', id); if (!r) return null;
+      r.status = status; r.note = String(opts.note || '');
+      r.supervisorAt = now();
+      if (opts.specialistId) r.specialistId = opts.specialistId;
+      save(); return r;
+    },
+    specialists: function () { return store.list('users', { role: 'specialist' }); },
+    canRequestService: function () { return ['principal', 'super'].indexOf((store.session || {}).role) > -1; },
+
+    PLEDGE_TERMS: [
+      'أتعهد بالمحافظة على سرّية كل ما أطّلع عليه من بيانات ومعلومات داخل منصة «تابعني للخدمات الذكية»، وألا أفشيها لأي جهة أو شخص.',
+      'أتعهد بعدم تصوير الشاشات أو تسجيلها بأي وسيلة، وعدم نسخ أو تصدير أي بيانات إلا بموجب صلاحياتي وبإذن خطّي من مدير المدرسة.',
+      'أتعهد بأن المنصة وكل مكوّناتها (البرمجيات، التصميم، التقارير، الأكواد) حق فكري مملوك لتابعني للخدمات الذكية، ولا يجوز نسخها أو تعديلها أو إعادة استخدامها أو بيعها.',
+      'أتعهد باستخدام حسابي الشخصي فقط، وعدم مشاركة كلمة المرور أو تمكين غيري من الدخول.',
+      'أتعهد بعدم إدخال بيانات غير صحيحة، وبالمحافظة على خصوصية بيانات الطلاب وأولياء أمورهم.',
+      'أتعهد بإبلاغ الإدارة فورًا عند أي محاولة اختراق أو تسريب أو استخدام مخالف أطّلع عليه.',
+      'أُقر بأن أي إخلال بهذا التعهد يُعرّضني للمساءلة النظامية، وللتعويض عن الأضرار وفق الأنظمة المرعية.'
+    ],
+    pledgeNo: function () {
+      var y = new Date().getFullYear();
+      return 'TDH-' + y + '-' + String(store.list('pledges').length + 1).padStart(3, '0');
+    },
+    addPledge: function (d) {
+      d = d || {};
+      var me = store.session || {};
+      var p = store.insert('pledges', {
+        no: store.pledgeNo(), schoolId: d.schoolId || me.schoolId || null,
+        specialistId: d.specialistId || (me.role === 'specialist' ? me.userId : ''),
+        specialistName: String(d.specialistName || (me.role === 'specialist' ? me.name : '') || '').trim(),
+        specialistIdNo: String(d.specialistIdNo || '').trim(),
+        principalName: String(d.principalName || '').trim(),
+        principalIdNo: String(d.principalIdNo || '').trim(),
+        requestId: d.requestId || '', terms: d.terms || store.PLEDGE_TERMS.slice(),
+        status: 'draft', at: now(),
+        signs: { specialist: null, principal: null }, sent: []
+      });
+      save(); return { ok: true, pledge: p };
+    },
+    signPledge: function (id, who, name) {
+      var p = store.find('pledges', id); if (!p) return null;
+      p.signs = p.signs || {};
+      p.signs[who] = { name: String(name || '').trim(), at: now(), by: (store.session || {}).name || '' };
+      if (p.signs.specialist && p.signs.principal) p.status = 'signed'; else p.status = 'partial';
+      save(); return p;
+    },
+    markPledgeSent: function (id, via) {
+      var p = store.find('pledges', id); if (!p) return null;
+      p.sent = p.sent || []; p.sent.push({ via: via, at: now() }); save(); return p;
+    },
+    pledgeText: function (p) {
+      var owner = store.platformOwner();
+      return '📜 تعهد استخدام منصة تابعني — رقم ' + p.no + '\n' +
+        'المدرسة: ' + ((store.school(p.schoolId) || {}).name || '—') + '\n' +
+        'المختص/الوكيل: ' + (p.specialistName || '—') + '\n' +
+        'مدير المدرسة: ' + (p.principalName || '—') + '\n' +
+        'الحالة: ' + (p.status === 'signed' ? 'موقّع من الطرفين' : (p.status === 'partial' ? 'بانتظار توقيع' : 'مسوّدة')) + '\n' +
+        'المسؤول عن المنصة: ' + (owner.name || '—') + '\n\n' + (p.terms || []).map(function (t, i) { return (i + 1) + '. ' + t; }).join('\n');
+    },
+    assistantSend: function (text, schoolId, chatOverride) {
+      var bot = store.botName();
+      var owner = store.platformOwner();
+      var body = '🤖 ' + bot + '\n' + String(text || '') + (owner.name ? '\n\n— المسؤول عن المنصة: ' + owner.name : '');
+      return store.telegramSend(body, schoolId || (store.session || {}).schoolId, chatOverride);
     },
 
     /* =====================================================================
