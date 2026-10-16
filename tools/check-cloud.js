@@ -116,6 +116,25 @@ function ok(cond, label, extra) {
     'المعلم: طلاب فصوله فقط ولا يرى أي مستخدم آخر', JSON.stringify({ rows: tchRows.length, onlyMine, noOthers }));
 
   /* ----------------------------------------------------- ٦) ملفات المشروع */
+  /* المخطط المدمج + التهيئة الذاتية */
+  const { execFileSync: exf } = require('child_process');
+  try {
+    exf(process.execPath, [path.join(ROOT, 'tools', 'build-cloud.js')], { stdio: 'pipe' });
+    const inline = fs.readFileSync(path.join(ROOT, 'cloud', 'schema-inline.js'), 'utf8');
+    const sql = fs.readFileSync(path.join(ROOT, 'cloud', 'schema.sql'), 'utf8');
+    ok(/export const SCHEMA_SQL/.test(inline) && /export function schemaStatements/.test(inline),
+      'schema-inline مُولَّد (SCHEMA_SQL + schemaStatements)');
+    const tables = (sql.match(/CREATE TABLE IF NOT EXISTS (\w+)/g) || []).map((m) => m.split(' ').pop());
+    const missT = tables.filter((t) => inline.indexOf('CREATE TABLE IF NOT EXISTS ' + t) === -1);
+    ok(missT.length === 0, 'كل جداول schema.sql داخل المخطط المدمج (' + tables.length + ')', missT.join(', '));
+  } catch (e) { ok(false, 'توليد/فحص المخطط المدمج', e.message); }
+  const wk = fs.readFileSync(path.join(ROOT, 'cloud', 'worker.js'), 'utf8');
+  ok(/async function ensureSchema/.test(wk) && /'\/api\/init'/.test(wk) && /from '\.\/schema-inline\.js'/.test(wk),
+    'الخادم ينشئ جداوله تلقائيًا (ensureSchema + /api/init)');
+  const singleW = fs.readFileSync(path.join(ROOT, 'cloud', 'worker-single.js'), 'utf8');
+  ok(/const SCHEMA_SQL/.test(singleW) && /async function ensureSchema/.test(singleW) && singleW.indexOf('import ') === -1,
+    'الملف المدموج يشمل المخطط والتهيئة وبلا استيراد');
+
   const schema = fs.readFileSync(path.join(ROOT, 'cloud', 'schema.sql'), 'utf8');
   ['registrations', 'activation_codes', 'schools', 'users', 'data', 'outbox', 'audit'].forEach((t) => {
     ok(new RegExp('CREATE TABLE IF NOT EXISTS ' + t + '\\b').test(schema), 'schema.sql فيه جدول ' + t);

@@ -24,6 +24,7 @@
      TG_TOKEN       توكن بوت تلقرام (اختياري — للتنبيهات)
      SETUP_FEE      رسم التأسيس (افتراضي 1000)
    ========================================================================== */
+import { SCHEMA_SQL, schemaStatements } from './schema-inline.js';
 import {
   validateRegistration, genCode, hashCode, codeExpiry, MAX_CODE_TRIES,
   hashPassword, verifyPassword, packPassword, tempPassword,
@@ -33,6 +34,33 @@ import {
 const rid = (p = 'r') => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const nowSec = () => Math.floor(Date.now() / 1000);
 const nowMs = () => Date.now();
+
+/* --------------------- تهيئة الجداول تلقائيًا (self-migrate) --------------------- */
+let schemaReady = false;
+async function ensureSchema(env) {
+  if (schemaReady) return { ok: true, skipped: true };
+  try {
+    await one(env, 'SELECT COUNT(*) AS n FROM users');
+    schemaReady = true;
+    return { ok: true, already: true };
+  } catch (e) {
+    /* الجداول غير موجودة ⇒ ننشئها من المخطط المدمج */
+    try {
+      if (env.DB && typeof env.DB.exec === 'function') {
+        await env.DB.exec(SCHEMA_SQL);
+      } else {
+        for (const stmt of schemaStatements()) {
+          try { await run(env, stmt); } catch (e2) { /* نتجاهل الموجود مسبقًا */ }
+        }
+      }
+      await one(env, 'SELECT COUNT(*) AS n FROM users');
+      schemaReady = true;
+      return { ok: true, created: true, tables: (SCHEMA_SQL.match(/CREATE TABLE/gi) || []).length };
+    } catch (e3) {
+      return { ok: false, error: String((e3 && e3.message) || e3) };
+    }
+  }
+}
 
 /* ------------------------------- مساعدات D1 ------------------------------- */
 async function one(env, sql, ...args) { const r = await env.DB.prepare(sql).bind(...args).first(); return r || null; }
@@ -309,7 +337,11 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     try {
       let res;
-      if (p === '/api/register' && req.method === 'POST') res = await handleRegister(env, req);
+      if (p === '/api/init') {
+        const r = await ensureSchema(env);
+        res = json(r.ok ? { ok: true, msg: 'الجداول جاهزة', ...r, tables: r.tables || 8 } : { ok: false, msg: 'تعذّر إنشاء الجداول', error: r.error }, r.ok ? 200 : 500);
+      }
+      else if (p === '/api/register' && req.method === 'POST') res = await handleRegister(env, req);
       else if (p === '/api/activation/request' && req.method === 'POST') {
         const body = await req.json().catch(() => ({}));
         res = await handleActivationRequest(env, body, req);
@@ -317,6 +349,8 @@ export default {
       else if (p === '/api/auth/login' && req.method === 'POST') res = await handleLogin(env, req);
       else if (p === '/api/health') res = json({ ok: true, service: 'tabaani-cloud', at: nowMs(), mail: !!env.MAIL_ENDPOINT, telegram: !!env.TG_TOKEN });
       else {
+        /* أي مسار آخر: نتأكد أن الجداول موجودة (تنشأ تلقائيًا إن لزم) */
+        try { await ensureSchema(env); } catch (e) {}
         const ctx = await auth(env, req);
         if (p === '/api/me' && ctx) res = json({ ok: true, user: publicUser(ctx.user) });
         else if (p === '/api/ack/submit' && ctx) res = await handleAckSubmit(env, req, ctx);

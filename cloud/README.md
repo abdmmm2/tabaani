@@ -26,7 +26,7 @@ node tools/check-cloud.js      # ٣٨ فحصًا
 cd cloud
 npx wrangler login                       # يفتح المتصفح لتفويض حسابك
 npx wrangler d1 create tabaani           # أنشئ القاعدة — انسخ database_id وضعه في wrangler.toml
-npx wrangler d1 execute tabaani --file=schema.sql --remote
+npx wrangler d1 execute tabaani --file=schema.sql --remote   # اختياري: الخادم ينشئ الجداول تلقائيًا
 npx wrangler secret put TOKEN_SECRET     # نص طويل عشوائي (سر توقيع الجلسات)
 npx wrangler secret put MAIL_ENDPOINT    # رابط Apps Script المنشور (لإرسال الأكواد وبيانات الدخول)
 npx wrangler secret put MAIL_KEY         # اختياري: مفتاح يقبله Apps Script

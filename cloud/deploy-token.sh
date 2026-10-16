@@ -15,14 +15,15 @@ OK()  { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 WARN(){ printf '\033[1;33m! %s\033[0m\n' "$*"; }
 ERR() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; }
 
+cd cloud || exit 1
 echo "١) التحقق من التوكن"
 ACC=$(npx --yes wrangler whoami 2>/dev/null | grep -oE '[0-9a-f]{32}' | head -1)
 if [ -z "${ACC:-}" ]; then ERR "التوكن غير صالح أو ناقص الصلاحيات (يحتاج Workers + D1)."; exit 1; fi
 OK "الحساب: $ACC"
-grep -q 'account_id' cloud/wrangler.toml || sed -i "1i account_id = \"$ACC\"" cloud/wrangler.toml
+grep -q 'account_id' wrangler.toml || sed -i "1i account_id = \"$ACC\"" wrangler.toml
 
 echo "٢) فحص الكود قبل النشر"
-node tools/check-cloud.js >/dev/null || { ERR "فحوص المنطق فشلت"; exit 1; }
+node ../tools/check-cloud.js >/dev/null || { ERR "فحوص المنطق فشلت"; exit 1; }
 OK "٤٠ فحصًا نظيفة"
 
 echo "٣) قاعدة D1"
@@ -39,12 +40,12 @@ else
   ID=$(npx --yes wrangler d1 list --json 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s);const r=a.find(x=>x.name==='tabaani');console.log(r?r.uuid:'')}catch(e){console.log('')}})")
 fi
 if [ -n "${ID:-}" ]; then
-  node -e "const fs=require('fs');let s=fs.readFileSync('cloud/wrangler.toml','utf8');s=s.replace(/database_id = \"[^\"]*\"/,'database_id = \"$ID\"');fs.writeFileSync('cloud/wrangler.toml',s)"
+  node -e "const fs=require('fs');let s=fs.readFileSync('wrangler.toml','utf8');s=s.replace(/database_id = \"[^\"]*\"/,'database_id = \"$ID\"');fs.writeFileSync('wrangler.toml',s)"
   OK "database_id = $ID"
 else WARN "لم أقرأ معرّف القاعدة — تحقّق من wrangler.toml"; fi
 
 echo "٤) تنفيذ المخطط"
-cd cloud && npx --yes wrangler d1 execute tabaani --file=schema.sql --remote 2>&1 | tail -3
+npx --yes wrangler d1 execute tabaani --file=schema.sql --remote 2>&1 | tail -3
 OK "الجداول جاهزة"
 
 echo "٥) الأسرار"

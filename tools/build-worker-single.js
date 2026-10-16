@@ -17,7 +17,12 @@ const lib = read('lib.js')
   .replace(/^export\s+(async\s+)?function\s/gm, (m, a) => (a ? 'async function ' : 'function '))
   .replace(/^export\s+const\s/gm, 'const ');
 
+const schemaInline = read('schema-inline.js')
+  .replace(/^export\s+const\s/gm, 'const ')
+  .replace(/^export\s+function\s/gm, 'function ');
+
 const worker = read('worker.js')
+  .replace(/^import\s*\{[\s\S]*?\}\s*from\s*['"]\.\/schema-inline\.js['"];\s*/m, '')
   .replace(/^import\s*\{[\s\S]*?\}\s*from\s*['"]\.\/lib\.js['"];\s*/m, '');
 
 const out = `/* =============================================================================
@@ -30,13 +35,17 @@ const out = `/* ================================================================
 /* ---------- lib.js ---------- */
 ${lib}
 
+/* ---------- schema-inline.js ---------- */
+${schemaInline}
+
 /* ---------- worker.js ---------- */
 ${worker}
 `;
 fs.writeFileSync(path.join(CLOUD, 'worker-single.js'), out);
 
 /* تحقّق ذاتي: كل الدوال والمسارات موجودة */
-const need = ['function validateRegistration', 'function scopedSearch', 'function hashPassword', 'function verifyPassword',
+const need = ['const SCHEMA_SQL', 'function schemaStatements', 'async function ensureSchema', "'/api/init'",
+  'function validateRegistration', 'function scopedSearch', 'function hashPassword', 'function verifyPassword',
   'function signToken', 'function verifyToken', 'function genCode', 'function json', 'export default',
   "'/api/register'", "'/api/auth/login'", "'/api/sync'", "'/api/search'", "'/api/ack/approve'", "'/api/admin/approve'"];
 const missing = need.filter((n) => out.indexOf(n) === -1);
