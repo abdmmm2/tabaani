@@ -124,8 +124,8 @@
     render: function (view) {
       var c = S.syncCfg();
       var host = h('div', { class: 'stack' });
-      var nameF = UI.field({ name: 'u', label: 'اسم المستخدم على الخادم', half: true, value: c.username });
-      var passF = UI.field({ name: 'p', label: 'كلمة المرور', type: 'password', half: true });
+      var nameF = UI.field({ name: 'u', label: 'حساب الخادم (ليس حساب دخولك للمنصة)', half: true, value: c.username || 'admin' });
+      var passF = UI.field({ name: 'p', label: 'كلمة مرور حساب الخادم', type: 'password', half: true });
       var urlF = UI.field({ name: 'url', label: 'رابط الخادم (Worker)', half: false, value: c.url, placeholder: 'https://tabaani.<حسابك>.workers.dev' });
       var autoF = UI.field({ name: 'auto', label: 'رفع تلقائي بعد كل تعديل مهم', type: 'select', half: true, value: c.auto ? '1' : '0',
         options: [{ value: '0', label: 'يدوي (أرفع بنفسي)' }, { value: '1', label: 'تلقائي' }] });
@@ -155,7 +155,12 @@
             }).catch(function (e) { UI.toast('تعذّر الوصول: ' + e.message, 'bad'); });
           } })
         ], [
-          h('div', { class: 'callout info', text: 'الرابط هو ما يعطيك إياه Cloudflare بعد النشر (wrangler deploy). الدخول بحساب مدير المدرسة نفسه المسجَّل على الخادم.' }),
+          h('div', { class: 'callout warn' }, [
+            h('div', { html: '<b>تنبيه مهم:</b> البيانات هنا هي <b>حساب الخادم السحابي</b> — وليست حساب دخولك للمنصة.' }),
+            h('div', { class: 'muted', style: { marginTop: '4px' },
+              text: 'الحساب الافتراضي على الخادم: admin / Tabaani@2026 (غيّره بعد أول ربط). أما دخولك للمنصة فبحسابك المعتاد على هذا الجهاز.' })
+          ]),
+          h('div', { class: 'callout info', text: 'الرابط هو ما يعطيك إياه Cloudflare بعد النشر. وللمدارس: كل مدرسة تربط بحساب مديرها على الخادم.' }),
           h('div', { class: 'form-grid' }, [urlF.wrap, nameF.wrap, passF.wrap, autoF.wrap])
         ]));
 
