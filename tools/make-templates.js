@@ -37,6 +37,19 @@ const STUDENTS = [
   { 'الاسم': 'لمى بنت تركي المطيري', 'رقم الهوية': '1122334460', 'الجوال': '+966551112238', 'المرحلة': 'المرحلة الثانوية', 'الصف': 'الأول الثانوي', 'الشعبة': 'أ' }
 ];
 
+/* CSV بنفس الأعمدة (يفتح مباشرة في آبل/جوجل) مع BOM ليقرأه Excel العربي صحيحًا */
+function writeCsv(file, rows) {
+  const cols = Object.keys(rows[0]);
+  const esc = (v) => {
+    const t = String(v == null ? '' : v);
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  const lines = [cols.join(',')].concat(rows.map((r) => cols.map((c) => esc(r[c])).join(',')));
+  const p = path.join(OUT, file);
+  fs.writeFileSync(p, '\ufeff' + lines.join('\r\n') + '\r\n', 'utf8');
+  console.log('✓', file, '—', rows.length, 'صفوف (CSV)');
+}
+
 function writeSheet(file, rows, widths) {
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = widths.map((w) => ({ wch: w }));
@@ -53,6 +66,9 @@ function writeSheet(file, rows, widths) {
 writeSheet('قالب-الفصول.xlsx', CLASSES, [22, 16, 10, 12]);
 writeSheet('قالب-المعلمين.xlsx', STAFF, [28, 22, 30, 14, 16, 26, 16]);
 writeSheet('قالب-الطلاب.xlsx', STUDENTS, [28, 14, 16, 22, 16, 10]);
+writeCsv('قالب-الفصول.csv', CLASSES);
+writeCsv('قالب-المعلمين.csv', STAFF);
+writeCsv('قالب-الطلاب.csv', STUDENTS);
 
 /* ملف تعليمات مختصر يُسلَّم مع القوالب */
 const README = `ملفات تأسيس مدرسة في تابعني — كيف تستخدمها
