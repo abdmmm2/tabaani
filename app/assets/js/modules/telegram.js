@@ -84,6 +84,33 @@
               ] });
             }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — راجع التوكن', 'bad'); });
           } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '📋 نص دعوة المعلمين (انسخه وأرسله)', onClick: function () {
+            var t = fTok.input.value.trim() || S.telegramConfig().botToken || '';
+            var un = 'Tabaani_bot';
+            var open = function (link) {
+              var txt = 'السلام عليكم ورحمة الله 🌿\n\n' +
+                'بخصوص منصة *تابعني* لمدرستنا:\n' +
+                'لتصلك إشعارات المدرسة (الغياب · المخالفات · أذونات الخروج · بيانات الدخول) على تلقرام:\n\n' +
+                '١) افتح هذا الرابط: ' + link + '\n' +
+                '٢) اضغط *Start* أو «ابدأ»\n' +
+                '٣) أرسل أي كلمة (مثل: تم)\n\n' +
+                'وبعدها تُربط محادثتك بحسابك في المنصة تلقائيًا. شكرًا لكم 🤝';
+              UI.modal({ title: 'نص دعوة المعلمين', wide: true, body: [
+                h('p', { class: 'muted', text: 'انسخه وأرسله للمعلمين (واتساب/تلقرام). الرابط داخل النص جاهز.' }),
+                h('textarea', { readonly: true, rows: '12', class: 'input', value: txt }),
+                h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
+                  h('button', { class: 'btn btn-primary', type: 'button', text: '📋 انسخ النص', onClick: function () {
+                    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { UI.toast('نُسخ ✓', 'ok'); }, function () { UI.toast('حدّد وانسخ يدويًا', 'warn'); });
+                  } }),
+                  h('a', { class: 'btn btn-outline', href: link, target: '_blank', rel: 'noopener', text: 'افتح البوت' })
+                ])
+              ] });
+            };
+            if (!t) { open('https://t.me/' + un); return; }
+            fetch('https://api.telegram.org/bot' + t + '/getMe').then(function (r) { return r.json(); })
+              .then(function (j) { open('https://t.me/' + ((j && j.result && j.result.username) || un)); })
+              .catch(function () { open('https://t.me/' + un); });
+          } }),
           h('button', { class: 'btn btn-primary', type: 'button', text: '📥 ربط جماعي (شاشة واحدة)', onClick: function () {
             var t = fTok.input.value.trim() || S.telegramConfig().botToken || '';
             if (!t) { UI.toast('ضع التوكن أولًا', 'warn'); return; }
