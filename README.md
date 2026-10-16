@@ -468,3 +468,10 @@ bash tools/matrix.sh
 
 ### المتبقّي (مرحلة الإنتاج)
 خادم + قاعدة بيانات + مصادقة حقيقية · تلقرام عبر الوسيط بدل الوضع المباشر · نطاق `tabaani.com` · بيانات تواصل حقيقية في الموقع.
+
+## المرحلة الثانية (Cloudflare)
+
+- صفحة تسجيل عامة (تعمل من GitHub Pages): `site/register.html`
+- كود الخادم وقاعدة البيانات: `cloud/` — ودليل النشر: `cloud/DEPLOY.md` (أو `bash cloud/deploy.sh`)
+- فحص الخادم المنشور: `node tools/check-deploy.js <رابط الخادم>`
+- تدقيق الحماية وسلامة الملفات: `node tools/audit.js` (التقرير في `AUDIT.md`)

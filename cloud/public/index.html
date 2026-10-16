@@ -172,7 +172,9 @@
 <script>
 (function () {
   'use strict';
-  var API = (location.origin.indexOf('github.io') > -1) ? 'https://tabaani.<account>.workers.dev' : '';
+  /* الصفحة تُخدَم من الخادم نفسه ⇒ نفس الأصل. ولو استُضيفت نسخة على GitHub Pages استخدم: ?api=https://... */
+  var API = new URLSearchParams(location.search).get('api') ||
+    ((location.origin.indexOf('github.io') === -1 && location.protocol === 'https:') ? location.origin : '');
   var $ = function (s) { return document.querySelector(s); };
   var state = { regId: '', email: '' };
 

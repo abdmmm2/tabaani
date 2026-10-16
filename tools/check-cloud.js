@@ -132,6 +132,11 @@ function ok(cond, label, extra) {
   const pub = fs.readFileSync(path.join(ROOT, 'cloud', 'public', 'index.html'), 'utf8');
   ok(/api\/register/.test(pub) && /api\/activation\/verify/.test(pub) && /dir="rtl"/.test(pub),
     'الصفحة العامة: نموذج تسجيل + كود تفعيل + RTL');
+  ok(/location\.origin/.test(pub) && /get\('api'\)/.test(pub),
+    'الصفحة العامة تكتشف رابط الخادم تلقائيًا (وتقبل ?api=)');
+  const reg = fs.readFileSync(path.join(ROOT, 'site', 'register.html'), 'utf8');
+  ok(/api\/register/.test(reg) && /tabaani-cloud-url/.test(reg),
+    'نسخة GitHub Pages: تسجيل عام + خانة رابط الخادم المحفوظة في المتصفح');
   const wr = fs.readFileSync(path.join(ROOT, 'cloud', 'wrangler.toml'), 'utf8');
   ok(/d1_databases/.test(wr) && /\[\[d1_databases\]\]/.test(wr), 'wrangler.toml فيه ربط قاعدة D1');
 
