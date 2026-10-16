@@ -32,26 +32,29 @@
     var a = S.ack(u.id);
     var owner = S.platformOwner();
     var d = dayLabel();
+    var meta = [
+      { label: 'رقم الإقرار', value: a.docNo || '—' },
+      { label: 'الاسم', value: u.name || '—' }
+    ];
+    if (u.idNo) meta.push({ label: S.idTypeLabel(u.idType), value: u.idNo });
+    meta = meta.concat([
+      { label: 'الوظيفة', value: S.roleLabel(u.role, u.schoolId) },
+      { label: 'المدرسة', value: sc.name || '—' },
+      { label: 'التاريخ', value: d.hij + ' هـ — ' + d.greg + ' م' },
+      { label: 'الحالة', value: ST[a.status] || a.status },
+      { label: 'المسؤول عن المنصة', value: owner.name || '—' }
+    ]);
     return {
-      title: 'إقرار المحافظة على أسرار المدرسة والمنصة — ' + (a.docNo || ''),
-      by: owner.name || '',
-      meta: [
-        { label: 'رقم الإقرار', value: a.docNo || '—' },
-        { label: S.idTypeLabel(u.idType), value: u.idNo || '—' },
-        { label: 'الاسم', value: u.name || '—' },
-        { label: 'الوظيفة', value: S.roleLabel(u.role, u.schoolId) },
-        { label: 'المدرسة', value: sc.name || '—' },
-        { label: 'اليوم', value: d.wd },
-        { label: 'التاريخ', value: d.hij + ' هـ — ' + d.greg + ' م' },
-        { label: 'الحالة', value: ST[a.status] || a.status },
-        { label: 'المسؤول عن المنصة', value: owner.name || '—' }
-      ],
+      title: 'إقرار',
+      code: a.docNo || '',
+      compact: true,                       /* إقرار في صفحة واحدة */
+      meta: meta,
       sections: [
         { heading: 'البنود', list: S.ACK_TERMS },
-        { heading: 'الإقرار', text: 'أُقرّ أنا الموقّع أدناه (المذكور بياناته أعلاه) بأنني قرأت البنود وفهمتها والتزمت بها، وأنني مسؤول عن أي إخلال بها نظاميًا، وأن الأسرار التي أطّلع عليها أمانة في ذمّتي.' }
+        { heading: 'الإقرار', text: 'أُقر أنا الموقّع أدناه (المذكور بياناته أعلاه) بأنني قرأت البنود وفهمتها والتزمت بها، وأنني مسؤول عن أي إخلال بها نظاميًا، وأن الأسرار التي أطّلع عليها أمانة في ذمّتي.' }
       ],
       signatures: [
-        'المُقرّ (الموظف/المعلم): ' + (u.name || '—') + '  — التوقيع: ..................  التاريخ: ..............'
+        'المُقرّ: ' + (u.name || '—') + '  — التوقيع: ..................  التاريخ: ..............'
       ]
     };
   };

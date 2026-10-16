@@ -658,27 +658,46 @@
     return u.replace(/[^\/]*$/, '');
   }
 
-  /** ختم دائري رسمي (SVG داخل الصفحة — بلا صور ولا إنترنت) */
+  /* شعار الختم مضمّن (data URI) — يظهر في الطباعة والتصدير وبلا إنترنت */
+  var LOGO_DATA = '';
+  (function loadLogo() {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'assets/img/logo-mark.png', true);
+      xhr.responseType = 'blob';
+      xhr.onload = function () {
+        if (xhr.status !== 200 && xhr.status !== 0) return;
+        var fr = new FileReader();
+        fr.onload = function () { LOGO_DATA = String(fr.result || ''); };
+        fr.readAsDataURL(xhr.response);
+      };
+      xhr.send();
+    } catch (e) {}
+  })();
+  /** ختم دائري رسمي (SVG داخل الصفحة — بلا صور ولا إنترنت)
+      • الوسط: شعار تابعني   • الأعلى: اسم المنصة (مسار من اليمين لليسار ⇒ عربي غير مقلوب)
+      • الأسفل: تاريخ الطباعة هجريًا + الساعة */
   function stampSvg(opts) {
     opts = opts || {};
     var color = opts.color || '#1E7A5A';
     var top = opts.top || 'تابعني للخدمات الذكية';
-    var mid = opts.mid || 'ختم رسمي';
-    var sub = opts.sub || 'تابعني للخدمات الذكية';
-    var bot = opts.bottom || 'ختم إلكتروني معتمد';
+    var bot = opts.bottom || '';
     var size = opts.size || 190;
     var id = 'st' + Math.random().toString(36).slice(2, 8);
-    return '<svg viewBox="0 0 200 200" width="' + size + '" height="' + size + '" dir="ltr" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
-      '<defs><path id="' + id + '" d="M26,100 A74,74 0 0 1 174,100"/></defs>' +
+    var logo = (opts.logo === false) ? '' :
+      '<image xlink:href="' + (LOGO_DATA || 'assets/img/logo-mark.png') + '" href="' + (LOGO_DATA || 'assets/img/logo-mark.png') + '" x="72" y="72" ' +
+      'width="56" height="56" preserveAspectRatio="xMidYMid meet"/>';
+    return '<svg viewBox="0 0 200 200" width="' + size + '" height="' + size + '" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' +
+      /* مسار الأعلى باتجاه اليمين ← اليسار: النص العربي يُرسم بترتيبه الصحيح (غير مقلوب) */
+      '<defs><path id="' + id + '" d="M174,100 A74,74 0 0 0 26,100"/></defs>' +
       '<circle cx="100" cy="100" r="95" fill="none" stroke="' + color + '" stroke-width="3.2"/>' +
       '<circle cx="100" cy="100" r="89.5" fill="none" stroke="' + color + '" stroke-width="1.1"/>' +
-      '<circle cx="100" cy="100" r="57" fill="none" stroke="' + color + '" stroke-width="1.1" stroke-dasharray="4 3"/>' +
-      '<text fill="' + color + '" font-size="14.5" font-weight="700" letter-spacing="0.5">' +
+      '<circle cx="100" cy="100" r="59" fill="none" stroke="' + color + '" stroke-width="1.1" stroke-dasharray="4 3"/>' +
+      '<text fill="' + color + '" font-size="14.5" font-weight="700" direction="rtl">' +
         '<textPath xlink:href="#' + id + '" href="#' + id + '" startOffset="50%" text-anchor="middle">' + top + '</textPath>' +
       '</text>' +
-      '<text fill="' + color + '" font-size="19" font-weight="800" x="100" y="92" text-anchor="middle">' + mid + '</text>' +
-      '<text fill="' + color + '" font-size="10.5" x="100" y="110" text-anchor="middle">' + sub + '</text>' +
-      '<text fill="' + color + '" font-size="9.5" font-weight="700" x="100" y="178" text-anchor="middle">' + bot + '</text>' +
+      logo +
+      (bot ? '<text fill="' + color + '" font-size="9.2" font-weight="700" x="100" y="172" text-anchor="middle" direction="rtl">' + bot + '</text>' : '') +
       '</svg>';
   }
 
@@ -875,6 +894,13 @@
     '.pd-stamp{text-align:center}' +
     '.pd-stamp .cap{font-size:10.5px;color:#3A3023;margin-top:3px}' +
     '.pd-sign{display:flex;justify-content:flex-start;gap:30px;font-size:11px;margin-top:16px}' +
+    '.pd-compact .pd-meta>div{padding:5px 8px;font-size:10.6px;min-width:118px}' +
+    '.pd-compact h3{font-size:12.5px;margin:9px 0 5px}' +
+    '.pd-compact ul{font-size:10.6px;line-height:1.72;margin:0 0 6px}' +
+    '.pd-compact .pd-sign{margin-top:12px;font-size:10.6px}' +
+    '.pd-compact .pd-foot{margin-top:10px;padding-top:8px}' +
+    '.pd-compact .pd-sub{font-size:10.6px}' +
+    '@media print{.pd{page-break-inside:avoid}.pd-compact{font-size:10.8px}}' +
     '.pd-sign div{border-top:1px solid #C9BFA9;padding-top:5px;min-width:160px;text-align:center;color:#3A3023}' +
     '.pd-qr{text-align:center;font-size:10px;color:#6B6152}' +
     '.pd-qr svg{width:80px;height:80px}' +
@@ -886,7 +912,7 @@
     var base = appBase();
     var esc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
     var d = new Date();
-    var meta = (o.meta || []).map(function (m) {
+    var meta = (o.meta || []).filter(Boolean).map(function (m) {
       return '<div><span class="k">' + esc(m.label) + ':</span> <strong>' + esc(m.value) + '</strong></div>';
     }).join('');
     var sections = (o.sections || []).map(function (sec) {
@@ -913,7 +939,7 @@
     return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><base href="' + base + '">' +
       '<title>' + esc(o.title || 'تقرير') + '</title>' +
       '<link rel="stylesheet" href="assets/fonts/fonts.css"><style>' + PLATFORM_CSS + '</style></head><body>' +
-      '<div class="pd">' +
+      '<div class="pd' + (o.compact ? ' pd-compact' : '') + '">' +
         '<div class="pd-head">' +
           '<div class="pd-brand"><img src="assets/img/logo-mark.png" alt="تابعني">' +
             '<div><div class="bn">تابعني للخدمات الذكية</div>' +
@@ -931,13 +957,19 @@
           '<div class="note">صدرت هذه الوثيقة إلكترونيًا من تابعني' +
             (o.by ? ' — أعدّها: <strong>' + esc(o.by) + '</strong>' : '') + '</div>' +
           (o.qr ? '<div class="pd-qr">' + qrSvg(o.qr, 3, 1) + '<div>' + esc(o.qrNote || '') + '</div></div>' : '') +
-          (o.stamp === false ? '' : '<div class="pd-stamp">' + stampSvg({ size: 130 }) + '<div class="cap">ختم «تابعني للخدمات الذكية»</div></div>') +
+          (o.stamp === false ? '' : '<div class="pd-stamp">' + stampSvg({ size: o.compact ? 116 : 130, bottom: stampDateLine(d) }) + '</div>') +
         '</div>' +
         (signs ? '<div class="pd-sign">' + signs + '</div>' : '') +
       '</div>' +
       '<div class="pd-print" style="text-align:center;margin-top:14px"><button onclick="window.print()" ' +
         'style="font:inherit;font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid #1E7A5A;background:#1E7A5A;color:#fff;cursor:pointer">طباعة / حفظ PDF</button></div>' +
       '</body></html>';
+  }
+  /** سطر أسفل الختم: اليوم + الشهر + السنة الهجرية + ساعة الطباعة */
+  function stampDateLine(d) {
+    var hj = String(hijri(d) || '').replace(/\s*هـ\s*$/, '').trim();
+    var t = fmtTime(d);
+    return (hj ? hj + ' هـ' : '') + (t && t !== '—' ? ' · ' + t : '');
   }
   function printPlatformDoc(o) { printDoc(platformDoc(o)); return true; }
 

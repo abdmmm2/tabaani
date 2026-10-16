@@ -74,7 +74,7 @@
         App.enter(res.user.id);
         if (res.user.mustChange) App.firstLoginPassword(res.user);
       }
-      if (tf.applies) { App.twoFactorScreen(res.user, afterAuth); return; }
+      if (tf.applies) { closeAll(); App.twoFactorScreen(res.user, afterAuth); return; }   /* نُغلق نافذة الدخول لتظهر شاشة الرمز وحدها */
       afterAuth();
     } }, [
       user.wrap, pass.wrap, err,

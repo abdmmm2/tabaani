@@ -326,8 +326,15 @@
       var cfg = window.TABAANI_PROMO; if (!cfg || cfg.enabled === false) return;
       var ads = (cfg.ads || []).filter(function (a) { return a.active !== false && (!a.until || String(a.until) >= new Date().toISOString().slice(0, 10)); });
       if (!ads.length) return;
-      var freq = cfg.frequency || 'session', K = 'tabaani_promo_seen';
-      try { if (freq === 'session' && sessionStorage.getItem(K)) return; } catch (e) {}
+      var freq = cfg.frequency || 'session', K = 'tabaani_promo_seen', K2 = 'tabaani_promo_closed_at';
+      try {
+        if (freq === 'session' && sessionStorage.getItem(K)) return;
+        if (freq === 'once' && localStorage.getItem(K2)) return;
+        /* أُغلق الإعلان سابقًا (حتى لو فُتحت الصفحة في تبويب/متصفح جديد) ⇒ لا يعود */
+        var at = Number(localStorage.getItem(K2) || 0);
+        var HOURS = Number(cfg.reshowHours); if (!(HOURS >= 0)) HOURS = 24;
+        if (at && (Date.now() - at) < HOURS * 3600e3) return;
+      } catch (e) {}
       var ad = ads[0];
       var SECS = (cfg.autoClose > 0 ? cfg.autoClose : 15);          /* المطلوب: ١٥ ثانية افتراضيًا */
       var ov = document.createElement('div');
@@ -350,7 +357,7 @@
       function close() {
         if (closed) return; closed = true;
         ov.classList.remove('is-in'); ov.classList.add('is-out');
-        try { sessionStorage.setItem(K, '1'); } catch (e) {}
+        try { sessionStorage.setItem(K, '1'); localStorage.setItem(K2, String(Date.now())); } catch (e) {}
         setTimeout(function () { ov.remove(); }, 380);
       }
       ov.querySelector('.pb-x').addEventListener('click', close);

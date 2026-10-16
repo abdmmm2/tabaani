@@ -727,6 +727,8 @@
 
     /** المرحلة الثانية: التحقق برمز يُرسل إلى تلقرام المستخدم الخاص */
     twoFactorScreen: function (user, onDone) {
+      /* أي نافذة دخول مفتوحة تُغلق — تظهر شاشة الرمز وحدها (بلا نموذج دخول تحتها) */
+      try { Array.prototype.forEach.call(document.querySelectorAll('.modal-backdrop'), function (b) { b.remove(); }); } catch (e) {}
       var ttl = S.twoFactorConfig().ttl;
       var status = h('div', { class: 'muted-block', text: 'يُرسل رمز التحقق إلى محادثتك الخاصة على تلقرام…' });
       var codeF = UI.field({

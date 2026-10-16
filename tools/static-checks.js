@@ -133,6 +133,27 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
   add(missing.length === 0, 'الملفات الأساسية موجودة (' + must.length + ')', missing.join(' · '));
 })();
 
+/* ----------------------------------- ٩) الإقرار والختم والإعلان (v92) */
+(function docsAndStamp() {
+  const store = read('app/assets/js/store.js');
+  const ui = read('app/assets/js/ui.js');
+  const acks = read('app/assets/js/modules/acks.js');
+  const reg = read('site/register.html');
+  const cl = read('cloud/public/index.html');
+  const landing = read('app/assets/js/landing.js');
+  const terms = (store.match(/ACK_TERMS: \[([\s\S]*?)\n    \],/) || [])[1] || '';
+  const nTerms = (terms.match(/'/g) || []).length / 2;
+  add(nTerms === 7 && !/أتعهد/.test(terms), 'بنود الإقرار: ٧ بنود وبصيغة «أُقر» (لا «أتعهد»)', 'عدد=' + nTerms);
+  add(!/المرعية/.test(store) && !/المرعية/.test(read('site/ack.html')), 'حُذفت عبارة «وفق الأنظمة المرعية»', '');
+  add(/A74,74 0 0 0 26,100/.test(ui) && /logo-mark\.png/.test(ui.slice(ui.indexOf('function stampSvg'), ui.indexOf('function stampSvg') + 1400)),
+    'الختم: النص العربي على مسار يمين←يسار + شعار في الوسط', '');
+  add(!/\.cap">ختم/.test(ui) && /stampDateLine\(d\)/.test(ui), 'الختم: بلا سطر تحته + تاريخ هجري وساعة الطباعة', '');
+  add(/title: 'إقرار'/.test(acks) && /compact: true/.test(acks), 'وثيقة الإقرار: العنوان «إقرار» + نمط صفحة واحدة', '');
+  add(/tabaani_promo_closed_at/.test(reg) && /tabaani_promo_closed_at/.test(cl),
+    'الإعلان: لا يعود بعد الإغلاق (سجل إغلاق دائم)', '');
+  add(/closeAll\(\); App\.twoFactorScreen/.test(landing), 'الدخول: نافذة الدخول تُغلق قبل شاشة رمز التحقق', '');
+})();
+
 /* ---------------------------------------- التقرير */
 console.log('\n══ فحوص ساكنة (static-checks) ══\n');
 results.forEach((r) => {
