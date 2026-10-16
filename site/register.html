@@ -49,6 +49,20 @@
   footer { text-align:center; color:var(--muted); font-size:12.5px; margin-top:18px; }
   footer a { color:var(--emerald); }
   @media (max-width:640px) { .grid, .plans { grid-template-columns:1fr; } }
+
+  /* الإعلان الافتتاحي فوق التسجيل */
+  .promo-band { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #FFF8E8;
+    border: 1.4px solid #F0DFB5; border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; position: relative; }
+  .promo-band.is-out { opacity: 0; transform: translateY(-6px); transition: .3s; }
+  .promo-band img { width: 120px; height: 72px; object-fit: cover; border-radius: 10px; }
+  .promo-band .pb-txt { flex: 1 1 220px; }
+  .promo-band .pb-tag { display: inline-block; background: var(--gold); color: #14100A; font-size: 11px; font-weight: 800;
+    border-radius: 999px; padding: 2px 10px; margin-bottom: 4px; }
+  .promo-band h3 { margin: 2px 0 4px; font-size: 17px; color: var(--emerald); }
+  .promo-band p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .promo-band .pb-act { display: flex; gap: 8px; flex-wrap: wrap; }
+  .promo-band .pb-x { position: absolute; top: 6px; inset-inline-end: 8px; background: transparent; border: none;
+    font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -302,6 +316,44 @@
       .catch(function () { $('#codeErr').textContent = 'تعذّر الاتصال.'; });
   });
 })();
+</script>
+<script>
+  /* ===== الإعلان الافتتاحي: يُقرأ من assets/data/promo-config.js ويظهر فوق التسجيل ===== */
+  (function () {
+    function render() {
+      var cfg = window.TABAANI_PROMO; if (!cfg || cfg.enabled === false) return;
+      var ads = (cfg.ads || []).filter(function (a) { return a.active !== false && (!a.until || String(a.until) >= new Date().toISOString().slice(0, 10)); });
+      if (!ads.length) return;
+      var freq = cfg.frequency || 'session', K = 'tabaani_promo_seen';
+      try { if (freq === 'session' && sessionStorage.getItem(K)) return; } catch (e) {}
+      var ad = ads[0];
+      var host = document.querySelector('.wrap') || document.body;
+      var el = document.createElement('div');
+      el.className = 'promo-band';
+      el.innerHTML =
+        (ad.image ? '<img src="assets/img/promo-offer.jpg" alt="">' : '') +
+        '<div class="pb-txt"><span class="pb-tag">إعلان</span><h3>' + (ad.title || 'عرض تابعني') + '</h3>' +
+        (ad.text ? '<p>' + ad.text + '</p>' : '') + '</div>' +
+        '<div class="pb-act">' + (ad.link ? '<a class="btn" href="' + ad.link + '" style="font-size:13px;padding:8px 14px">التفاصيل</a>' : '') + '</div>' +
+        '<button class="pb-x" type="button" title="إغلاق">&times;</button>';
+      var first = document.getElementById('step1') || host.children[0];
+      host.insertBefore(el, first);
+      el.querySelector('.pb-x').addEventListener('click', function () {
+        el.classList.add('is-out');
+        try { sessionStorage.setItem(K, '1'); } catch (e) {}
+        setTimeout(function () { el.remove(); }, 320);
+      });
+      if (cfg.autoClose > 0) setTimeout(function () { el.classList.add('is-out'); setTimeout(function () { el.remove(); }, 320); }, cfg.autoClose * 1000);
+    }
+    function boot() {
+      if (window.TABAANI_PROMO) return render();
+      var s = document.createElement('script');
+      s.src = 'assets/data/promo-config.js'; s.async = false;
+      s.onload = render; s.onerror = function () {};
+      document.head.appendChild(s);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  })();
 </script>
 </body>
 </html>
