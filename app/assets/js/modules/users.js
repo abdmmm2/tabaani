@@ -39,6 +39,9 @@
           phone: UI.field({ name: 'uPhone', label: 'الجوال', half: true, value: cur.phone || '', help: 'يُستخدم لتنبيهات تلقرام.' }),
           tgChat: UI.field({ name: 'uTgChat', label: 'محادثة تلقرام الشخصية (chat_id)', half: true, value: cur.telegramChatId || '',
             help: 'اختياري — للرسائل الخاصة (مثل إذن دخول الفصل). اتركها فارغة ليصل التنبيه إلى مجموعة المدرسة.' }),
+          idType: UI.field({ name: 'uIdType', label: 'نوع الهوية', type: 'select', half: true, value: cur.idType || 'national',
+            options: S.ID_TYPES.map(function (t) { return { value: t.id, label: t.label }; }) }),
+          idNo: UI.field({ name: 'uIdNo', label: 'رقم الهوية / الإقامة', half: true, dir: 'ltr', value: cur.idNo || '', placeholder: '١٠ أرقام' }),
           gender: UI.field({ name: 'uGender', label: 'الجنس (لصيغة المخاطبة: المعلم/المعلمة)', type: 'select', half: true,
             options: [{ value: '', label: '— حسب جنس المدرسة —' }, { value: 'm', label: 'ذكر (معلم)' }, { value: 'f', label: 'أنثى (معلمة)' }], value: cur.gender || '' }),
           password: UI.field({ name: 'uPass', label: isNew ? 'كلمة المرور (اتركها فارغة ليُولّدها النظام)' : 'كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)', half: true }),
@@ -58,7 +61,7 @@
           title: isNew ? 'إضافة مستخدم جديد' : 'تعديل المستخدم',
           wide: true,
           body: [
-            h('div', { class: 'grid-2-app' }, [f.name.wrap, f.username.wrap, f.role.wrap, f.school.wrap, f.gender.wrap, f.email.wrap, f.phone.wrap, f.tgChat.wrap, f.password.wrap, f.status.wrap]),
+            h('div', { class: 'grid-2-app' }, [f.name.wrap, f.username.wrap, f.role.wrap, f.school.wrap, f.idType.wrap, f.idNo.wrap, f.gender.wrap, f.email.wrap, f.phone.wrap, f.tgChat.wrap, f.password.wrap, f.status.wrap]),
             h('label', { class: 'checkline' }, [mustChange, h('span', { text: 'إلزامه بتغيير كلمة المرور عند أول دخول' })]),
             h('p', { class: 'muted-block', style: { marginTop: '10px', fontSize: 'var(--fs-xs)' },
               text: 'ملاحظة: هذا نموذج أولي — كلمات المرور تُخزَّن داخل المتصفح (localStorage) بلا تشفير. في الإنتاج تُخزَّن مُشفَّرة (hash) على الخادم.' }),
@@ -74,6 +77,7 @@
                 email: f.email.input.value.trim(), phone: f.phone.input.value.trim(),
                 telegramChatId: f.tgChat.input.value.trim(),
                 gender: f.gender.input.value || '',
+                idType: f.idType.input.value, idNo: String(f.idNo.input.value || '').replace(/\D/g, ''),
                 status: f.status.input.value, mustChange: mustChange.checked
               };
               if (isNew) {

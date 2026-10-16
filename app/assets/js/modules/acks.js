@@ -37,6 +37,7 @@
       by: owner.name || '',
       meta: [
         { label: 'رقم الإقرار', value: a.docNo || '—' },
+        { label: S.idTypeLabel(u.idType), value: u.idNo || '—' },
         { label: 'الاسم', value: u.name || '—' },
         { label: 'الوظيفة', value: S.roleLabel(u.role, u.schoolId) },
         { label: 'المدرسة', value: sc.name || '—' },
@@ -62,8 +63,99 @@
     UI.toast('حُفظ الملف — اختر «حفظ ك PDF» من نافذة الطباعة', 'ok');
   };
 
-  /** بوابة الإقرار: تحلّ مكان المنصة كاملة حتى يُعتمد الإقرار */
+  /** بوابة الإقرار: نافذة ملزمة (لا تُغلق) — بيانات المستخدم جاهزة + خيار الهوية/الإقامة ورقمها */
   App.ackGate = function () {
+    var u0 = S.user(S.session.userId) || {};
+    var a0 = S.ack(u0.id);
+    var wrap0 = h('div', { class: 'ack-modal-backdrop' }, []);
+    var card = h('div', { class: 'ack-modal' });
+    wrap0.appendChild(card);
+    /* خيار نوع الهوية + الرقم */
+    var idType = h('select', { class: 'input' });
+    S.ID_TYPES.forEach(function (t) { idType.appendChild(h('option', { value: t.id, text: t.label })); });
+    idType.value = u0.idType || 'national';
+    var idNo = h('input', { class: 'input', inputmode: 'numeric', dir: 'ltr', placeholder: '١٠ أرقام', maxlength: '10' });
+    idNo.value = u0.idNo || '';
+    var idMsg = h('div', { class: 'err' });
+    var agreed = h('input', { type: 'checkbox' });
+    var agreeLabel = h('label', { class: 'ack-agree' }, [agreed, h('span', { text: 'أوافق على كل بنود الإقرار، وأُقرّ بصحّة بياناتي أعلاه.' })]);
+    var sendBtn = h('button', { class: 'btn btn-primary', type: 'button', text: 'أوافق وأرسل الإقرار', disabled: true });
+    agreed.addEventListener('change', function () { sendBtn.disabled = !agreed.checked; });
+
+    function saveId() {
+      var r = S.setIdData(u0.id, idType.value, idNo.value);
+      idMsg.textContent = r.ok ? '' : r.error;
+      idMsg.className = 'err' + (r.ok ? ' ok' : '');
+      if (r.ok) { u0 = S.user(u0.id); if (App.ackRefreshMeta) App.ackRefreshMeta(); }
+      return r.ok;
+    }
+    idType.addEventListener('change', saveId);
+    idNo.addEventListener('blur', saveId);
+
+    card.appendChild(h('div', { class: 'ack-head' }, [
+      h('div', { class: 'ack-badge', html: '&#128274;' }),
+      h('div', {}, [
+        h('h2', { text: 'إقرار استخدام منصة تابعني' }),
+        h('p', { class: 'muted', text: 'لا تعمل أي شاشة أو زر قبل الموافقة على الإقرار واعتماده من المعتمد.' })
+      ])
+    ]));
+
+    /* بيانات المستخدم جاهزة (بلا تعبئة يدوية) */
+    var sc0 = S.school(u0.schoolId) || {};
+    var meta = h('div', { class: 'ack-meta' }, [
+      h('div', {}, [h('span', { text: 'الاسم: ' }), h('b', { text: u0.name || '—' })]),
+      h('div', {}, [h('span', { text: 'الوظيفة: ' }), h('b', { text: S.roleLabel(u0.role, u0.schoolId) })]),
+      h('div', {}, [h('span', { text: 'المدرسة: ' }), h('b', { text: sc0.name || '—' })]),
+      h('div', {}, [h('span', { text: 'رقم الإقرار: ' }), h('b', { text: a0.docNo || 'يُصدر عند الإرسال' })]),
+      h('div', {}, [h('span', { text: 'اليوم والتاريخ: ' }), h('b', { text: dayLabel().wd + ' — ' + dayLabel().hij + ' هـ — ' + dayLabel().greg + ' م' })])
+    ]);
+    App.ackRefreshMeta = function () {
+      meta.lastChild.firstChild.textContent = 'رقم الإقرار: ';
+      meta.lastChild.lastChild.textContent = S.ack(u0.id).docNo || 'يُصدر عند الإرسال';
+    };
+    card.appendChild(meta);
+
+    card.appendChild(h('div', { class: 'ack-id-box' }, [
+      h('div', { class: 'ack-id-row' }, [
+        h('div', { style: { flex: '0 0 190px' } }, [h('label', { text: 'نوع الهوية' }), idType]),
+        h('div', { style: { flex: '1 1 220px' } }, [h('label', { text: 'رقم الهوية / الإقامة' }), idNo])
+      ]),
+      idMsg,
+      h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'الهوية الوطنية تبدأ بـ ١ أو ٢ — والإقامة تبدأ بـ ٢ (١٠ أرقام).' })
+    ]));
+
+    card.appendChild(UI.panel('بنود الإقرار', 'اقرأها ثم ضع علامة «أوافق».', null, [
+      h('ol', { class: 'ack-terms' }, S.ACK_TERMS.map(function (t) { return h('li', { text: String(t).replace(/\*\*/g, '') }); }))
+    ]));
+
+    var ap0 = S.ackApprover(u0.id);
+    var actions = h('div', { class: 'ack-actions' }, [
+      agreeLabel,
+      h('div', { class: 'cluster' }, [
+        sendBtn,
+        h('button', { class: 'btn btn-outline', type: 'button', text: '🖨️ طباعة الإقرار (اختياري)', onClick: function () {
+          if (!saveId()) { UI.toast('أدخل نوع الهوية ورقمها أولًا', 'warn'); return; }
+          App.ackPrint(u0.id);
+        } }),
+        h('a', { class: 'btn btn-outline', href: '../site/ack.html', target: '_blank', rel: 'noopener', text: '🔗 النسخة العامة والرابط' }),
+        h('button', { class: 'btn btn-outline', type: 'button', text: 'خروج', onClick: App.logout })
+      ]),
+      h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
+        text: a0.status === 'submitted' ? ('أُرسل إقرارك — بانتظار تأكيد ' + ((ap0 && ap0.name) || 'المعتمد') + '. سلّم الورقة الموقّعة إن طُلبت منك.') : 'بعد الموافقة يُرسَل إقرارك إلى ' + ((ap0 && ap0.name) || 'المعتمد') + ' ولا يعمل حسابك إلا باعتماده.' })
+    ]);
+    sendBtn.addEventListener('click', function () {
+      if (!saveId()) { UI.toast('أدخل نوع الهوية ورقمها أولًا', 'warn'); return; }
+      if (a0.status === 'submitted') { UI.toast('إقرارك مُرسل بالفعل — بانتظار الاعتماد', 'warn'); return; }
+      var r = S.submitAck(u0.id);
+      UI.toast('سُجّل إقرارك ✓ — أُشعر ' + (r.approver || 'المعتمد') + (r.sent ? '' : ' (تنبيه البوت يحتاج ربط تلقرام)'), 'ok');
+      App.route();
+    });
+    card.appendChild(actions);
+    return wrap0;
+  };
+
+  /** النسخة القديمة (شاشة) — تُستخدم إن تعذّر النمط النافذي */
+  App.ackGateScreen = function () {
     var u = S.user(S.session.userId) || {};
     var a = S.ack(u.id);
     var ap = S.ackApprover(u.id);

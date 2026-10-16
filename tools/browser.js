@@ -53,8 +53,40 @@ function serve(dir) {
   return new Promise((resolve, reject) => {
     /* نقطتا اختبار لمسار الحفظ السحابي (محليًا فقط — تحاكيان تطبيق Apps Script) */
     let cloudHits = [];
+    const syncStore = { version: 0, data: null, hits: [] };
     const server = http.createServer((req, res) => {
       const pure = String(req.url || '').split('?')[0];
+      /* محاكي خادم المرحلة الثانية (Worker + D1): دخول · مزامنة بإصدارات · بحث */
+      if (pure.indexOf('/__sync') === 0) {
+        let body = '';
+        req.on('data', (d) => { body += d; });
+        req.on('end', () => {
+          const j = (o) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
+          const sub = pure.replace('/__sync', '') || '/';
+          if (sub === '/api/health') return j({ ok: true, mail: true, telegram: false });
+          if (sub === '/api/auth/login') {
+            const p2 = JSON.parse(body || '{}');
+            if (p2.username === 'e2e-cloud' && p2.password === 'Cloud@2026') return j({ ok: true, token: 'tok-e2e' });
+            res.writeHead(401, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false, msg: 'بيانات الدخول غير صحيحة' }));
+          }
+          if (sub === '/api/sync') {
+            const auth = String(req.headers.authorization || '').replace('Bearer ', '');
+            if (auth !== 'tok-e2e') { res.writeHead(401, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: false })); }
+            if (req.method === 'GET') return j({ ok: true, version: syncStore.version, updatedAt: Date.now(), data: syncStore.data });
+            const p3 = JSON.parse(body || '{}');
+            if (Number(p3.baseVersion || 0) < syncStore.version) {
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              return res.end(JSON.stringify({ ok: false, conflict: true, version: syncStore.version, latest: syncStore.data, msg: 'نسخة أحدث' }));
+            }
+            syncStore.version++;
+            syncStore.data = p3.data;
+            syncStore.hits.push({ version: syncStore.version, bytes: (body || '').length, grades: ((p3.data || {}).gradeSheets || []).length });
+            return j({ ok: true, version: syncStore.version, bytes: (body || '').length });
+          }
+          res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false }));
+        });
+        return;
+      }
       if (pure === '/__cloud' || pure === '/__cloudfail') {
         let body = '';
         req.on('data', (d) => { body += d; });
@@ -103,7 +135,9 @@ function serve(dir) {
         url: 'http://127.0.0.1:' + server.address().port,
         close: () => server.close(),
         cloudHits: () => cloudHits.slice(),
-        resetCloud: () => { cloudHits = []; }
+        resetCloud: () => { cloudHits = []; },
+        syncStore: () => syncStore,
+        resetSync: () => { syncStore.version = 0; syncStore.data = null; syncStore.hits = []; }
       });
     });
   });

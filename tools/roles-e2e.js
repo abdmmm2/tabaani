@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 16, principal: 18, deputy: 17, guidance: 9, teacher: 10,
+  super: 17, principal: 19, deputy: 17, guidance: 9, teacher: 10,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 4, specialist: 2
 };
@@ -184,7 +184,7 @@ async function main() {
     report.push({ role: 'twoFactor', modules: String(tfRes.filter((r) => r.ok).length) + '/' + tfRes.length, note: tfRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'التحقق بمرحلتين' });
 
     /* ------------------ بقاء البيانات والنسخة الاحتياطية ------------------ */
-    const bkRes = await backupSuite(page, site.url, () => site.cloudHits());
+    const bkRes = await backupSuite(page, site.url, () => site.cloudHits(), () => site.syncStore());
     bkRes.forEach((r) => check(r.ok, r.m, r.d));
     report.push({ role: 'backup', modules: String(bkRes.filter((r) => r.ok).length) + '/' + bkRes.length, note: bkRes.every((r) => r.ok) ? 'سليم' : 'إخفاق', label: 'البيانات والنسخ الاحتياطي' });
 
@@ -290,7 +290,7 @@ async function studentCtlSuite(page, base) {
 }
 
 /** فحص بقاء البيانات والنسخة الاحتياطية (تنزيل/استرجاع) */
-async function backupSuite(page, base, hitsFn) {
+async function backupSuite(page, base, hitsFn, syncFn) {
   const res = [];
   const ok = (c, m, d) => res.push({ ok: !!c, m: m, d: d || '' });
   await page.eval('try { Store.logout(); } catch (e) {} return true;').catch(() => {});
@@ -386,6 +386,7 @@ async function backupSuite(page, base, hitsFn) {
   ok(gp.same, 'توليد كلمات المرور لا يمسّ حساب المستخدم الحالي (بعد إصلاحه)', JSON.stringify(gp));
 
   const hits = (typeof hitsFn === 'function') ? hitsFn : (() => []);
+  const syncStore = (typeof syncFn === 'function') ? syncFn : (() => ({ version: 0, hits: [] }));
   const waitEval = async (expr, pollExpr, tries = 24) => {
     await page.eval(expr);
     for (let i = 0; i < tries; i++) {
@@ -578,6 +579,75 @@ async function backupSuite(page, base, hitsFn) {
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
 
+  /* المزامنة السحابية: إقران · رفع كشوف الدرجات · تعارض الإصدارات */
+  const sync = await page.eval(
+    'Store.saveSyncCfg({ url: location.origin + "/__sync", auto: false, token: "" });' +
+    'var cfg = Store.syncCfg();' +
+    'return { url: cfg.url, configured: Store.syncConfigured() };');
+  ok(/__sync$/.test(sync.url) && sync.configured === false, 'رابط المزامنة يُحفظ (وغير مقرون قبل الدخول)', JSON.stringify(sync));
+
+  const login = await page.eval(
+    'window.__sres = null;' +
+    'App.syncPush();' +                       /* بدون رمز: يجب أن يفشل بصراحة */
+    'return { before: Store.syncConfigured() };');
+  void login;
+  await B.sleep(400);
+  const noTok = await page.eval('return { cfg: Store.syncCfg().token, configured: Store.syncConfigured() };');
+  ok(noTok.configured === false, 'الرفع بلا رمز جلسة لا يتم (لا نجاح كاذب)', JSON.stringify(noTok));
+
+  /* حفظ كشف درجات → تعديل معلّق للمزامنة + الكشف داخل حمولة الرفع */
+  const dirty = await page.eval(
+    'var k = Store.list("classes")[0]; var sts = Store.studentsOf(k.id);' +
+    'var r = Store.saveGradeSheet({ classId: k.id, subject: "المزامنة", column: "homework", how: "يدوي", rows: [{ studentId: sts[0].id, value: 5 }] });' +
+    'var payload = Store.syncPayload();' +
+    'return { saved: r.ok, dirty: !!Store.syncDirty(), why: (Store.syncDirty() || {}).why || "",' +
+    ' inPayload: (payload.data.gradeSheets || []).length, hasSheet: (payload.data.gradeSheets || []).some(function (g) { return g.subject === "المزامنة"; }),' +
+    ' points: (payload.data.students.filter(function (s) { return s.id === sts[0].id; })[0].points || {}).homework };');
+  ok(dirty.saved && dirty.dirty && /كشف/.test(dirty.why), 'حفظ كشف الدرجات يُعلن «تعديلات غير مرفوعة»', dirty.why);
+  ok(dirty.inPayload >= 1 && dirty.hasSheet && dirty.points === 5,
+    'كشوف الدرجات ونقاط الطلاب داخل حمولة المزامنة', JSON.stringify({ sheets: dirty.inPayload, points: dirty.points }));
+
+  /* دخول الخادم + رفع فعلي عبر المحاكي */
+  const tok = await page.eval(
+    'window.__syncr = null;' +
+    'fetch(location.origin + "/__sync/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" },' +
+    ' body: JSON.stringify({ username: "e2e-cloud", password: "Cloud@2026" }) }).then(function (r) { return r.json(); })' +
+    '.then(function (j) { if (j.token) Store.saveSyncCfg({ token: j.token }); window.__syncr = j; });' +
+    'return true;');
+  void tok;
+  await B.sleep(900);
+  const gotTok = await page.eval('return Store.syncCfg().token;');
+  ok(gotTok === 'tok-e2e', 'الدخول للخادم يعطي رمز جلسة ويُحفظ للإقران', gotTok);
+
+  const push = await page.eval(
+    'window.__push = null;' +
+    'var p = Store.syncPayload();' +
+    'fetch(location.origin + "/__sync/api/sync", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + Store.syncCfg().token },' +
+    ' body: JSON.stringify({ baseVersion: Store.syncCfg().lastVersion || 0, data: p.data }) }).then(function (r) { return r.json(); })' +
+    '.then(function (j) { window.__push = j; if (j.ok) Store.saveSyncCfg({ lastVersion: j.version, lastAt: new Date().toISOString() }); });' +
+    'return true;');
+  void push;
+  await B.sleep(1200);
+  const pushed = await page.eval('return { j: window.__push, cfg: Store.syncCfg().lastVersion };');
+  ok(pushed.j && pushed.j.ok && pushed.j.version === 1 && pushed.cfg === 1, 'رفع النسخة ينجح ويعيد الإصدار الجديد', JSON.stringify(pushed.j));
+
+  /* تعارض: محاولة رفع بإصدار قديم تُرفض (409) ولا تكتب فوق الأحدث */
+  const conflict = await page.eval(
+    'window.__conf = null;' +
+    'fetch(location.origin + "/__sync/api/sync", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer tok-e2e" },' +
+    ' body: JSON.stringify({ baseVersion: 0, data: { users: [], schools: [] } }) })' +
+    '.then(function (r) { return r.json().then(function (j) { window.__conf = { status: r.status, j: j }; }); });' +
+    'return true;');
+  void conflict;
+  await B.sleep(900);
+  const conf = await page.eval('return window.__conf;');
+  ok(conf && conf.status === 409 && conf.j.conflict === true && conf.j.version === 1,
+    'رفع بناءً على إصدار قديم يُرفض (تعارض) ولا يُفقد نسخة الخادم', JSON.stringify(conf && { s: conf.status, v: conf.j.version }));
+
+  const srv = syncStore();
+  ok(srv.version === 1 && srv.hits.length === 1 && srv.hits[0].grades >= 1,
+    'الخادم استلم الكشوف فعلًا (ولم تُكتب نسخة ثانية)', JSON.stringify({ v: srv.version, hits: srv.hits.length, grades: srv.hits[0] ? srv.hits[0].grades : 0 }));
+
   /* كشوف الدرجات: محلّل الإملاء الصوتي (أرقام عربية + كلمات) وربط الاسم والعمود */
   const parse = await page.eval(
     'function P(t) { var r = App.grades.parseVoice(t); return { name: r.name, value: r.value, column: r.column }; }' +
@@ -660,11 +730,12 @@ async function backupSuite(page, base, hitsFn) {
     'var saved = { userId: Store.session.userId, role: Store.session.role, name: Store.session.name };' +
     'Store.session = { userId: t.id, name: t.name, role: "teacher", schoolId: t.schoolId };' +
     'App.route();' +
-    'var g = !!document.querySelector(".ack-gate");' +
+    'var g = !!document.querySelector(".ack-modal-backdrop");' +
     'var bodyLocked = document.body.classList.contains("ack-locked");' +
     'var fab = document.querySelector(".support-fab");' +
     'var fabHidden = !fab || getComputedStyle(fab).display === "none";' +
     'var hasTerms = document.querySelector(".ack-terms") ? document.querySelector(".ack-terms").children.length : 0;' +
+    'Store.update("users", t.id, { idType: "national", idNo: "1034567890" });' +
     'Store.approveAck(t.id, Store.list("users", { role: "super" })[0].id);' +
     'App.route();' +
     'var gone = !document.querySelector(".ack-gate");' +
@@ -675,6 +746,52 @@ async function backupSuite(page, base, hitsFn) {
   ok(gate.g && gate.bodyLocked && gate.fabHidden && gate.hasTerms >= 5,
     'البوابة تُرسم مكان المنصة (بنودها + لا زر دعم عائم) عند عدم الاعتماد', JSON.stringify(gate));
   ok(gate.gone === true, 'بعد الاعتماد تختفي البوابة وتعمل المنصة', 'gone=' + gate.gone);
+
+  /* بوابة الإقرار: نافذة ملزمة لا تُغلق + «موافق» تُفعّل الزر + نوع الهوية ورقمها */
+  const gate2 = await page.eval(
+    'Store.saveAckEnabled(true);' +
+    'var sc = Store.list("schools")[0].id;' +
+    'var t = Store.list("users").filter(function (u) { return u.username === "e2e-ack"; })[0];' +
+    'Store.reopenAck(t.id);' +
+    'Store.update("users", t.id, { idType: "", idNo: "" });' +
+    'var saved = { userId: Store.session.userId, role: Store.session.role, name: Store.session.name };' +
+    'Store.session = { userId: t.id, name: t.name, role: "teacher", schoolId: t.schoolId };' +
+    'App.route();' +
+    'var modal = !!document.querySelector(".ack-modal-backdrop .ack-modal");' +
+    'var closers = document.querySelectorAll(".ack-modal .icon-btn, .ack-modal .modal-x, .ack-modal [data-close]").length;' +
+    'var btn = [].slice.call(document.querySelectorAll(".ack-modal button")).filter(function (b) { return /أوافق وأرسل/.test(b.textContent); })[0];' +
+    'var disabledBefore = btn.disabled;' +
+    'var cb = document.querySelector(".ack-modal .ack-agree input");' +
+    'cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true }));' +
+    'var enabledAfter = !btn.disabled;' +
+    'var hasIdFields = !!document.querySelector(".ack-modal .ack-id-box select") && !!document.querySelector(".ack-modal .ack-id-box input");' +
+    'var metaTxt = document.querySelector(".ack-modal .ack-meta").innerText;' +
+    'var termsN = document.querySelectorAll(".ack-modal .ack-terms li").length;' +
+    'var typeOptions = document.querySelectorAll(".ack-modal .ack-id-box select option").length;' +
+    'var noBackdropClose = !document.querySelector(".ack-modal .modal-x");' +
+    'Store.saveAckEnabled(false);' +
+    'Store.session = { userId: saved.userId, role: saved.role, name: saved.name };' +
+    'App.route();' +
+    'return { modal: modal, closers: closers, disabledBefore: disabledBefore, enabledAfter: enabledAfter, hasIdFields: hasIdFields,' +
+    ' metaName: metaTxt.indexOf(t.name) > -1, metaRole: /معلم/.test(metaTxt), termsN: termsN, typeOptions: typeOptions, noBackdropClose: noBackdropClose, hasIdNow: hasIdFields };');
+  ok(gate2.modal && gate2.closers === 0 && gate2.noBackdropClose,
+    'الإقرار يظهر كنافذة ملزمة (بلا زر إغلاق)', JSON.stringify({ modal: gate2.modal, closers: gate2.closers }));
+  ok(gate2.disabledBefore === true && gate2.enabledAfter === true,
+    'زر «أوافق وأرسل» لا يعمل إلا بعد علامة ✓', JSON.stringify({ before: gate2.disabledBefore, after: gate2.enabledAfter }));
+  ok(gate2.hasIdFields && gate2.typeOptions === 2 && gate2.metaName && gate2.metaRole && gate2.termsN >= 5,
+    'النافذة فيها بيانات المستخدم جاهزة + خيار (هوية وطنية/إقامة) وخانة الرقم',
+    JSON.stringify({ typeOptions: gate2.typeOptions, metaName: gate2.metaName, terms: gate2.termsN }));
+
+  /* تحقق رقم الهوية/الإقامة */
+  const idc = await page.eval(
+    'return { n_ok: Store.checkIdNo("national", "1023456789").ok, n_bad: Store.checkIdNo("national", "3023456789").error,' +
+    ' i_ok: Store.checkIdNo("iqama", "٢٣٤٥٦٧٨٩٠١").ok, i_bad: Store.checkIdNo("iqama", "1023456789").error,' +
+    ' short: Store.checkIdNo("national", "12345").error,' +
+    ' saved: Store.setIdData(Store.list("users").filter(function (u) { return u.username === "e2e-ack"; })[0].id, "iqama", "2345678901").ok,' +
+    ' stored: (Store.list("users").filter(function (u) { return u.username === "e2e-ack"; })[0] || {}).idNo };');
+  ok(idc.n_ok && idc.i_ok && /تبدأ بـ ٢/.test(idc.i_bad) && /١٠ أرقام/.test(idc.short),
+    'تحقق الهوية/الإقامة: البداية الصحيحة والرفض للخاطئ', JSON.stringify({ i_bad: idc.i_bad, short: idc.short }));
+  ok(idc.saved && idc.stored === '2345678901', 'نوع الهوية ورقمها يُحفظان على حساب المستخدم', 'idNo=' + idc.stored);
 
   /* خدمة الإقرارات: دور مختص تابعني + طلب من المدير + إقرار موقّع + إرسال بالبوت */
   const spec = await page.eval(

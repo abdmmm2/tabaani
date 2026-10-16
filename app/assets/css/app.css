@@ -800,3 +800,21 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .ack-school-line { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; font-size: var(--fs-sm); }
 body.ack-locked .side-nav { opacity: .35; pointer-events: none; }
 body.ack-locked .support-fab { display: none !important; }
+
+/* نافذة الإقرار الملزمة (لا تُغلق إلا بالموافقة) */
+.ack-modal-backdrop { position: fixed; inset: 0; z-index: 3000; background: rgba(20,16,10,.72);
+  display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow: auto; }
+.ack-modal { background: #fff; border-radius: 16px; max-width: 720px; width: 100%; padding: 18px 18px 22px;
+  border: 1.4px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.ack-modal .ack-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.ack-modal .ack-head h2 { margin: 0 0 4px; font-size: var(--fs-lg); }
+.ack-meta { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px 14px; background: #F7FAF9;
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; font-size: var(--fs-sm); }
+.ack-id-box { border: 1px dashed var(--border-strong, #CFC7B4); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.ack-id-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.ack-id-box label { display: block; font-size: var(--fs-xs); color: var(--muted); margin-bottom: 4px; }
+.ack-actions { margin-top: 14px; display: grid; gap: 12px; }
+.ack-agree { display: flex; align-items: center; gap: 10px; background: #FFF8E8; border: 1px solid #F0DFB5;
+  border-radius: 10px; padding: 12px; font-size: var(--fs-sm); font-weight: 700; min-height: 44px; }
+.ack-agree input { width: 22px; height: 22px; }
+@media (max-width: 700px) { .ack-meta { grid-template-columns: 1fr; } .ack-modal { padding: 14px; } }

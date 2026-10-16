@@ -864,6 +864,27 @@
       return g ? 'طالبة' : 'طالب';
     },
     /** تأنيث نص كامل (يُستخدم على النصوص الظاهرة) */
+    /* -------------------- هوية المستخدم: هوية وطنية / إقامة -------------------- */
+    ID_TYPES: [{ id: 'national', label: 'هوية وطنية' }, { id: 'iqama', label: 'إقامة' }],
+    idTypeLabel: function (t) { var x = store.ID_TYPES.filter(function (o) { return o.id === t; })[0]; return x ? x.label : '—'; },
+    /** تحقق: ١٠ أرقام — الوطنية تبدأ بـ ١ أو ٢، والإقامة تبدأ بـ ٢ */
+    checkIdNo: function (type, no) {
+      var v = String(no == null ? '' : no).replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); }).replace(/\D/g, '');
+      if (!v) return { ok: false, error: 'رقم الهوية مطلوب' };
+      if (v.length !== 10) return { ok: false, error: 'رقم الهوية ١٠ أرقام بالضبط (المُدخل ' + v.length + ')' };
+      if (type === 'national' && !/^[12]/.test(v)) return { ok: false, error: 'الهوية الوطنية تبدأ بـ ١ أو ٢' };
+      if (type === 'iqama' && !/^2/.test(v)) return { ok: false, error: 'الإقامة تبدأ بـ ٢' };
+      return { ok: true, value: v };
+    },
+    setIdData: function (userId, type, no) {
+      var u = store.user(userId); if (!u) return { ok: false, error: 'لا مستخدم' };
+      if (store.ID_TYPES.every(function (t) { return t.id !== type; })) return { ok: false, error: 'اختر نوع الهوية' };
+      var c = store.checkIdNo(type, no);
+      if (!c.ok) return c;
+      u.idType = type; u.idNo = c.value; save();
+      return { ok: true, user: u };
+    },
+
     /** جنس المستخدم نفسه (فردي) مع الرجوع لجنس مدرسته */
     userGender: function (userId) {
       var u = userId ? store.user(userId) : null;
@@ -1649,6 +1670,10 @@
         if (st) { st.points = st.points || {}; st.points[store.gradeColumn(d.column).id] = (st.points[store.gradeColumn(d.column).id] || 0) + (Number(r.value) || 0); }
       });
       save();
+      try {
+        if (store.markSyncDirty) store.markSyncDirty('كشف درجات — ' + (g.columnLabel || ''));
+        if (window.App && App.syncAfterWrite) App.syncAfterWrite('كشف درجات');
+      } catch (e) {}
       return { ok: true, sheet: g };
     },
     studentPoints: function (studentId, columnId) {
@@ -3554,6 +3579,43 @@
         createdAt: (d.meta && d.meta.createdAt) || ''
       };
     },
+    /* =====================================================================
+       المزامنة السحابية (Cloudflare Worker) — نسخة المدرسة على الخادم
+       ===================================================================== */
+    SYNC_DEFAULT: { url: '', token: '', username: '', auto: false, lastVersion: 0, lastAt: '', lastError: '', device: '' },
+    syncCfg: function () {
+      var c = (db.settings && db.settings.cloudSync) || {};
+      return Object.assign({}, store.SYNC_DEFAULT, c);
+    },
+    saveSyncCfg: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.cloudSync = Object.assign({}, store.syncCfg(), patch || {});
+      save(); return store.syncCfg();
+    },
+    syncConfigured: function () { var c = store.syncCfg(); return !!(c.url && c.token); },
+    syncDirty: function () { return (db.settings && db.settings.syncDirty) || null; },   /* يُعيد تفاصيل آخر تعديل (أو null) */
+    markSyncDirty: function (why) {
+      if (!db.settings) db.settings = {};
+      db.settings.syncDirty = { at: now(), why: String(why || '') };
+      save(); return true;
+    },
+    clearSyncDirty: function () { if (db.settings) { delete db.settings.syncDirty; save(); } },
+    /** نسخة المزامنة: كل بيانات المدرسة (وتشمل كشوف الدرجات وpoints الطلاب) */
+    syncPayload: function () {
+      return { meta: { app: 'tabaani', version: 1, at: now(), by: (store.session || {}).name || '',
+        schoolId: (store.session || {}).schoolId || null }, data: store.db };
+    },
+    /** تطبيق بيانات الخادم محليًا (بعد أخذ نسخة احتياطية — لا فقدان) */
+    applyServerData: function (obj) {
+      if (!obj || !obj.users || !obj.schools) return { ok: false, error: 'بيانات الخادم غير صالحة' };
+      try { store.restoreJson(JSON.stringify(obj)); } catch (e) { return { ok: false, error: e.message }; }
+      store.clearSyncDirty();
+      return { ok: true, stats: store.dataStats() };
+    },
+    gradeSheetsForCloud: function (schoolId) {
+      return store.list('gradeSheets').filter(function (g) { return !schoolId || g.schoolId === schoolId; });
+    },
+
     backupJson: function () { return JSON.stringify(store.db); },
     restoreJson: function (text) {
       try {

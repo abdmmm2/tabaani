@@ -213,7 +213,7 @@ async function handleSyncPut(env, req, ctx) {
   if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
   const cur = await one(env, 'SELECT version FROM data WHERE school_id = ?', ctx.user.school_id);
   const base = Number(body.baseVersion || 0);
-  if (cur && base && base < cur.version) {
+  if (cur && Number(base || 0) < cur.version) {
     /* لا نكتب فوق نسخة أحدث — نُعيد الأحدث ليحلّ المدير التعارض */
     const latest = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', ctx.user.school_id);
     return json({ ok: false, conflict: true, version: cur.version, latest: JSON.parse(latest.json),
