@@ -1744,12 +1744,32 @@
     ackRequiredEnabled: function () { return !(db.settings && db.settings.ackEnabled === false); },
     saveAckEnabled: function (on) { db.settings.ackEnabled = !!on; save(); return db.settings.ackEnabled; },
     ackMigrate: function () {
-      if (!db || db.settings.ackMigrated) return 0;
-      var n = 0;
-      store.list('users').forEach(function (u) {
-        if (!u.ack) { u.ack = { status: 'approved', approvedAt: now(), approvedBy: 'تهيئة أولى', note: 'حساب قائم قبل تفعيل الإقرارات — يُعاد فتحه يدويًا عند الحاجة', docNo: '' }; n++; }
-      });
-      db.settings.ackMigrated = true; save(); return n;
+      if (!db || !db.settings) return 0;
+      var users = store.list('users');
+      /* لا نُعلّم «تمّت التهيئة» إلا إذا كان هناك مستخدمون فعلًا — وإلا صار كل من يُنشأ لاحقًا محجوبًا بلا سبب */
+      if (db.settings.ackMigrated && !users.length) { delete db.settings.ackMigrated; delete db.settings.ackMigratedAt; }
+      if (!db.settings.ackMigrated) {
+        var n = 0;
+        users.forEach(function (u) {
+          if (!u.ack) { u.ack = { status: 'approved', approvedAt: now(), approvedBy: 'تهيئة أولى', note: 'حساب قائم قبل تفعيل الإقرارات — يُعاد فتحه يدويًا عند الحاجة', docNo: '' }; n++; }
+        });
+        if (users.length) { db.settings.ackMigrated = true; db.settings.ackMigratedAt = now(); save(); }
+        return n;
+      }
+      /* إصلاح من تأثّر بخلل سابق: حساب أُنشئ قبل وقت التهيئة وبلا إقرار ⇒ يُعتمد تلقائيًا */
+      var at = db.settings.ackMigratedAt || '';
+      var fixed = 0;
+      if (at) {
+        users.forEach(function (u) {
+          if (u.ack || u.role === 'super') return;
+          if (u.createdAt && u.createdAt < at) {
+            u.ack = { status: 'approved', approvedAt: now(), approvedBy: 'إصلاح تلقائي', note: 'حساب قائم قبل تفعيل الإقرارات', docNo: '' };
+            fixed++;
+          }
+        });
+        if (fixed) save();
+      }
+      return fixed;
     },
     ack: function (userId) {
       var u = store.user(userId); if (!u) return { status: 'pending' };
@@ -1762,6 +1782,7 @@
       var u = userId ? store.user(userId) : (store.session && store.user(store.session.userId));
       if (!u || !store.ackRequiredEnabled()) return false;
       if (u.role === 'super') return false;                       /* المشرف العام هو من يعتمد */
+      if (u.role === 'principal') return false;                   /* المدير يعتمد الآخرين — لو حُجب تعطّلت المدرسة كلها */
       if (u.ackExempt === true) return false;                     /* إعفاء صريح */
       return store.ack(u.id).status !== 'approved';
     },

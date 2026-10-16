@@ -642,7 +642,8 @@
           text: 'الحسابات في هذا التطبيق: ' + usersN + ' · الإصدار v' + App.version() }),
         h('div', { class: 'cluster', style: { flexWrap: 'wrap', gap: '8px' } }, [
           h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🔄 تحديث قسري (مسح الكاش)', onClick: function () { App.hardUpdate(); } }),
-          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🆘 لماذا لا يعمل الدخول؟', onClick: function () { safe.querySelector('.btn-outline:last-child').click(); } })
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🆘 لماذا لا يعمل الدخول؟', onClick: function () { safe.querySelector('.btn-outline:last-child').click(); } }),
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🧾 تقرير تشخيص (انسخه وأرسله)', onClick: function () { App.diagReport(); } })
         ])
       ]));
 
@@ -1680,6 +1681,45 @@
         setTimeout(function () { App.hardUpdate(true); }, 1200);
       }).catch(function () {});
     } catch (e) {}
+  };
+
+  /** تقرير تشخيص جاهز للنسخ — يفيد في معرفة سبب عدم الدخول بدقة */
+  App.diagReport = function () {
+    var L = [];
+    var users = []; try { users = S.list('users'); } catch (e) {}
+    var st = {}; try { st = S.dataStats(); } catch (e) {}
+    var cfg = {}; try { cfg = S.syncCfg(); } catch (e) {}
+    var set = (function () { try { return S.db.settings || {}; } catch (e) { return {}; } })();
+    L.push('— تابعني — تقرير تشخيص —');
+    L.push('التاريخ: ' + new Date().toISOString().slice(0, 19).replace('T', ' '));
+    L.push('نسخة التطبيق: v' + App.version());
+    L.push('الرابط: ' + location.href.split('?')[0]);
+    var env = {}; try { env = UI.env ? UI.env() : {}; } catch (e) {}
+    L.push('الوضع: ' + (env.standalone ? 'تطبيق مثبّت (شاشة رئيسية)' : 'متصفح') + ' · iOS: ' + (env.ios ? 'نعم' : 'لا'));
+    L.push('الجلسة الحالية: ' + (S.session ? (S.session.role + ' — ' + S.session.name) : 'لا يوجد (شاشة دخول)'));
+    L.push('حسابات هذا الجهاز: ' + users.length);
+    L.push('أنواع الحسابات: ' + JSON.stringify(users.reduce(function (a, u) { a[u.role] = (a[u.role] || 0) + 1; return a; }, {})));
+    L.push('مدارس: ' + (st.schools || 0) + ' · طلاب: ' + (st.students || 0) + ' · فصول: ' + (st.classes || 0));
+    L.push('الإقرارات: مفعّلة=' + (set.ackEnabled !== false) + ' · مهيّأة=' + !!set.ackMigrated + ' · وقت التهيئة=' + (set.ackMigratedAt || '—'));
+    L.push('محجوبون بالإقرار: ' + users.filter(function (u) { try { return S.ackLock(u.id); } catch (e) { return false; } })
+      .map(function (u) { return u.username + '(' + u.role + ')'; }).join(', '));
+    L.push('المزامنة: مقرونة=' + !!(cfg.url && cfg.token) + ' · آخر إصدار=' + (cfg.lastVersion || 0) + ' · آخر خطأ=' + (cfg.lastError || '—'));
+    L.push('Service Worker: ' + (navigator.serviceWorker ? (navigator.serviceWorker.controller ? 'مسجّل وفعّال' : 'مسجّل بلا تحكّم') : 'غير مدعوم'));
+    L.push('تخزين محلي: ' + (function () { try { return Math.round((localStorage.getItem('tabaani-school-db-v1') || '').length / 1024) + ' ك.ب'; } catch (e) { return 'غير متاح'; } })());
+    L.push('إنترنت: ' + (navigator.onLine ? 'متصل' : 'غير متصل'));
+    var txt = L.join('\n');
+    UI.modal({ title: 'تقرير تشخيص', wide: true, body: [
+      h('p', { class: 'muted', text: 'انسخ التقرير وأرسله لي (لا يحتوي كلمات مرور).' }),
+      h('textarea', { readonly: true, rows: '14', class: 'input', dir: 'ltr', style: { fontFamily: 'monospace', fontSize: '12px' }, value: txt }),
+      h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
+        h('button', { class: 'btn btn-primary', type: 'button', text: '📋 انسخ التقرير', onClick: function () {
+          (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(
+            function () { UI.toast('نُسخ ✓ — أرسله لي', 'ok'); }, function () { UI.toast('حدّد النص وانسخه يدويًا', 'warn'); });
+        } }),
+        h('button', { class: 'btn btn-outline', type: 'button', text: '🔄 تحديث قسري', onClick: function () { App.hardUpdate(); } })
+      ])
+    ] });
+    return txt;
   };
 
   global.App = App;

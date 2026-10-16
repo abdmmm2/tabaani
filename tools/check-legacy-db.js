@@ -105,6 +105,38 @@ const ok = (c, l, e) => { if (c) { pass++; console.log('  ✓ ' + l + (e ? '  ' 
   const bad = Object.keys(mods).filter((k) => mods[k] !== 'ok' && mods[k] !== 'missing' && mods[k] !== 'empty');
   ok(bad.length === 0, 'الشاشات الجديدة (الدرجات · الإقرارات · المزامنة · التحديثات · الإقرار) تُرسم بلا خطأ', JSON.stringify(mods));
 
+  /* لا يُحجب مدير المدرسة بالإقرار · وتقرير التشخيص يعمل · والتهيئة لا تُعلَّم بلا مستخدمين */
+  const guards = await page.eval(
+    'var sc = Store.list("schools")[0] || { id: "s-x" };' +
+    'var pr = Store.list("users", { role: "principal" })[0];' +
+    'if (!pr) { var r0 = Store.addUser({ name: "مدير تجربة", role: "principal", schoolId: sc.id, username: "legacy-prin", password: "Legacy@2026" }); pr = r0.user || Store.list("users", { role: "principal" })[0]; }' +
+    'var t = Store.list("users", { role: "teacher" })[0] || (Store.addUser({ name: "معلم تجربة", role: "teacher", schoolId: sc.id, username: "legacy-teach", password: "Legacy@2026" }).user);' +
+    'Store.saveAckEnabled(true);' +
+    'Store.reopenAck(pr.id); Store.reopenAck(t.id);' +
+    'var prinLocked = Store.ackLock(pr.id);' +
+    'var teachLocked = Store.ackLock(t.id);' +
+    'var rep = ""; try { rep = App.diagReport ? (App.diagReport() || "") : ""; } catch (e) { rep = "THROW:" + e.message; }' +
+    'Store.saveAckEnabled(false);' +
+    'return { prinLocked: prinLocked, teachLocked: teachLocked, rep: /تقرير تشخيص/.test(rep) && /نسخة التطبيق/.test(rep) && /محجوبون بالإقرار/.test(rep), ver: Store.ack(pr.id).status };');
+  ok(guards.prinLocked === false, 'مدير المدرسة لا يُحجب بالإقرار (لا تتعطّل المدرسة)', 'principalLocked=' + guards.prinLocked);
+  ok(guards.teachLocked === true, 'المعلم يُحجب قبل اعتماد إقراره (المطلوب أصلًا)', 'teacherLocked=' + guards.teachLocked);
+  ok(guards.rep === true, 'تقرير التشخيص يعمل ويحتوي الإصدار والمحجوبين', 'status=' + guards.ver);
+
+  const migrated = await page.eval(
+    'var out = {};' +
+    'try {' +
+    '  var db = Store.db; var saved = JSON.stringify(db.settings || {});' +
+    '  db.settings.ackMigrated = true; db.settings.ackMigratedAt = new Date(Date.now() + 60000).toISOString();' +
+    '  var u = Store.list("users", { role: "teacher" })[0];' +
+    '  delete u.ack;' +
+    '  var fixed = Store.ackMigrate();' +
+    '  out.fixed = fixed > 0; out.status = Store.ack(u.id).status;' +
+    '  db.settings = JSON.parse(saved);' +
+    '} catch (e) { out.err = e.message; }' +
+    'return out;');
+  ok(migrated.fixed === true && migrated.status === 'approved',
+    'إصلاح تلقائي: حساب أُنشئ قبل التهيئة وبلا إقرار يُعتمد (كان يُحجب بلا سبب)', JSON.stringify(migrated));
+
   const errs = (await B.pageErrors(page)).map(String).filter((e) => !/favicon|manifest/i.test(e));
   ok(errs.length === 0, 'صفر أخطاء JS على قاعدة قديمة', errs.slice(0, 3).join(' | '));
 
