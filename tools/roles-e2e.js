@@ -509,6 +509,49 @@ async function backupSuite(page, base, hitsFn) {
   ok(ra.prEmail === 'k@school.sa' && /^principal/.test(ra.prUser), 'بيانات المدير (بريد + اسم مستخدم) تُسجَّل على حسابه', ra.prEmail + ' | ' + ra.prUser);
   ok(ra.text > 100 && ra.csv > 40, 'يُنتج نص بيانات الدخول وكشف CSV للإرسال', 'text=' + ra.text + ' csv=' + ra.csv);
 
+  /* لوحة تحكم المشرف: إحصاءات + مبالغ + رسوم بيانية + أقسام تُفتح وحدها + كلمات مرور بالمدرسة/الفرد */
+  const ctl = await page.eval(
+    'var d = Store.platformDashboard();' +
+    'return { schools: d.schools, students: d.students, teachers: d.teachers, users: d.users,' +
+    ' rev: d.revenue.annual, setup: d.revenue.setup, per: d.perSchool.length, roles: Object.keys(d.byRole).length,' +
+    ' sumPer: d.perSchool.reduce(function (a, x) { return a + x.teachers + x.students; }, 0) };');
+  ok(ctl.schools >= 1 && ctl.per === ctl.schools && ctl.students >= 1 && ctl.users >= 1 && ctl.teachers >= 1,
+    'ملخّص لوحة التحكم يجمع المدارس والطلاب والمعلمين والمستخدمين', JSON.stringify(ctl));
+  ok(ctl.rev > 0 && ctl.setup > 0, 'تحسب مبالغ المنصة (اشتراكات سنوية + رسم تأسيس)', 'annual=' + ctl.rev + ' setup=' + ctl.setup);
+
+  await page.eval('location.hash = "#/dashboard"; App.route && App.route(); return true;');
+  await B.sleep(1200);
+  const dash = await page.eval('var v = document.querySelector("#view"); return { tiles: v.querySelectorAll(".ctl-tile").length,' +
+    ' charts: v.querySelectorAll("svg").length, titles: [].map.call(v.querySelectorAll(".ctl-tile strong"), function (x) { return x.textContent; }).join(" · "),' +
+    ' kpis: v.querySelectorAll(".stat-card, .stat").length };');
+  ok(dash.tiles === 5 && dash.charts >= 3, 'لوحة البداية: ٥ أقسام + ٣ رسوم بيانية + أدوات الإدارة', JSON.stringify(dash));
+  ok(/المدارس/.test(dash.titles) && /كلمات المرور/.test(dash.titles) && /الاشتراكات/.test(dash.titles), 'أقسام اللوحة صحيحة', dash.titles);
+
+  /* فتح قسم «المدارس» وحده */
+  await page.eval('var t=[].slice.call(document.querySelectorAll(".ctl-tile")).filter(function(x){return x.textContent.indexOf("المدارس")>-1;})[0]; t.click(); return true;');
+  await B.sleep(700);
+  const schView = await page.eval('var v = document.querySelector("#view"); return { cards: v.querySelectorAll(".ctl-school").length, back: v.innerText.indexOf("لوحة التحكم")>-1, counts: v.innerText.indexOf("إجمالي الحسابات")>-1 };');
+  ok(schView.cards >= 1 && schView.back && schView.counts, 'قسم «المدارس» يُفتح وحده ويعرض كوادر كل مدرسة وأعدادها', JSON.stringify(schView));
+
+  /* كلمات المرور: لمدرسة محددة + لأفراد محددين */
+  const pwSchool = await page.eval('var t=[].slice.call(document.querySelectorAll("#view .ctl-school .btn")).filter(function(b){return b.textContent.indexOf("كلمات المرور")>-1;})[0]; t.click(); return true;');
+  void pwSchool;
+  await B.sleep(800);
+  const pwView = await page.eval('var v=document.querySelector("#view"); return { sel: !!v.querySelector("select"), users: v.querySelectorAll(".ctl-user").length, gen: v.innerText.indexOf("ولّد لكل الموظفين")>-1 };');
+  ok(pwView.sel && pwView.gen, 'قسم كلمات المرور: اختيار مدرسة + توليد لكل موظفيها', JSON.stringify(pwView));
+  const pwInd = await page.eval(
+    'var before = Store.list("users").filter(function(u){return u.role==="teacher";}).length;' +
+    'var one = Store.list("users").filter(function(u){return u.role==="teacher";})[0];' +
+    'var oldp = one.password;' +
+    'var other = Store.list("users").filter(function(u){return u.role==="teacher" && u.id!==one.id;})[0];' +
+    'var oldOther = other ? other.password : "";' +
+    'var rows = Store.generatePasswords({ ids: [one.id], excludeSelf: true });' +
+    'var after = Store.find("users", one.id).password;' +
+    'var otherAfter = other ? Store.find("users", other.id).password : "";' +
+    'return { n: rows.length, changed: after !== oldp, untouched: !other || otherAfter === oldOther, before: before };');
+  ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
+    'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
+
   /* بوت الدعم: ترحيب بالوقت + مؤشر كتابة + سرعة الرد + فهم «تسجيل مدرسة» + إصلاح الإغلاق */
   const bot = await page.eval(
     'var g = Store.botReply("");' +

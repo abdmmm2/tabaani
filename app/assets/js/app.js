@@ -1173,9 +1173,10 @@
       var stats = function (label, value, sub, tone) { cards.push(UI.statCard(label, value, sub, tone)); };
       var action = function (label, mod, cls) { actions.push(h('button', { class: 'btn ' + (cls || 'btn-outline'), type: 'button', text: label, onClick: function () { App.go(mod); } })); };
 
-      if (role === 'super') {
+      function superDashLegacy(target) {
+        /* المحتوى القديم للوحة المشرف (متاح من قسم «إدارة المنصة») */
         /* أسفل اللوحة — على اليمين: إعادة تابعني للوضع الافتراضي (برمز تحقق) */
-        view.appendChild(h('div', { class: 'dash-corner' }, [
+        target.appendChild(h('div', { class: 'dash-corner' }, [
           h('div', { class: 'panel danger-panel' }, [
             h('h3', { class: 'panel-title', text: 'إعادة تابعني للوضع الافتراضي' }),
             h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
@@ -1207,7 +1208,7 @@
         }
         var one = App._dashSchool ? S.studentAccountStats(App._dashSchool) : null;
         var oneOff = !!one && one.total > 0 && one.active === 0;
-        view.appendChild(h('div', { class: 'panel' }, [
+        target.appendChild(h('div', { class: 'panel' }, [
           h('h3', { class: 'panel-title', text: 'حسابات الطلاب — دخول تابعني' }),
           h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
             text: allOff
@@ -1244,7 +1245,7 @@
             return h('option', { value: sc.id, selected: App._dashSchool === sc.id, text: sc.name + ' — ' + st.total + ' حساب' + note });
           });
           var schoolSel = h('select', { class: 'input', onchange: function (e) { App._dashSchool = e.target.value; App.route(); } }, selOptions);
-          view.appendChild(h('div', { class: 'panel', style: { marginTop: '12px' } }, [
+          target.appendChild(h('div', { class: 'panel', style: { marginTop: '12px' } }, [
             h('h3', { class: 'panel-title', text: 'مدرسة واحدة' }),
             h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 12px' },
               text: 'اختر مدرسة ثم أوقف أو فعّل دخول طلابها وحدها — بلا أثر على بقية المدارس.' }),
@@ -1298,7 +1299,7 @@
         /* مدارس موقوفة: تنبيه مباشر مع رفع الإيقاف */
         var badSchools = licAll.rows.filter(function (r) { return r.suspended; });
         if (badSchools.length) {
-          view.appendChild(h('div', { class: 'panel danger-panel', style: { marginTop: '12px' } }, [
+          target.appendChild(h('div', { class: 'panel danger-panel', style: { marginTop: '12px' } }, [
             h('h3', { class: 'panel-title', text: 'مدارس موقوفة (' + badSchools.length + ')' }),
             h('p', { class: 'muted', style: { fontSize: 'var(--fs-sm)', margin: '6px 0 10px' },
               text: 'دخول هذه المدارس موقوف حاليًا — لا يستطيع أي حساب منها الدخول (عدا المشرف العام).' }),
@@ -1318,6 +1319,8 @@
         }
         action('إضافة مدرسة', 'schools', 'btn-primary');
       }
+
+      if (role === 'super') { App.controlPanel(view, superDashLegacy); return; }
       if (role === 'principal') {
         var teachersN = S.usersByRole('teacher', schoolId).length;
         var openV = S.list('violations').filter(function (v) { return v.status !== 'closed'; }).length;

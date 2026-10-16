@@ -745,3 +745,23 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
   .chat-quick { gap: 8px; }
   .chat-quick .chip, .chat-quick .btn { flex: 1 1 46%; justify-content: center; }
 }
+
+/* لوحة تحكم المشرف العام */
+.ctl-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.ctl-tile { text-align: right; background: #fff; border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.ctl-tile:hover { border-color: var(--brand-500); box-shadow: 0 6px 18px rgba(15,40,33,.06); }
+.ctl-tile .ctl-ic { font-size: 22px; }
+.ctl-tile strong { font-size: var(--fs-md); }
+.ctl-tile .muted { font-size: var(--fs-xs); line-height: 1.7; }
+.ctl-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ctl-school { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+.ctl-school-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ctl-counts { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 10px; }
+.ctl-counts span { display: flex; flex-direction: column; align-items: flex-start; }
+.ctl-counts b { font-size: 1.15rem; color: var(--brand-700); }
+.ctl-counts i { font-style: normal; font-size: var(--fs-xs); color: var(--text-muted); }
+.ctl-users { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px; max-height: 46vh; overflow-y: auto; }
+.ctl-user { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: var(--fs-sm); cursor: pointer; }
+.ctl-user input { width: 18px; height: 18px; }
+.ctl-uname { flex: 1; }

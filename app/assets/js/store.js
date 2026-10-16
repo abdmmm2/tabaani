@@ -1523,6 +1523,47 @@
         .replace(/[^\u0621-\u064A0-9a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
     },
     /** ردّ البوت بلهجة سعودية — يرجّع {agent, text, category, subject, matched, offerTicket} */
+    /** لوحة تحكم المشرف العام: إحصاءات + إيرادات + توزيع لكل مدرسة ودور (بنداء واحد) */
+    platformDashboard: function () {
+      var schools = store.list('schools');
+      var users = store.list('users');
+      var students = store.list('students');
+      var fees = store.planFees();
+      var adminRoles = ['principal', 'deputy', 'guidance', 'teachers_deputy', 'absence_monitor',
+        'volunteer', 'activity', 'guard', 'accountant', 'support'];
+      var perSchool = schools.map(function (sc) {
+        var us = users.filter(function (u) { return u.schoolId === sc.id; });
+        var st = students.filter(function (x) { return x.schoolId === sc.id; });
+        return {
+          id: sc.id, name: sc.name, city: sc.city || '', region: sc.regionName || '',
+          plan: (store.planOf ? store.planOf(sc.id) : sc.plan) === 'pro' ? 'pro' : 'classic',
+          license: (store.licenseState(sc.id) || {}).status || '',
+          licenseLabel: (store.licenseState(sc.id) || {}).label || '',
+          teachers: us.filter(function (u) { return u.role === 'teacher'; }).length,
+          admins: us.filter(function (u) { return adminRoles.indexOf(u.role) > -1; }).length,
+          students: st.length, users: us.length
+        };
+      });
+      var byRole = {};
+      users.forEach(function (u) { byRole[u.role] = (byRole[u.role] || 0) + 1; });
+      var paid = 0, due = 0;
+      store.list('invoices').forEach(function (iv) {
+        var amt = store.invoiceTotal(iv);
+        if (iv.status === 'paid' || iv.paidAt) paid += amt; else due += amt;
+      });
+      var expected = perSchool.reduce(function (a, x) { return a + (x.plan === 'pro' ? fees.pro : fees.classic); }, 0);
+      return {
+        schools: schools.length, students: students.length, users: users.length,
+        teachers: byRole.teacher || 0,
+        staff: users.filter(function (u) { return u.role !== 'student'; }).length,
+        regions: (db.regions || []).length,
+        cities: (db.regions || []).reduce(function (a, r) { return a + (r.cities || []).length; }, 0),
+        byRole: byRole, perSchool: perSchool,
+        license: store.licenseStats(),
+        revenue: { annual: expected, setup: schools.length * fees.setupFee, paid: paid, due: due, expected: expected + paid }
+      };
+    },
+
     /* سرعة رد موظف الدعم: إحساس بشري (إظهار «يكتب…» ثم الرد) */
     supportCfg: function () {
       var c = (db.settings && db.settings.support) || {};
@@ -3365,6 +3406,7 @@
       var targets = store.usersQuery({ role: f.role, kind: f.kind, schoolId: f.schoolId }).filter(function (u) {
         if (f.excludeSelf && u.id === store.session.userId) return false;
         if (f.onlyActive && u.status !== 'active') return false;
+        if (f.ids && f.ids.length && f.ids.indexOf(u.id) === -1) return false;   /* أفراد محددون */
         return true;
       });
       var rows = targets.map(function (u) {
