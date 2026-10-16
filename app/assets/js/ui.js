@@ -1020,6 +1020,9 @@
   /** يُنتج رسمًا بيانيًا كـ SVG string (يُستخدم في الشاشة والطباعة معًا). */
   function chartSvg(spec) {
     spec = spec || {};
+    var escSvg = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    spec = Object.assign({}, spec, { labels: (spec.labels || []).map(escSvg),
+      series: (spec.series || []).map(function (se) { return Object.assign({}, se, { name: escSvg(se.name) }); }) });
     var labels = spec.labels || [];
     var series = spec.series || [{ name: spec.name || '', values: spec.values || [], color: spec.color || PALETTE[0] }];
     var W = spec.width || 780, H = spec.height || 260;
@@ -1085,7 +1088,7 @@
 
   function chart(spec) {
     var box = h('div', { class: 'ui-chart-box' });
-    box.innerHTML = chartSvg(spec);
+    box.innerHTML = chartSvg(spec);   /* آمن: chartSvg يُرمّز كل النصوص والأسماء (escSvg) */
     if (spec.title) {
       return h('div', { class: 'ui-chart-wrap' }, [h('div', { class: 'ui-chart-title', text: spec.title }), box,
         spec.series && spec.series.length > 1 ? legend(spec.series) : null]);

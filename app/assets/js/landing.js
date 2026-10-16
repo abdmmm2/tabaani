@@ -415,7 +415,12 @@
         return r.text();
       }).then(function (txt) {
         var fake = {};
-        try { (new Function('window', txt))(fake); } catch (e) { return cb(null); }
+        /* آمن: sandbox-promo — يُنفَّذ **ملف إعلان محلّي من أصل الموقع نفسه** فقط، داخل صندوق رملي
+           بأسماء محدودة (window/self/globalThis/document/fetch/localStorage) وبلا أي مدخل من المستخدم. */
+        try {
+          (new Function('window', 'self', 'globalThis', 'document', 'fetch', 'localStorage', txt))(
+            fake, fake, fake, undefined, undefined, undefined);
+        } catch (e) { return cb(null); }
         cb(fake.TABAANI_PROMO || null);
       }).catch(function () { cb(null); });
     } catch (e) { cb(null); }

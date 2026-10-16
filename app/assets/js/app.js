@@ -984,7 +984,7 @@
             h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'إرسال رمز التحقق (تلقرام)', onClick: function () {
               status.textContent = 'يُرسل…';
               S.otpSend(kind, 'طلب: ' + title, 'telegram').then(function (r) {
-                status.innerHTML = r.ok
+                status.textContent = r.ok
                   ? '✅ أُرسل الرمز إلى تلقرام' + (S.telegramFor(S.session.schoolId).chatId ? ' (المحادثة ' + S.telegramFor(S.session.schoolId).chatId + ')' : '') + ' — صالح ١٠ دقائق.'
                   : '⚠️ لم يُرسل: ' + (r.error || '') + ' — يمكنك استخدام كلمة التأكيد «إعادة» بدلًا منه.';
               });
