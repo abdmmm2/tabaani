@@ -1819,6 +1819,7 @@
         specialistIdNo: String(d.specialistIdNo || '').trim(),
         principalName: String(d.principalName || '').trim(),
         principalIdNo: String(d.principalIdNo || '').trim(),
+        specialistPhone: String(d.specialistPhone || '').trim(),
         requestId: d.requestId || '', terms: d.terms || store.PLEDGE_TERMS.slice(),
         status: 'draft', at: now(),
         signs: { specialist: null, principal: null }, sent: []

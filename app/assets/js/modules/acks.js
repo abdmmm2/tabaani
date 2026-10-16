@@ -86,6 +86,19 @@
     var actions = h('div', { class: 'cluster', style: { marginTop: '12px' } });
     actions.appendChild(h('button', { class: 'btn btn-primary', type: 'button', text: '🖨️ اطبع الإقرار', onClick: function () { App.ackPrint(u.id); } }));
     actions.appendChild(h('button', { class: 'btn btn-outline', type: 'button', text: '📥 تصدير ملف (PDF)', onClick: function () { App.ackExport(u.id); } }));
+    actions.appendChild(h('button', { class: 'btn btn-outline', type: 'button', text: '🔗 رابط الإقرار (للمشاركة)', onClick: function () {
+      var link = App.ackPublicLink() + '?no=' + encodeURIComponent(a.docNo || '') + '&name=' + encodeURIComponent(u.name || '');
+      UI.modal({ title: 'رابط الإقرار', wide: false, body: [
+        h('p', { class: 'muted', text: 'افتح هذا الرابط على أي جهاز (جوال/آيباد/كمبيوتر) للطباعة والتوقيع:' }),
+        h('code', { style: { direction: 'ltr', display: 'block', wordBreak: 'break-all' }, text: link }),
+        h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
+          h('a', { class: 'btn btn-primary', href: link, target: '_blank', rel: 'noopener', text: 'افتح الرابط' }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: 'انسخ', onClick: function () {
+            (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { UI.toast('نُسخ ✓', 'ok'); }, function () { UI.toast('انسخه يدويًا', 'warn'); });
+          } })
+        ])
+      ] });
+    } }));
     if (a.status === 'pending') {
       actions.appendChild(h('button', { class: 'btn btn-primary', type: 'button', text: '✅ أرسلت الإقرار لمدرستي', onClick: function () {
         var r = S.submitAck(u.id);
@@ -104,6 +117,12 @@
       a.status === 'submitted' ? 'أُرسل إقرارك. سلّم الورقة الموقّعة، وسيؤكّد المدير وصولها فيعمل حسابك تلقائيًا.' : 'اطبع الإقرار ووقّعه وسلّمه لمدير مدرستك.', null, [actions]));
 
     return wrap;
+  };
+
+  /** رابط النموذج العام (يفتح على أي جهاز — للطباعة والتوقيع) */
+  App.ackPublicLink = function () {
+    var base = location.href.replace(/app\/.*$/, '').replace(/[^/]*$/, '');
+    return base + 'site/ack.html';
   };
 
   App.register({

@@ -21,10 +21,64 @@
     label: 'سجل تلقرام',
     pro: true,
     icon: '&#9992;&#65039;',
-    roles: ['principal', 'deputy', 'guidance'],
+    roles: ['super', 'principal', 'deputy', 'guidance'],
     render: function (view) {
       var state = { to: '' };
       var previewSlot = h('div');
+      /* ============== المشرف العام: ربط تلقرام بحسابه الآن (خطوات + اختبار حقيقي) ============== */
+      if (S.session.role === 'super') {
+        var cfg0 = S.telegramConfig();
+        var meU = S.user(S.session.userId) || {};
+        var fTok = UI.field({ name: 'tgTok', label: 'توكن البوت (من BotFather)', half: false, value: cfg0.botToken || '', placeholder: '123456789:AAE...' });
+        var fChat = UI.field({ name: 'tgChat', label: 'معرّف محادثتك (chat id)', half: true, value: meU.telegramChatId || cfg0.chatId || '', placeholder: 'مثال: 123456789' });
+        var fMode = UI.field({ name: 'tgMode', label: 'وضع الإرسال', type: 'select', half: true, value: cfg0.mode || 'sim',
+          options: [{ value: 'sim', label: 'محاكاة (تسجيل فقط)' }, { value: 'direct', label: 'إرسال حقيقي (توكن)' }] });
+        var statusSlot = h('div', { class: 'callout info', text: 'الحالة: ' + (S.telegramReady && S.telegramReady() ? 'جاهز للإرسال الحقيقي ✓' : 'غير جاهز — يحتاج توكن + معرّف محادثة + الوضع «إرسال حقيقي»') });
+        function saveTg() {
+          S.saveTelegramConfig({ botToken: fTok.input.value.trim(), chatId: fChat.input.value.trim(), mode: fMode.input.value });
+          if (S.session.userId && fChat.input.value.trim()) S.update('users', S.session.userId, { telegramChatId: fChat.input.value.trim() });
+          UI.toast('حُفظ ربط تلقرام ✓', 'ok');
+        }
+        view.appendChild(UI.panel('اربط تلقرام بحساب المشرف العام', '٤ خطوات — وبعدها تصل تنبيهات المنصة والإقرارات والتحديثات إلى تلقرامك.', [
+          h('button', { class: 'btn btn-primary', type: 'button', text: 'حفظ الربط', onClick: saveTg }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '⬇️ اجلب معرّف محادثتي تلقائيًا', onClick: function () {
+            var t = fTok.input.value.trim();
+            if (!t) { UI.toast('ضع التوكن أولًا', 'warn'); return; }
+            UI.toast('جارٍ القراءة من تلقرام…', 'info');
+            fetch('https://api.telegram.org/bot' + t + '/getUpdates').then(function (r) { return r.json(); }).then(function (j) {
+              var ups = (j && j.result) || [];
+              if (!ups.length) { UI.toast('لا رسائل بعد — افتح محادثة البوت واضغط Start ثم أرسل أي كلمة وأعد المحاولة', 'warn'); return; }
+              var last = ups[ups.length - 1];
+              var chat = ((last.message || last.edited_message || last.channel_post || {}).chat || {}).id;
+              if (!chat) { UI.toast('لم أجد معرّف محادثة في آخر تحديث', 'warn'); return; }
+              fChat.input.value = String(chat);
+              saveTg();
+              UI.toast('وجدته: ' + chat + ' — حُفظ ✓', 'ok');
+            }).catch(function () { UI.toast('تعذّر الوصول لتلقرام — تأكّد من التوكن والاتصال', 'bad'); });
+          } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '✈️ أرسل لي رسالة تجريبية الآن', onClick: function () {
+            saveTg();
+            S.telegramSendTo(fChat.input.value.trim(), '🤖 تجربة ربط تلقرام — تابعني\nإن وصلتك هذه الرسالة فالربط صحيح ✓').then(function (r) {
+              statusSlot.textContent = r && r.ok ? 'وصلت الرسالة ✓ — الربط سليم.' : ('لم تُرسل: ' + ((r && (r.error || r.note)) || 'تحقّق من التوكن/المعرّف/الوضع'));
+              statusSlot.className = 'callout ' + (r && r.ok ? 'ok' : 'warn');
+              UI.toast(r && r.ok ? 'وصلت الرسالة ✓' : 'لم تُرسل — راجع الحالة بالأسفل', r && r.ok ? 'ok' : 'warn');
+            });
+          } })
+        ], [
+          h('div', { class: 'callout info' }, [h('div', { html: '<b>الخطوات بالترتيب:</b>' }),
+            h('ol', { style: { paddingInlineStart: '20px', margin: '6px 0 0', lineHeight: '2' } }, [
+              h('li', { text: 'افتح تلقرام → ابحث عن @BotFather → أرسل /newbot → اختر اسمًا ومعرّفًا ينتهي بـ bot → انسخ التوكن.' }),
+              h('li', { text: 'افتح محادثة بوتك واضغط Start ثم أرسل أي كلمة (بدونها لا يسمح تلقرام للبوت بمراسلتك).' }),
+              h('li', { text: 'الصق التوكن أعلاه، ثم اضغط «اجلب معرّف محادثتي تلقائيًا» (أو ضعه يدويًا).' }),
+              h('li', { text: 'اختر «إرسال حقيقي (توكن)» → احفظ → «أرسل لي رسالة تجريبية الآن».' })
+            ])
+          ]),
+          h('div', { class: 'form-grid' }, [fTok.wrap, fChat.wrap, fMode.wrap]),
+          statusSlot,
+          h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'نفس التوكن يُستخدم لتنبيهات الإقرارات والتحديثات وبوت «مساعد مدير المدرسة» وللرسائل الشخصية لكل مستخدم (بمعرّفه من إدارة المستخدمين).' })
+        ]));
+      }
+
       var listSlot = h('div');
       var counter = h('p', { class: 'muted' });
 

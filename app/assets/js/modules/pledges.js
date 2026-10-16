@@ -35,7 +35,8 @@
         { label: 'المدرسة', value: sc.name || '—' },
         { label: 'اليوم', value: d.wd },
         { label: 'التاريخ', value: d.hij + ' هـ — ' + d.greg + ' م' },
-        { label: 'المختص/الوكيل المعتمد', value: (p.specialistName || '—') + (p.specialistIdNo ? ' — هوية ' + p.specialistIdNo : '') },
+        { label: 'هوية مختص تابعني المعتمد', value: (p.specialistName || '—') + (p.specialistIdNo ? ' — رقم الهوية ' + p.specialistIdNo : '') + (p.specialistPhone ? ' — ' + p.specialistPhone : '') },
+        { label: 'صفته', value: 'مختص تابعني — الوكيل الوحيد للتواصل مع المنصة باسم المدرسة' },
         { label: 'مدير المدرسة', value: (p.principalName || '—') + (p.principalIdNo ? ' — هوية ' + p.principalIdNo : '') },
         { label: 'المسؤول عن المنصة', value: owner.name || '—' },
         { label: 'الحالة', value: PSTATUS[p.status] || p.status }
@@ -45,7 +46,7 @@
         { heading: 'الإقرار', text: 'أقرّ أنا الموقّع أدناه بصحّة بياناتي، وبأنني قرأت البنود أعلاه وفهمتها، وألتزم بها، وأن منصة «تابعني للخدمات الذكية» وكل مكوّناتها حق فكري مملوك لها، ويعاقبني النظام عند الإخلال.' }
       ],
       signatures: [
-        'المختص/الوكيل المعتمد: ' + (p.specialistName || '—') + ((p.signs && p.signs.specialist) ? '  (موقّع إلكترونيًا — ' + (p.signs.specialist.at || '').slice(0, 16).replace('T', ' ') + ')' : '  (بانتظار التوقيع)'),
+        'مختص تابعني المعتمد (هوية ' + (p.specialistIdNo || '........') + '): ' + (p.specialistName || '—') + ((p.signs && p.signs.specialist) ? '  (موقّع إلكترونيًا — ' + (p.signs.specialist.at || '').slice(0, 16).replace('T', ' ') + ')' : '  (بانتظار التوقيع)'),
         'مدير المدرسة: ' + (p.principalName || '—') + ((p.signs && p.signs.principal) ? '  (موقّع إلكترونيًا — ' + (p.signs.principal.at || '').slice(0, 16).replace('T', ' ') + ')' : '  (بانتظار التوقيع)')
       ]
     };
@@ -175,6 +176,7 @@
       var pj = UI.field({ name: 'pj', label: 'مدير المدرسة (اسمه)', required: true });
       var pk = UI.field({ name: 'pk', label: 'رقم هويته', half: true });
       var pi = UI.field({ name: 'pi', label: 'رقم هويتك كمختص', half: true });
+      var ph = UI.field({ name: 'ph', label: 'جوال المختص', half: true });
       var psc = UI.field({ name: 'psc', label: 'المدرسة', type: 'select', half: true,
         options: S.list('schools').map(function (x) { return { value: x.id, label: x.name }; }) });
       if (role === 'specialist') {
@@ -183,14 +185,14 @@
         approved = approved.filter(function (r) { if (seen[r.id]) return false; seen[r.id] = 1; return r.status === 'approved'; });
         host.appendChild(UI.panel('إنشاء إقرار جديد', 'يُوقّعه المختص ومدير المدرسة، ويُرسل عبر ' + S.botName() + '.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: 'أنشئ الإقرار', onClick: function () {
-            var r = S.addPledge({ schoolId: psc.input.value, principalName: pj.input.value, principalIdNo: pk.input.value, specialistIdNo: pi.input.value });
+            var r = S.addPledge({ schoolId: psc.input.value, principalName: pj.input.value, principalIdNo: pk.input.value, specialistIdNo: pi.input.value, specialistPhone: ph.input.value });
             if (!r.ok) { UI.toast('تعذّر الإنشاء', 'bad'); return; }
             UI.toast('أُنشئ الإقرار ' + r.pledge.no + ' — وقّعه الآن', 'ok');
             App.route();
           } })
         ], [
           approved.length ? h('div', { class: 'callout info', text: 'طلبات معتمدة لك: ' + approved.map(function (r) { return r.subject + ' — ' + ((S.school(r.schoolId) || {}).name || ''); }).join(' · ') }) : null,
-          h('div', { class: 'form-grid' }, [psc.wrap, pj.wrap, pk.wrap, pi.wrap])
+          h('div', { class: 'form-grid' }, [psc.wrap, pj.wrap, pk.wrap, pi.wrap, ph.wrap])
         ]));
       }
 

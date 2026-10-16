@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 14, principal: 17, deputy: 16, guidance: 9, teacher: 9,
+  super: 15, principal: 17, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 4, specialist: 2
 };
@@ -577,6 +577,19 @@ async function backupSuite(page, base, hitsFn) {
     'return { n: rows.length, changed: after !== oldp, untouched: !other || otherAfter === oldOther, before: before };');
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
+
+  /* ربط تلقرام للمشرف العام: خطوات + حقول + فحص حقيقي بلا نجاح كاذب */
+  const tg = await page.eval(
+    'var before = Store.telegramConfig();' +
+    'Store.saveTelegramConfig({ botToken: "111:TEST", chatId: "999", mode: "direct" });' +
+    'var c = Store.telegramConfig();' +
+    'var ready = Store.telegramReady();' +
+    'Store.update("users", Store.session.userId, { telegramChatId: "999" });' +
+    'var mine = (Store.user(Store.session.userId) || {}).telegramChatId;' +
+    'Store.saveTelegramConfig({ botToken: before.botToken, chatId: before.chatId, mode: before.mode });' +
+    'return { token: c.botToken === "111:TEST", chat: c.chatId === "999", mode: c.mode, ready: ready, mine: mine };');
+  ok(tg.token && tg.chat && tg.mode === 'direct', 'توكن البوت ومعرّف المحادثة والوضع تُحفظ للمشرف العام', JSON.stringify(tg));
+  ok(tg.mine === '999', 'معرّف محادثة المشرف العام يُحفظ في حسابه (تصل التنبيهات إليه)', 'chat=' + tg.mine);
 
   /* الإقرارات: قفل المنصة لكل مستخدم حتى اعتماد المدير/المشرف */
   await page.eval('Store.saveAckEnabled(true); return true;');
