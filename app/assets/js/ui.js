@@ -54,7 +54,7 @@
       opts.actions.forEach(function (a) {
         foot.appendChild(h('button', {
           class: 'btn ' + (a.class || 'btn-outline'), type: 'button', text: a.label,
-          onClick: function () { a.onClick && a.onClick(close, box); }
+          onClick: function () { if (a.onClick) a.onClick(close, box); else close(); }   /* بلا onClick ⇒ إغلاق */
         }));
       });
       box.appendChild(foot);

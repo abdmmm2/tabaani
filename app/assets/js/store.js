@@ -1502,6 +1502,9 @@
       { id: 'subscription', cat: 'subscription', title: 'الاشتراك والفاتورة',
         k: ['اشتراك', 'فاتورة', 'سداد', 'تحويل', 'بنك', 'سند', 'رسوم', 'باقة', 'برو', 'كلاسيك', 'تجديد'],
         a: 'أبشر! نظامنا: تحويل بنكي ثم ترفع صورة سند التحويل مختوم بختم المدرسة من «الاشتراك والدفع» ← نعتمدها ← تصدر فاتورة إلكترونية مختومة من تابعني وتُفعَّل الباقة على طول، وتقدر تطبع الفاتورة في أي وقت.' },
+      { id: 'register', cat: 'register', title: 'تسجيل مدرسة جديدة',
+        k: ['تسجيل مدرسه', 'اسجل مدرسه', 'ابغى اسجل', 'ابي اسجل', 'تأسيس مدرسه', 'تاسيس', 'اضيف مدرسه', 'انضم', 'سجلني', 'register', 'onboard', 'موظف التسجيل', 'مدرسه جديده'],
+        a: 'التسجيل واضح ومباشر: (١) بيانات المدرسة والمدير (٢) ملف الفصول/المعلمين/الطلاب إكسل أو CSV (٣) سداد رسم التأسيس (٤) كود تفعيل يوصلك على بريد المدير — وبعدها تُسجَّل المدرسة كاملة وتوصلك بيانات الدخول.' },
       { id: 'install', cat: 'install', title: 'تثبيت التطبيق والإنترنت',
         k: ['تثبيت', 'تطبيق', 'ايباد', 'جوال', 'بدون انترنت', 'اوفلاين', 'تحميل', 'كاش'],
         a: 'حياك! التطبيق يُثبَّت من المتصفح: مشاركة ← «إضافة إلى الشاشة الرئيسية» (آيباد) أو «تثبيت التطبيق» (كروم). وبعد أول فتح يشتغل بدون إنترنت. ولو طلعت نسخة قديمة، اطلع من التطبيق وافتحه من جديد أو حدّث الصفحة.' },
@@ -1520,6 +1523,22 @@
         .replace(/[^\u0621-\u064A0-9a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
     },
     /** ردّ البوت بلهجة سعودية — يرجّع {agent, text, category, subject, matched, offerTicket} */
+    /* سرعة رد موظف الدعم: إحساس بشري (إظهار «يكتب…» ثم الرد) */
+    supportCfg: function () {
+      var c = (db.settings && db.settings.support) || {};
+      var n = parseInt(c.delaySec, 10);
+      return {
+        delaySec: (n >= 0 && n <= 30) ? n : 10,
+        typing: c.typing !== false,
+        greetName: c.greetName !== false
+      };
+    },
+    saveSupportCfg: function (patch) {
+      if (!db.settings) db.settings = {};
+      db.settings.support = Object.assign({}, db.settings.support || {}, patch || {});
+      save(); return store.supportCfg();
+    },
+
     botReply: function (text, ctx) {
       ctx = ctx || {};
       var agent = store.agent(ctx.agentId || store.agentNow().id);
@@ -1535,9 +1554,12 @@
       });
       /* الترحيب */
       if (!q && !ctx.image) {
+        var hr = new Date().getHours();
+        var hello = hr >= 5 && hr < 12 ? 'صباح الورد' : (hr >= 12 && hr < 17 ? 'مساء الخير' : 'مساء الخير');
         return { agent: agent, category: 'greeting', matched: '', offerTicket: false, subject: 'ترحيب',
-          text: 'هلا والله ومسهلا! أنا ' + agent.name + ' من الدعم الفني في تابعني (' + agent.shift + '). ' +
-                'اسألني عن التحضير أو المخالفات أو التقارير أو الاشتراك… وإن حبيت أفتح لك تذكرة ويرد عليك الفريق، قول «افتح تذكرة».' };
+          text: hello + ' 🌹 أنا ' + agent.name + ' من الدعم الفني في تابعني (' + agent.shift + '). ' +
+                'وش أخبارك اليوم؟ عساك طيب.' +
+                '\nأمرني — كيف أقدر أخدمك؟ اكتب سؤالك، أو ارفع صورة الشاشة وأنا أفهمها معك.' };
       }
       /* صورة مرفقة: فرز أوّلي + عرض فتح تذكرة */
       if (ctx.image) {
@@ -1557,11 +1579,35 @@
       if (best) {
         var extra = (q.indexOf('تذكره') > -1 || q.indexOf('تذكرة') > -1 || q.indexOf('مشكله') > -1 || q.indexOf('مشكلة') > -1)
           ? ' وإن حبيت، أفتح لك تذكرة ويرد عليك أحد فريق الدعم.' : '';
+        if (best.cat === 'register') {
+          var staff = ['super', 'support'].indexOf(store.session.role) > -1;
+          return {
+            agent: agent, category: 'register', matched: 'register', subject: 'تسجيل مدرسة جديدة',
+            offerTicket: !staff, openReg: staff,
+            text: best.a + (staff
+              ? '\nجهّز اسم المدرسة وبيانات المدير والملفات، وأنا أفتح لك موظف التسجيل الآن — نسجّلها خلال دقائق.'
+              : '\nأرسل لي اسم المدرسة واسم المدير وجواله، وأفتح لك طلبًا يوصل للمشرف العام لتسجيل مدرستك.')
+          };
+        }
         return { agent: agent, category: best.cat, matched: best.id, offerTicket: false, subject: best.title, text: best.a + extra };
       }
+      /* لا يوجد تطابق مباشر ⇒ نقترح أقرب المواضيع (تشابه أحرف) بدل الرد العام */
+      function grams(str) {
+        var out = {}, x = String(str || '').replace(/\s+/g, ' ');
+        for (var i = 0; i < x.length - 2; i++) out[x.slice(i, i + 3)] = 1;
+        return out;
+      }
+      var qg = grams(q), near = [];
+      store.BOT_KB.forEach(function (e) {
+        var eg = grams(e.title + ' ' + e.k.join(' ')), share = 0;
+        Object.keys(qg).forEach(function (g) { if (eg[g]) share++; });
+        if (share) near.push({ e: e, s: share });
+      });
+      near.sort(function (a, b) { return b.s - a.s; });
+      var sug = near.slice(0, 3).map(function (x) { return x.e.title; });
       return { agent: agent, category: 'other', matched: '', offerTicket: true, subject: 'استفسار عام',
-        text: 'أبشر، ما فهمت عليك عدل. وضّح لي أكثر الله يعافيك — أو عطني كلمة واحدة (مثل: تحضير · فاتورة · تلقرام · تقارير · دخول) وأنا أفهمك. ' +
-              'وإذا تبي، أفتح لك تذكرة ويرد عليك أحد فريق الدعم.' };
+        text: 'أبشر — أبغى أفهمك صح. ' + (sug.length ? 'يمكن تقصد: ' + sug.join(' · ') + '؟' : 'وضّح لي أكثر بكلمة أو كلمتين.') +
+              '\nوإن حبيت، اضغط «افتح تذكرة متابعة» ويشوفها فريق الدعم والمشرف العام فورًا.' };
     },
     /* ------------------------------ التذاكر ------------------------------ */
     openTicket: function (d) {

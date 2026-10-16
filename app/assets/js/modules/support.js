@@ -102,6 +102,7 @@
       App.refreshBadges && App.refreshBadges();
     }
 
+    var dlg = null;
     function send(text, image, meta) {
       var t = String(text || '').trim();
       if (!t && !image) return;
@@ -109,27 +110,39 @@
       input.value = '';
       chat.attached = null; chat.attachedMeta = null; attachNote.textContent = '';
       clear(thread); chat.session.forEach(function (m) { thread.appendChild(bubble(m)); });
-      thread.appendChild(h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: agent.name + ' يكتب…' }));
-      setTimeout(function () {
+      showTyping();
+      if (chat._timer) clearTimeout(chat._timer);
+      chat._timer = setTimeout(function () {
+        hideTyping();
         var r = S.botChat(t, { image: !!image, imageMeta: meta || null, agentId: agent.id });
         chat.lastSubject = r.subject; chat.lastCategory = r.category;
         clear(thread);
         chat.session.forEach(function (m) { thread.appendChild(bubble(m)); });
         push({ at: new Date().toISOString(), from: 'bot', text: r.text, agentId: r.agent.id });
-        if (r.offerTicket) {
+        if (r.offerTicket || r.openReg) {
           thread.appendChild(h('div', { class: 'cluster', style: { margin: '6px 0 10px' } }, [
-            h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'افتح تذكرة متابعة', onClick: function () {
+            r.openReg ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '🤖 افتح موظف التسجيل', onClick: function () {
+              dlg.close(); App.go('regagent');
+            } }) : null,
+            r.offerTicket ? h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: 'افتح تذكرة متابعة', onClick: function () {
               openTicketFromChat(t || (image ? 'أرفقت صورة للمشكلة' : ''));
-            } }),
-            h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'تصل «قسم الدعم» و«المشرف العام» فورًا.' })
+            } }) : null,
+            h('span', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: r.openReg ? 'يسجّل المدرسة كاملة ويُرسل بيانات الدخول.' : 'تصل «قسم الدعم» و«المشرف العام» فورًا.' })
           ]));
         }
-      }, 550);
+      }, Math.max(0, S.supportCfg().delaySec) * 1000);   /* تُقرأ لحظيًا: تغيير السرعة يسري فورًا */
     }
 
+    var cfg = S.supportCfg();
+    var hr = new Date().getHours();
+    var hello = (hr >= 5 && hr < 12) ? 'صباح الورد' : 'مساء الخير';
+    var typingRow = h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', padding: '4px 2px' } });
+    function showTyping() { typingRow.textContent = agent.name + ' يكتب…'; }
+    function hideTyping() { typingRow.textContent = ''; }
     push({ at: new Date().toISOString(), from: 'bot', agentId: agent.id,
-      text: 'هلا والله ومسهلا! أنا ' + agent.name + ' من الدعم الفني في تابعني (' + agent.shift + '). ' +
-            'اسألني عن التحضير أو المخاطر أو التقارير أو الاشتراك… وإذا تبي، ارفع صورة لقطة الشاشة وأنا أفهمها معك وأفتح لك تذكرة.' });
+      text: hello + ' 🌹 أنا ' + agent.name + ' من الدعم الفني في تابعني (' + agent.shift + '). وش أخبارك اليوم؟ عساك طيب.' });
+    push({ at: new Date().toISOString(), from: 'bot', agentId: agent.id,
+      text: 'أمرني — كيف أقدر أخدمك؟ اكتب سؤالك، أو ارفع صورة الشاشة وأنا أفهمها معك. وإن بغيت تسجيل مدرسة، اكتب «تسجيل مدرسة».' });
 
     attachInput.addEventListener('change', function () {
       var file = attachInput.files && attachInput.files[0];
@@ -140,7 +153,7 @@
       });
     });
 
-    var dlg = UI.modal({
+    dlg = UI.modal({
       title: 'الدعم الفني — تابعني', wide: true,
       body: [
         h('div', { class: 'lic-banner is-ok' }, [agentHead(agent, { size: 46 }),
@@ -148,7 +161,7 @@
         h('div', { class: 'lic-banner', style: { marginTop: '8px' } }, [
           h('span', { class: 'muted', text: 'الشفتان: ' + S.AGENTS[0].name + ' ' + S.AGENTS[0].shift + ' · ' + S.AGENTS[1].name + ' ' + S.AGENTS[1].shift })
         ]),
-        thread, ticketSlot,
+        thread, typingRow, ticketSlot,
         h('div', { style: { display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '8px' } }, [
           input,
           h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, [
@@ -208,6 +221,19 @@
             })),
             h('div', { class: 'cluster', style: { marginTop: '10px' } }, [
               h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تجربة المساعد', onClick: function () { App.openSupport({ greet: true }); } }),
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'سرعة رد المساعد', onClick: function () {
+              var cfgNow = S.supportCfg();
+              UI.formModal({
+                title: 'إحساس بشري: سرعة رد موظف الدعم', submitLabel: 'حفظ',
+                intro: 'الموظف يُظهر «يكتب…» ثم يرد بعد المدة المحددة — لجعل الرد يبدو بشريًا.',
+                fields: [{ name: 'delay', label: 'مدة الانتظار قبل الرد (ثانية)', type: 'number', half: true, required: true, value: String(cfgNow.delaySec) }],
+                extra: h('div', { class: 'callout info', text: 'الافتراضي ١٠ ثوانٍ كما طلبت. أقل = أسرع، أكثر = أهدأ.' }),
+                onSubmit: function (d) {
+                  S.saveSupportCfg({ delaySec: parseInt(d.delay, 10) });
+                  UI.toast('حُفظت سرعة الرد: ' + S.supportCfg().delaySec + ' ثانية', 'ok');
+                }
+              });
+            } }),
               h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '🤖 موظف التسجيل — تسجيل مدرسة', onClick: function () { App.go('regagent'); } })
             ])
           ])

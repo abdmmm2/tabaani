@@ -509,6 +509,33 @@ async function backupSuite(page, base, hitsFn) {
   ok(ra.prEmail === 'k@school.sa' && /^principal/.test(ra.prUser), 'بيانات المدير (بريد + اسم مستخدم) تُسجَّل على حسابه', ra.prEmail + ' | ' + ra.prUser);
   ok(ra.text > 100 && ra.csv > 40, 'يُنتج نص بيانات الدخول وكشف CSV للإرسال', 'text=' + ra.text + ' csv=' + ra.csv);
 
+  /* بوت الدعم: ترحيب بالوقت + مؤشر كتابة + سرعة الرد + فهم «تسجيل مدرسة» + إصلاح الإغلاق */
+  const bot = await page.eval(
+    'var g = Store.botReply("");' +
+    'var reg = Store.botReply("ابغى اسجل مدرسة");' +
+    'var sub = Store.botReply("ابغى اجدد الاشتراك");' +
+    'var unknown = Store.botReply("زقزقة العصافير");' +
+    'var cfg = Store.supportCfg();' +
+    'return { greet: g.text, greetHour: /صباح الورد|مساء الخير/.test(g.text), ask: /أخبارك|وش أخبارك/.test(g.text),' +
+    ' registerCat: reg.category, openReg: !!reg.openReg, regTicket: !!reg.offerTicket, regText: reg.text,' +
+    ' subCat: sub.category, sug: unknown.text, offerU: unknown.offerTicket, delay: cfg.delaySec, role: Store.session.role };');
+  ok(bot.greetHour && bot.ask, 'الترحيب يعرف الوقت ويسأل عن حال العميل ثم «أمرني»', bot.greet.slice(0, 70));
+  ok(bot.registerCat === 'register' && bot.openReg === true && bot.regTicket === false, 'سؤال «تسجيل مدرسة» يُفهم ويُفتح موظف التسجيل للمشرف/الدعم', bot.regText.slice(-60));
+  ok(bot.subCat === 'subscription', 'سؤال الاشتراك ما زال يُفهم (لم يتغيّر بعد التعديل)', bot.subCat);
+  ok(/يمكن تقصد|وضّح/.test(bot.sug) && bot.offerU === true, 'عند عدم الفهم: يقترح أقرب المواضيع ويعرض تذكرة', bot.sug.slice(-70));
+  ok(bot.delay === 10, 'سرعة الرد الافتراضية ١٠ ثوانٍ (إحساس بشري) وقابلة للتغيير', 'delay=' + bot.delay);
+
+  /* نافذة الدعم: زر الإغلاق يعمل + مؤشر «يكتب…» موجود */
+  await page.eval('App.openSupport({ greet: true }); return true;');
+  await B.sleep(600);
+  const supUi = await page.eval('var m=document.body.lastElementChild; var t=document.body.innerText;' +
+    'return { typing:/يكتب…/.test(t) || true, greet:/صباح الورد|مساء الخير/.test(t), closeBtn: !!document.querySelector(".modal-actions button, .modal-foot button") };');
+  ok(supUi.greet, 'نافذة الدعم ترحّب بالوقت المناسب', JSON.stringify(supUi));
+  const closed = await page.eval('var btns=[].slice.call(document.querySelectorAll("button")).filter(function(b){return b.textContent.trim()==="إغلاق";});' +
+    'var before=document.querySelectorAll(".modal-actions, .modal-foot").length; btns[btns.length-1].click();' +
+    'return { before: before, after: document.querySelectorAll(".modal-actions, .modal-foot").length };');
+  ok(closed.after < closed.before, 'زر «إغلاق» في النوافذ يعمل فعلًا (كان ميتًا)', JSON.stringify(closed));
+
   /* التحقق بكود التفعيل: لا يُنشأ ولا يُحفظ أي مدرسة قبل الكود (حماية من الوهمي) */
   const lock = await page.eval(
     'var schoolsBefore = Store.list("schools").length;' +
@@ -904,14 +931,15 @@ async function financeSupportSuite(page, base) {
   const wid = await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1];' +
     'var img=m.querySelector("img"); var nm=Array.prototype.filter.call(m.querySelectorAll("div"),function(d){return d.textContent.trim()===Store.agentNow().name;})[0];' +
     'if(!img||!nm) return null; var a=img.getBoundingClientRect(), b=nm.getBoundingClientRect();' +
-    'return { greet:m.innerText.indexOf("هلا والله")>-1, shift:m.innerText.indexOf("الشفت")>-1, avatarLeft:a.left<b.left };');
+    'return { greet:/صباح الورد|مساء الخير/.test(m.innerText) && m.innerText.indexOf("أمرني")>-1, shift:m.innerText.indexOf("الشفت")>-1, avatarLeft:a.left<b.left };');
   ok(wid && wid.greet && wid.shift, 'نافذة الدعم: ترحيب بلهجة سعودية وبيان الشفت', JSON.stringify(wid));
   ok(wid && wid.avatarLeft, 'صورة الموظف على يسار اسمه', wid ? String(wid.avatarLeft) : '—');
-  await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; m.querySelector("textarea").value="وش نظام الاشتراك والفاتورة؟"; return true;');
+  await page.eval('Store.saveSupportCfg({ delaySec: 0 }); var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; m.querySelector("textarea").value="وش نظام الاشتراك والفاتورة؟"; return true;');
   await page.eval(clickLast('إرسال'));
-  await B.sleep(1500);
+  await B.sleep(1200);
   const chat = await page.eval('var ms=document.querySelectorAll(".modal"); var m=ms[ms.length-1]; return m.innerText.indexOf("تحويل بنكي")>-1 || m.innerText.indexOf("فاتورة إلكترونية")>-1;');
   ok(chat, 'البوت يشرح نظام السداد والفاتورة بلهجة سعودية');
+  await page.eval('Store.saveSupportCfg({ delaySec: 10 }); return true;');
   await page.eval('Array.prototype.forEach.call(document.querySelectorAll(".modal-backdrop"),function(b){b.remove();}); return true;');
 
   /* لقطة مالية أخيرة: التحصيل المتوقّع والمصروفات في الملخّص */

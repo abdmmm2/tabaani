@@ -1228,7 +1228,9 @@
                 });
               }
             }),
-            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحكم مفصّل بكل المدارس', onClick: function () { App.go('users'); } })
+            h('button', { class: 'btn btn-soft btn-sm', type: 'button', text: 'تحكم مفصّل بكل المدارس', onClick: function () { App.go('users'); } }),
+            h('button', { class: 'btn btn-primary btn-sm', type: 'button', text: '🤖 تسجيل مدرسة (موظف التسجيل)', onClick: function () { App.go('regagent'); } }),
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'التأسيس الآلي من ملفات', onClick: function () { App.go('onboard'); } })
           ]),
         ]));
         /* ── مدرسة واحدة: اختيار المدرسة + إيقاف/تفعيل طلابها وحدها ── */
