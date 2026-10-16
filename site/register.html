@@ -50,19 +50,25 @@
   footer a { color:var(--emerald); }
   @media (max-width:640px) { .grid, .plans { grid-template-columns:1fr; } }
 
-  /* الإعلان الافتتاحي فوق التسجيل */
-  .promo-band { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #FFF8E8;
-    border: 1.4px solid #F0DFB5; border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; position: relative; }
-  .promo-band.is-out { opacity: 0; transform: translateY(-6px); transition: .3s; }
-  .promo-band img { width: 120px; height: 72px; object-fit: cover; border-radius: 10px; }
-  .promo-band .pb-txt { flex: 1 1 220px; }
-  .promo-band .pb-tag { display: inline-block; background: var(--gold); color: #14100A; font-size: 11px; font-weight: 800;
-    border-radius: 999px; padding: 2px 10px; margin-bottom: 4px; }
-  .promo-band h3 { margin: 2px 0 4px; font-size: 17px; color: var(--emerald); }
-  .promo-band p { margin: 0; font-size: 13.5px; color: var(--muted); }
-  .promo-band .pb-act { display: flex; gap: 8px; flex-wrap: wrap; }
-  .promo-band .pb-x { position: absolute; top: 6px; inset-inline-end: 8px; background: transparent; border: none;
-    font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; }
+
+  /* الإعلان الوسطي (نافذة في وسط الشاشة) */
+  .promo-ov { position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center; justify-content: center;
+    padding: 16px; opacity: 0; transition: opacity .35s ease; }
+  .promo-ov.is-in { opacity: 1; }
+  .promo-ov.is-out { opacity: 0; }
+  .promo-ov-back { position: absolute; inset: 0; background: rgba(20,16,10,.62); backdrop-filter: blur(2px); }
+  .promo-ov-card { position: relative; background: #fff; border-radius: 18px; max-width: 460px; width: 100%;
+    padding: 16px 16px 14px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    border: 1.4px solid #F0DFB5; transform: translateY(10px) scale(.97); transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+  .promo-ov.is-in .promo-ov-card { transform: translateY(0) scale(1); }
+  .promo-ov-card img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; }
+  .promo-ov-card .pb-tag { display: inline-block; background: var(--gold, #C69A3E); color: #14100A; font-size: 11px;
+    font-weight: 800; border-radius: 999px; padding: 3px 12px; }
+  .promo-ov-card h3 { margin: 8px 0 6px; font-size: 19px; color: var(--emerald, #0E5F4C); }
+  .promo-ov-card p { margin: 0 0 12px; font-size: 14px; color: var(--muted, #6B6255); line-height: 1.8; }
+  .promo-ov-card .pb-x { position: absolute; top: 8px; inset-inline-end: 10px; width: 34px; height: 34px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,.9); font-size: 22px; line-height: 1; color: #6B6255; cursor: pointer; }
+  .promo-ov-timer { margin-top: 8px; font-size: 11.5px; color: #8C8171; }
 </style>
 </head>
 <body>
@@ -318,7 +324,7 @@
 })();
 </script>
 <script>
-  /* ===== الإعلان الافتتاحي: يُقرأ من assets/data/promo-config.js ويظهر فوق التسجيل ===== */
+  /* ===== الإعلان الوسطي: يظهر في وسط الشاشة، يجلس ١٥ ثانية، ثم يختفي ===== */
   (function () {
     function render() {
       var cfg = window.TABAANI_PROMO; if (!cfg || cfg.enabled === false) return;
@@ -327,29 +333,40 @@
       var freq = cfg.frequency || 'session', K = 'tabaani_promo_seen';
       try { if (freq === 'session' && sessionStorage.getItem(K)) return; } catch (e) {}
       var ad = ads[0];
-      var host = document.querySelector('.wrap') || document.body;
-      var el = document.createElement('div');
-      el.className = 'promo-band';
-      el.innerHTML =
-        (ad.image ? '<img src="assets/img/promo-offer.jpg" alt="">' : '') +
-        '<div class="pb-txt"><span class="pb-tag">إعلان</span><h3>' + (ad.title || 'عرض تابعني') + '</h3>' +
-        (ad.text ? '<p>' + ad.text + '</p>' : '') + '</div>' +
-        '<div class="pb-act">' + (ad.link ? '<a class="btn" href="' + ad.link + '" style="font-size:13px;padding:8px 14px">التفاصيل</a>' : '') + '</div>' +
-        '<button class="pb-x" type="button" title="إغلاق">&times;</button>';
-      var first = document.getElementById('step1') || host.children[0];
-      host.insertBefore(el, first);
-      el.querySelector('.pb-x').addEventListener('click', function () {
-        el.classList.add('is-out');
+      var SECS = (cfg.autoClose > 0 ? cfg.autoClose : 15);          /* المطلوب: ١٥ ثانية افتراضيًا */
+      var ov = document.createElement('div');
+      ov.className = 'promo-ov';
+      ov.innerHTML =
+        '<div class="promo-ov-back"></div>' +
+        '<div class="promo-ov-card">' +
+          '<button class="pb-x" type="button" title="إغلاق">&times;</button>' +
+          (ad.image ? '<img src="assets/img/promo-offer.jpg" alt="">' : '') +
+          '<span class="pb-tag">إعلان</span>' +
+          '<h3>' + (ad.title || 'عرض تابعني') + '</h3>' +
+          (ad.text ? '<p>' + ad.text + '</p>' : '') +
+          (ad.link ? '<a class="btn" href="' + ad.link + '" style="font-size:14px;padding:10px 18px">التفاصيل</a>' : '') +
+          '<div class="promo-ov-timer">يُغلق تلقائيًا بعد ' + SECS + ' ثانية</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      requestAnimationFrame(function () { ov.classList.add('is-in'); });
+      var closed = false;
+      function close() {
+        if (closed) return; closed = true;
+        ov.classList.remove('is-in'); ov.classList.add('is-out');
         try { sessionStorage.setItem(K, '1'); } catch (e) {}
-        setTimeout(function () { el.remove(); }, 320);
-      });
-      if (cfg.autoClose > 0) setTimeout(function () { el.classList.add('is-out'); setTimeout(function () { el.remove(); }, 320); }, cfg.autoClose * 1000);
+        setTimeout(function () { ov.remove(); }, 380);
+      }
+      ov.querySelector('.pb-x').addEventListener('click', close);
+      var t = setTimeout(close, SECS * 1000);
+      var tick = setInterval(function () { }, 1000);
+      setTimeout(function () { clearInterval(tick); }, SECS * 1000 + 500);
+      window.__promoClose = function () { clearTimeout(t); close(); };
     }
     function boot() {
-      if (window.TABAANI_PROMO) return render();
+      if (window.TABAANI_PROMO) return setTimeout(render, 400);
       var s = document.createElement('script');
       s.src = 'assets/data/promo-config.js'; s.async = false;
-      s.onload = render; s.onerror = function () {};
+      s.onload = function () { setTimeout(render, 400); }; s.onerror = function () {};
       document.head.appendChild(s);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

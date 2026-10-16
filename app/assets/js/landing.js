@@ -470,16 +470,20 @@
             localStorage.setItem('tabaani_promo_rotate', String(idx + 1)); } catch (e) {}
     }
     var ad = ads[idx];
-    var band = h('div', { class: 'lp-promo' }, [
-      ad.image ? h('img', { src: ad.image, alt: '', class: 'lp-promo-img' }) : null,
-      h('div', { class: 'lp-promo-txt' }, [
+    /* إعلان وسطي: وسط الشاشة — يجلس ١٥ ثانية ثم يختفي تلقائيًا */
+    var SECS = (cfg.autoClose > 0 ? cfg.autoClose : 15);
+    var band = h('div', { class: 'lp-promo-ov' }, [
+      h('div', { class: 'lp-promo-back' }),
+      h('div', { class: 'lp-promo-card' }, [
+        ad.image ? h('img', { src: ad.image, alt: '', class: 'lp-promo-img' }) : null,
         h('span', { class: 'lp-tag', text: 'إعلان' }),
         h('h3', { text: ad.title || 'عرض تابعني' }),
-        ad.text ? h('p', { text: ad.text }) : null
-      ]),
-      h('div', { class: 'lp-promo-act' }, [
-        ad.link ? h('a', { class: 'btn btn-gold btn-sm', href: ad.link, text: 'التفاصيل' }) : null,
-        h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'استفسر', onClick: function () { App.openSupport({ greet: true }); } })
+        ad.text ? h('p', { text: ad.text }) : null,
+        h('div', { class: 'lp-promo-act' }, [
+          ad.link ? h('a', { class: 'btn btn-gold btn-sm', href: ad.link, text: 'التفاصيل' }) : null,
+          h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: 'استفسر', onClick: function () { App.openSupport({ greet: true }); } })
+        ]),
+        h('div', { class: 'lp-promo-timer', text: 'يُغلق تلقائيًا بعد ' + SECS + ' ثانية' })
       ]),
       h('button', { class: 'lp-promo-x', type: 'button', title: 'إغلاق الإعلان', html: '&times;', onClick: function () { hide(); } })
     ]);
@@ -488,7 +492,7 @@
       try { sessionStorage.setItem(SESSION_KEY, '1'); if (freq === 'once') localStorage.setItem(ONCE_KEY, '1'); } catch (e) {}
       setTimeout(function () { if (band.parentNode) band.remove(); }, 320);
     }
-    if (cfg.autoClose > 0) setTimeout(function () { if (band.parentNode) hide(); }, cfg.autoClose * 1000);
+    setTimeout(function () { if (band.parentNode) hide(); }, SECS * 1000);
     return band;
   }
 })(window);
