@@ -704,7 +704,7 @@
       var n = function (v, d) { var x = parseInt(v, 10); return (x && x > 0) ? x : d; };
       return {
         enabled: t.enabled !== false,     /* مفعّل */
-        enforce: t.enforce !== false,     /* إلزام كل الموظفين افتراضيًا (كل الحسابات عدا الطلاب) */
+        enforce: t.enforce === true,      /* الإلزام **اختياري**: لا يُحجب أحد لعدم ربط تلقرام إلا لو اختاره المشرف عمدًا */
         ttl: n(t.ttl, 5),                 /* دقائق صلاحية الرمز */
         attempts: n(t.attempts, 5)        /* أقصى عدد محاولات */
       };
@@ -726,6 +726,10 @@
       if (!c.enabled) return { applies: false, blocked: false, reason: 'التحقق بمرحلتين مُعطَّل من الإعدادات' };
       var chat = String(u.telegramChatId || '').trim();
       if (chat) return { applies: true, blocked: false, chat: chat };
+      /* وضع المحاكاة: الإرسال الفعلي غير مُفعّل ⇒ الحجب بلا معنى (يظهر الرمز على الشاشة) */
+      if (store.telegramConfig().mode === 'sim') {
+        return { applies: false, blocked: false, sim: true, reason: 'الإرسال الفعلي إلى تلقرام غير مُفعّل — الدخول مفتوح، واربط محادثتك لتفعيل التحقق' };
+      }
       if (c.enforce) {
         /* بوتقة أمان: لا يُحجب المشرف العام أبدًا — وإلا تعذّر إصلاح تابعني */
         if (u.role === 'super' || u.owner) {
@@ -735,6 +739,16 @@
           reason: 'حسابك يتطلّب تحقّقًا بمرحلتين، ولم تُربط محادثة تلقرام خاصة بعد — راجع مدير المدرسة.' };
       }
       return { applies: false, blocked: false, reason: 'لا توجد محادثة تلقرام شخصية مربوطة بهذا الحساب' };
+    },
+    /** إصلاح ذاتي: إلزام تحقق بلا أي محادثة مربوطة يحجب المدرسة كلها بلا سبب ⇒ يُلغى مرّة واحدة */
+    twoFactorHeal: function () {
+      var t = (db.settings && db.settings.twoFactor) || {};
+      if (t.enforce !== true) return false;
+      var linked = store.list('users').filter(function (u) { return String(u.telegramChatId || u.telegram || '').trim(); }).length;
+      if (linked) return false;
+      db.settings.twoFactor = Object.assign({}, t, { enforce: false, healedAt: now() });
+      save();
+      return true;
     },
     loginOtpPending: function () { return (db.settings && db.settings.login2fa) || null; },
     loginOtpClear: function () { if (db.settings) delete db.settings.login2fa; save(); },

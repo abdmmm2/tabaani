@@ -519,6 +519,7 @@
     /* ------------------------------------------------------------- التوجيه */
     route: function () {
       try { S.ackMigrate && S.ackMigrate(); } catch (e) {}
+      try { if (S.twoFactorHeal && S.twoFactorHeal()) UI.toast('أُصلح إعداد التحقق بمرحلتين (كان يحجب الدخول بلا ربط تلقرام)', 'ok'); } catch (e) {}
       /* بوابة الإقرار: لا تعمل أي شاشة أو زر قبل اعتماد الإقرار */
       var view0 = document.getElementById('view');
       if (S.ackLock && S.ackLock() && view0 && App.ackGate) {
@@ -675,6 +676,7 @@
     /** شاشة الدخول المفردة (احتياط — تُستخدم عند الحاجة لإظهار النموذج وحده) */
     loginScreen: function () {
       App._removeSupportFab();
+      try { S.twoFactorHeal && S.twoFactorHeal(); } catch (e) {}
       var user = UI.field({ name: 'username', label: 'اسم المستخدم أو البريد', required: true, placeholder: 'principal', autocomplete: 'username' });
       var pass = UI.field({ name: 'password', label: 'كلمة المرور', type: 'password', required: true, placeholder: '••••••••', autocomplete: 'current-password' });
       var err = h('p', { class: 'hint hint-error', hidden: true });
@@ -684,7 +686,11 @@
         if (!res.ok) { err.hidden = false; err.textContent = res.error; return; }
         /* المرحلة الأولى نجحت ← قد يُطلب رمز التحقق بمرحلتين */
         var tf = S.twoFactorFor(res.user);
-        if (tf.blocked) { err.hidden = false; err.textContent = tf.reason; return; }
+        if (tf.blocked) {
+          err.hidden = false;
+          err.textContent = tf.reason + ' — الحل: (١) ربط محادثة تلقرام من «سجل تلقرام» أو (٢) ادخل بحساب المشرف العام وأوقف إلزام التحقق من الإعدادات.';
+          return;
+        }
         err.hidden = true;
         function afterAuth() {
           App.enter(res.user.id);

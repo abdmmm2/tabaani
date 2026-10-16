@@ -137,6 +137,31 @@ const ok = (c, l, e) => { if (c) { pass++; console.log('  ✓ ' + l + (e ? '  ' 
   ok(migrated.fixed === true && migrated.status === 'approved',
     'إصلاح تلقائي: حساب أُنشئ قبل التهيئة وبلا إقرار يُعتمد (كان يُحجب بلا سبب)', JSON.stringify(migrated));
 
+  /* التحقق بمرحلتين لا يجوز أن يحجب المدرسة بلا ربط تلقرام */
+  const tfa = await page.eval(
+    'var out = {};' +
+    'var sc = Store.list("schools")[0] || { id: "s-x" };' +
+    'if (!Store.list("schools").length) { }' +
+    'Store.list("users").forEach(function (u) { delete u.telegramChatId; });' +
+    'if (Store.db.settings) Store.db.settings.twoFactor = { enabled: true, enforce: true };' +
+    'var healed = Store.twoFactorHeal();' +
+    'out.healed = healed;' +
+    'out.enforce = Store.twoFactorConfig().enforce;' +
+    'var pr = Store.list("users", { role: "principal" })[0] || Store.list("users")[0];' +
+    'out.afterHeal = Store.twoFactorFor(pr.id).blocked;' +
+    '/* لو أُلغي الإصلاح الذاتي، نعيد الإلزام لنتأكد من مهرب المحاكاة */' +
+    'if (Store.db.settings) Store.db.settings.twoFactor = { enabled: true, enforce: true };' +
+    'var before = Store.twoFactorConfig();' +
+    'var prevMode = Store.telegramConfig().mode;' +
+    'Store.saveTelegramConfig({ mode: "sim" });' +
+    'out.blockedInSim = Store.twoFactorFor(pr.id).blocked;' +
+    'Store.saveTelegramConfig({ mode: prevMode });' +
+    'out.authOk = (function () { try { Store.ensureSuper && Store.ensureSuper(Store.db); return true; } catch (e) { return false; } })();' +
+    'return out;');
+  ok(tfa.healed === true && tfa.enforce === false && tfa.afterHeal === false,
+    'إصلاح ذاتي: إلزام تحقق بلا تلقرام مربوط لا يحجب المدرسة', JSON.stringify({ healed: tfa.healed, enforce: tfa.enforce }));
+  ok(tfa.blockedInSim === false, 'وضع المحاكاة (بلا إرسال فعلي) لا يحجب الدخول', 'blocked=' + tfa.blockedInSim);
+
   const errs = (await B.pageErrors(page)).map(String).filter((e) => !/favicon|manifest/i.test(e));
   ok(errs.length === 0, 'صفر أخطاء JS على قاعدة قديمة', errs.slice(0, 3).join(' | '));
 
