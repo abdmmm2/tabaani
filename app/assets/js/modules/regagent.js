@@ -153,7 +153,7 @@
         msgs.scrollTop = msgs.scrollHeight;
       }
       function quickBtn(label, onClick, cls) {
-        quick.appendChild(h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: label, onClick: onClick, class: cls || 'btn btn-outline btn-sm' }));
+        quick.appendChild(h('button', { class: cls || 'btn btn-outline btn-sm', type: 'button', text: label, onClick: onClick }));
       }
 
       function renderQuick() {
@@ -164,22 +164,24 @@
             var on = (data.stages || []).indexOf(st.id) > -1;
             quick.appendChild(h('button', { class: 'chip' + (on ? ' is-on' : ''), type: 'button', text: st.name, onClick: function () {
               data.stages = on ? data.stages.filter(function (x) { return x !== st.id; }) : (data.stages || []).concat([st.id]);
-              renderQuick();
+              var names = (data.stages || []).map(function (x) { return S.stageName(x); });
+              sys(names.length ? '✓ المختار الآن: ' + names.join(' · ') + ' — اضغط «تأكيد الاختيار» للمتابعة' : 'أُلغي الاختيار — اختر مرحلة واحدة على الأقل');
+              renderLog(); renderQuick();
             } }));
           });
-          quickBtn('تم ✓', function () {
+          quickBtn('تأكيد الاختيار ✓', function () {
             if (!(data.stages || []).length) { sys('اختر مرحلة واحدة على الأقل.'); renderLog(); return; }
-            say('تم');
-            go('gender');
-          });
+            say((data.stages || []).map(function (x) { return S.stageName(x); }).join(' · '));
+            go('gender', 'بنين أم بنات؟ (اضغط الزر أو اكتب)');
+          }, 'btn btn-primary btn-sm');
         }
         if (step === 'gender') {
-          quickBtn('بنين', function () { say('بنين'); data.gender = 'boys'; go('plan'); });
-          quickBtn('بنات', function () { say('بنات'); data.gender = 'girls'; go('plan'); });
+          quickBtn('بنين', function () { say('بنين'); data.gender = 'boys'; go('plan', 'الباقة؟ «برو» (كل المميزات + تلقرام) أو «كلاسيك».'); });
+          quickBtn('بنات', function () { say('بنات'); data.gender = 'girls'; go('plan', 'الباقة؟ «برو» (كل المميزات + تلقرام) أو «كلاسيك».'); });
         }
         if (step === 'plan') {
-          quickBtn('برو 1500 (كل المميزات + تلقرام)', function () { say('برو'); data.plan = 'pro'; go('pname'); });
-          quickBtn('كلاسيك 1000', function () { say('كلاسيك'); data.plan = 'classic'; go('pname'); });
+          quickBtn('برو 1500 (كل المميزات + تلقرام)', function () { say('برو'); data.plan = 'pro'; go('pname', 'اسم مدير المدرسة؟'); });
+          quickBtn('كلاسيك 1000', function () { say('كلاسيك'); data.plan = 'classic'; go('pname', 'اسم مدير المدرسة؟'); });
         }
         if (step === 'files') {
           quickBtn('بلا ملفات — أكمل', function () { say('بلا ملفات'); run(); });
@@ -202,10 +204,10 @@
         renderLog(); renderQuick();
       }
 
-      function handle(text) {
+      function handle(text, silent) {
         text = String(text || '').trim();
         if (!text) return;
-        say(text, 'me');
+        if (!silent) say(text, 'me');
         if (step === 'name') { data.name = text; return go('region', 'ممتاز! ما المنطقة التعليمية؟'); }
         if (step === 'region') { data.region = text; return go('city', 'والمدينة؟'); }
         if (step === 'city') { data.city = text; return go('stages', 'حدّد المراحل في المدرسة (اضغط لتختار ثم «تم»):'); }
@@ -213,7 +215,42 @@
         if (step === 'pphone') { data.pphone = text; return go('pemail', 'بريد المدير؟ (لإرسال بيانات الدخول بالإيميل — اكتب «تخطَّ» إن لم يوجد)'); }
         if (step === 'pemail') { data.pemail = /تخط|لا يوجد|بدون/.test(text) ? '' : text; return go('ptg', 'معرّف تلقرام المدير؟ (رقم الجوال أو chat id — أو «تخطَّ»)'); }
         if (step === 'ptg') { data.ptg = /تخط|لا يوجد|بدون/.test(text) ? '' : text; return go('files', 'ارفع ملفات العميل (فصول · معلمون · طلاب) بزر «ارفق ملف» — أو اضغط «بلا ملفات».'); }
-        if (step === 'files') { if (/^تم|سجل|تسجيل/.test(text)) return run(); sys('ارفع الملفات بزر «ارفق ملف»، أو اضغط «تم — سجّل الآن».'); return renderLog(); }
+        if (step === 'stages') {
+          /* اختار بالأزرار ثم كتب إجابة الخطوة التالية (بنين/برو…) ⇒ نُكمل تلقائيًا بلا تعطيل */
+          var nextWord = /بنين|بنات|برو|classic|كلاسيك|pro/.test(text) && !/متوسط|ثانوي|ابتدائي|روضة|تمهيدي/.test(text);
+          if (nextWord && (data.stages || []).length) {
+            sys('✓ المختار: ' + (data.stages || []).map(function (x) { return S.stageName(x); }).join(' · ') + ' — نكمل');
+            go('gender', 'بنين أم بنات؟ (اضغط الزر أو اكتب)');
+            return handle(text, true);
+          }
+          /* الرد كتابةً: «ثانوي» أو «متوسط وثانوي» أو «تم» بعد الاختيار بالأزرار */
+          if (/^تم|تأكيد|اكمل|أكمل/.test(text)) {
+            if (!(data.stages || []).length) { sys('اكتب مرحلة (مثلًا «ثانوي») أو اختر بالأزرار.'); renderLog(); return; }
+            return go('gender');
+          }
+          var picked = [];
+          S.stages.forEach(function (st) { if (text.indexOf(st.name) > -1 || new RegExp(st.id, 'i').test(text)) picked.push(st.id); });
+          ['تمهيدي', 'روضة', 'ابتدائي', 'متوسط', 'ثانوي'].forEach(function (w) {
+            if (text.indexOf(w) === -1) return;
+            var id = S.stageFromText(w);
+            if (id && picked.indexOf(id) === -1) picked.push(id);
+          });
+          if (!picked.length) { sys('لم أفهم المرحلة — اكتب «متوسط» أو «ثانوي» أو اختر بالأزرار أعلاه ثم «تأكيد الاختيار».'); renderLog(); renderQuick(); return; }
+          data.stages = picked;
+          sys('✓ المختار: ' + picked.map(function (x) { return S.stageName(x); }).join(' · '));
+          return go('gender', 'بنين أم بنات؟');
+        }
+        if (step === 'gender') {
+          if (/بنات|بنة|إناث|اناث/.test(text)) { data.gender = 'girls'; return go('plan', 'الباقة؟ «برو» (كل المميزات + تلقرام) أو «كلاسيك».'); }
+          if (/بنين|ذكور|اولاد|أولاد/.test(text)) { data.gender = 'boys'; return go('plan', 'الباقة؟ «برو» (كل المميزات + تلقرام) أو «كلاسيك».'); }
+          sys('اكتب «بنين» أو «بنات» — أيّهما؟'); return renderLog();
+        }
+        if (step === 'plan') {
+          if (/برو|pro/.test(text)) { data.plan = 'pro'; return go('pname', 'اسم مدير المدرسة؟'); }
+          if (/كلاسيك|classic|عادي/.test(text)) { data.plan = 'classic'; return go('pname', 'اسم مدير المدرسة؟'); }
+          sys('اكتب «برو» أو «كلاسيك» — أيّهما؟'); return renderLog();
+        }
+        if (step === 'files') { if (/^تم|سجل|تسجيل|ارفع|خلاص/.test(text)) return run(); sys('ارفع الملفات بزر «📎 ارفق ملف»، أو اكتب «تم» للتسجيل الآن.'); return renderLog(); }
         if (step === 'send') return chooseByText(text);
         sys('الطلب مسجّل — استخدم الأزرار أسفل المحادثة.');
         renderLog();
@@ -284,6 +321,7 @@
       }
       function greet() {
         say('أهلاً بك 👋 أنا موظف التسجيل — أسجّل لك مدرسة كاملة من الصفر: المدرسة · الفصول · الموظفين بحساباتهم · الطلاب، ثم أرسل بيانات الدخول للمدير على تلقرام والإيميل.');
+        sys('يمكنك الإجابة بالكتابة في المربع أسفل، أو بالضغط على الأزرار التي تظهر — ثم «إرسال».');
         say('1) ما اسم المدرسة؟');
       }
 

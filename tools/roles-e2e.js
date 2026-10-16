@@ -519,6 +519,31 @@ async function backupSuite(page, base, hitsFn) {
   const raUi = await page.eval('var t = document.querySelector("#view").innerText; return { chat: t.indexOf("محادثة التسجيل") > -1, ask: t.indexOf("ما اسم المدرسة") > -1, log: t.indexOf("أنا موظف التسجيل") > -1 };');
   ok(raUi.chat && raUi.ask && raUi.log, 'محادثة موظف التسجيل تبدأ بالسؤال الصحيح', JSON.stringify(raUi));
 
+  /* محادثة موظف التسجيل: أزرار تُلمس فعلًا + تغذية راجعة + إكمال بالكتابة (إصلاح بلاغ المالك) */
+  await page.eval('App.go("regagent"); return true;');
+  await B.sleep(900);
+  const chatSend = (v) => page.eval('var i=document.querySelector("#view .chat-input input"); i.value=' + JSON.stringify(v) + '; document.querySelector("#view .chat-input button").click(); return true;');
+  await page.eval('document.querySelector("#view .chat-quick button") /* لا شيء في الخطوة الأولى */; return true;');
+  await chatSend('مدرسة الفحص للمحادثة'); await B.sleep(250);
+  await chatSend('منطقة الرياض'); await B.sleep(250);
+  await chatSend('الرياض'); await B.sleep(350);
+  const chipInfo = await page.eval('var b=document.querySelector("#view .chat-quick .chip"); if(!b) return null;' +
+    'var r=b.getBoundingClientRect(); return { h: Math.round(r.height), bg0: getComputedStyle(b).backgroundColor, label: b.textContent.trim() };');
+  ok(chipInfo && chipInfo.h >= 44, 'أزرار اختيار المراحل بمقاس لمس واضح (≥44 بكسل)', JSON.stringify(chipInfo));
+  const chipClick = await page.eval('var b=[].slice.call(document.querySelectorAll("#view .chat-quick .chip"))[0]; b.click();' +
+    'var b2=[].slice.call(document.querySelectorAll("#view .chat-quick .chip"))[0];' +
+    'return { bg: getComputedStyle(b2).backgroundColor, on: /is-on/.test(b2.className), log: document.querySelector("#view .chat-log").innerText.slice(-70) };');
+  ok(chipClick.on && chipClick.bg !== 'rgb(255, 255, 255)' && /المختار الآن/.test(chipClick.log),
+    'الضغط على زر الاختيار يُظهر تغيّرًا مرئيًا وتغذية راجعة في المحادثة', JSON.stringify({ bg: chipClick.bg, log: chipClick.log.replace(/\n/g, ' | ') }));
+  await chatSend('بنين'); await B.sleep(400);
+  await chatSend('برو'); await B.sleep(400);
+  const carry = await page.eval('return document.querySelector("#view .chat-log").innerText.slice(-120);');
+  ok(/اسم مدير المدرسة/.test(carry), 'الإكمال بالكتابة يعمل ويظهر السؤال التالي بلا تعطّل', carry.replace(/\n/g, ' | '));
+  const prompts = await page.eval('var t=document.querySelector("#view .chat-log").innerText; return { gender:t.indexOf("بنين أم بنات")>-1, plan:/الباقة؟/.test(t) };');
+  ok(prompts.gender && prompts.plan, 'كل خطوة اختيار لها سؤال نصي صريح', JSON.stringify(prompts));
+  await page.eval('var b=[].slice.call(document.querySelectorAll("#view .chat-quick button")).filter(function(x){return x.textContent.indexOf("تسجيل مدرسة أخرى")>-1;})[0]; if(b) b.click(); return true;');
+  await B.sleep(400);
+
   /* ============ التأسيس الآلي: مدرسة كاملة من ملفات العميل ============ */
   const onb = await page.eval(
     'var classRows = [' +

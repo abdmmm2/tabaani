@@ -732,3 +732,16 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .chat-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .chat-input { display: flex; gap: 8px; align-items: center; }
 .chat-input .input { flex: 1; }
+
+/* أزرار الاختيار في محادثة موظف التسجيل — مقاس لمس واضح وحالة مختارة ظاهرة */
+.chat-quick .chip, .chat-quick .btn { min-height: 44px; font-size: var(--fs-sm); display: inline-flex;
+  align-items: center; gap: 6px; padding: 10px 14px; border-radius: 999px; }
+.chat-quick .chip { background: #fff; border: 1.5px solid var(--line); color: var(--ink-900); cursor: pointer; }
+.chat-quick .chip::before { content: '◯'; color: #9AA5A0; font-size: 12px; }
+.chat-quick .chip.is-on { background: #0E5F4C; border-color: #0E5F4C; color: #fff; font-weight: 600; }
+.chat-quick .chip.is-on::before { content: '✓'; color: #FFD98A; }
+.chat-quick .chip:active { transform: scale(.98); }
+@media (max-width: 720px) {
+  .chat-quick { gap: 8px; }
+  .chat-quick .chip, .chat-quick .btn { flex: 1 1 46%; justify-content: center; }
+}
