@@ -1803,6 +1803,37 @@
       return { status: a.status || 'pending', submittedAt: a.submittedAt || '', approvedAt: a.approvedAt || '',
         approvedBy: a.approvedBy || '', docNo: a.docNo || '', reminders: a.reminders || [], note: a.note || '' };
     },
+    /** فحص جاهزية حساب للدخول: يشرح بالضبط لماذا لا يستطيع الدخول (أو ينجح) */
+    accountCheck: function (userId) {
+      var u = store.user(userId);
+      if (!u) return { ok: false, errors: ['لا يوجد حساب بهذا المعرّف'], warnings: [] };
+      var errs = [], warns = [];
+      var uname = String(u.username || '').trim();
+      if (!uname) errs.push('لا يوجد «اسم مستخدم» لهذا الحساب — أضفه من تعديل الحساب.');
+      else {
+        var dup = store.list('users').filter(function (x) {
+          return x.id !== u.id && String(x.username || '').trim().toLowerCase() === uname.toLowerCase();
+        }).length;
+        if (dup) errs.push('اسم المستخدم «' + uname + '» مكرر مع حساب آخر — غيّره.');
+      }
+      if (!String(u.password || '').trim()) errs.push('لا توجد كلمة مرور — اضغط «توليد كلمات مرور» أو ضع كلمة من تعديل الحساب.');
+      if (u.status === 'pending') errs.push('الحساب «بانتظار اعتماد مدير المدرسة» — اعتمده من إدارة المستخدمين.');
+      if (u.status === 'suspended' || u.status === 'disabled' || u.canLogin === false) errs.push('الحساب موقوف — أعد تفعيله.');
+      if (u.schoolId) {
+        var lic = null; try { lic = store.licenseState(u.schoolId); } catch (e) {}
+        if (lic && lic.blocked && u.role !== 'super') errs.push('دخول المدرسة موقوف: ' + (lic.reason === 'fees' ? 'الاشتراك السنوي غير مسدَّد' : 'إيقاف إداري') + ' — يُرفع من «المالية والاشتراكات».');
+      }
+      var tf = null; try { tf = store.twoFactorFor(u); } catch (e) {}
+      if (tf && tf.blocked) errs.push(tf.reason);
+      if (tf && tf.applies) warns.push('يحتاج رمز تحقق يُرسل على تلقرام (' + (u.telegramChatId || '') + ')');
+      if (tf && !tf.applies && !String(u.telegramChatId || '').trim()) warns.push('لا يوجد تحقق بمرحلتين (محادثة تلقرام غير مربوطة) — الدخول بكلمة المرور فقط.');
+      try { if (store.ackLock(u.id)) warns.push('محجوب بالإقرار حتى يعتمد مدير المدرسة إقراره (الشاشات ما تعمل قبلها).'); } catch (e) {}
+      if (u.mustChange) warns.push('مطلوب تغيير كلمة المرور عند أول دخول.');
+      return { ok: errs.length === 0, errors: errs, warnings: warns,
+        canLoginBy: [uname, String(u.email || '').trim()].filter(Boolean),
+        via: uname || String(u.email || '').trim() || '—' };
+    },
+
     /** هل يجب إيقاف المنصة على هذا المستخدم حتى يُعتمد إقراره؟ */
     ackLock: function (userId) {
       var u = userId ? store.user(userId) : (store.session && store.user(store.session.userId));

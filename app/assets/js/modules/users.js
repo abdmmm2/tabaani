@@ -349,6 +349,33 @@
                 username: u.username, roleLabel: roleName(u), schoolName: schoolName(u.schoolId),
                 statusBadge: statusBadge(u.status), phone: u.phone || '—',
                 actions: h('div', { class: 'cluster' }, [
+                  h('button', { class: 'mini-btn', type: 'button', text: '🔎 فحص الدخول', onClick: function () {
+                    var r = S.accountCheck(u.id);
+                    UI.modal({ title: 'فحص دخول «' + u.name + '»', wide: true, body: [
+                      h('div', { class: 'callout ' + (r.ok ? 'ok' : 'bad') }, [
+                        h('div', { html: r.ok ? '<b>يمكنه الدخول ✓</b>' : '<b>لا يستطيع الدخول — الأسباب:</b>' }),
+                        r.errors.length ? h('ul', { style: { margin: '6px 0 0', paddingInlineStart: '20px' } }, r.errors.map(function (e) { return h('li', { text: e }); })) : null
+                      ]),
+                      r.warnings.length ? h('div', { class: 'callout warn', style: { marginTop: '8px' } }, [
+                        h('div', { html: '<b>ملاحظات (لا تمنع الدخول):</b>' }),
+                        h('ul', { style: { margin: '6px 0 0', paddingInlineStart: '20px' } }, r.warnings.map(function (w) { return h('li', { text: w }); }))
+                      ]) : null,
+                      h('div', { class: 'muted', style: { marginTop: '8px' }, text: 'يدخل بـ: ' + (r.canLoginBy.join(' أو ') || '—') })
+                    ], actions: [
+                      { label: '🔑 توليد كلمة مرور له', class: 'btn-primary', onClick: function (close) {
+                        var g = S.generatePasswords({ ids: [u.id] });
+                        if (!g.ok) { UI.toast(g.error || 'تعذّر التوليد', 'bad'); return; }
+                        var row = (g.rows || [])[0] || {};
+                        UI.modal({ title: 'كلمة المرور الجديدة', body: [
+                          h('div', { class: 'callout ok', text: 'أرسلها له برسالة (أو على تلقرام بعد ربط محادثته).' }),
+                          h('div', { html: 'اسم المستخدم: <b dir="ltr">' + row.username + '</b><br>كلمة المرور: <b dir="ltr">' + row.password + '</b>' })
+                        ] });
+                        close();
+                      } },
+                      { label: 'تعديل الحساب', class: 'btn-outline', onClick: function (close) { close(); userEditor(u); } },
+                      { label: 'إغلاق', class: 'btn-outline', onClick: function (close) { close(); } }
+                    ] });
+                  } }),
                   h('button', { class: 'mini-btn', type: 'button', text: 'تعديل', onClick: function () { userEditor(u); } }),
                   h('button', { class: 'mini-btn', type: 'button', text: 'تغيير الدور', onClick: function () {
                     var sel = h('select', { class: 'input' }, S.rolesList().map(function (r) {

@@ -180,6 +180,29 @@ const ok = (c, l, e) => { if (c) { pass++; console.log('  ✓ ' + l + (e ? '  ' 
     'إصلاح ذاتي: إلزام تحقق بلا تلقرام مربوط لا يحجب المدرسة', JSON.stringify({ healed: tfa.healed, enforce: tfa.enforce }));
   ok(tfa.blockedInSim === false, 'وضع المحاكاة (بلا إرسال فعلي) لا يحجب الدخول', 'blocked=' + tfa.blockedInSim);
 
+  /* فحص الدخول لكل حساب: يكشف الأسباب الحقيقية (اسم مستخدم ناقص/مكرر · كلمة مرور · إيقاف · ترخيص) */
+  const accC = await page.eval(
+    'var out = {};' +
+    'var sc = (Store.list("schools")[0] || {}).id;' +
+    'var u1 = Store.addUser({ name: "فحص أ", role: "teacher", schoolId: sc, username: "chk-a", password: "Chk@2026" });' +
+    'var g1 = Store.accountCheck(u1.user.id);' +
+    'var u2 = Store.addUser({ name: "فحص ب", role: "teacher", schoolId: sc, username: "chk-b", password: "Chk@2026" });' +
+    'Store.update("users", u2.user.id, { username: "" });' +
+    'var g2 = Store.accountCheck(u2.user.id);' +
+    'var u3 = Store.addUser({ name: "فحص ج", role: "teacher", schoolId: sc, username: "chk-c", password: "Chk@2026" });' +
+    'Store.update("users", u3.user.id, { status: "pending" });' +
+    'var g3 = Store.accountCheck(u3.user.id);' +
+    'var u4 = Store.addUser({ name: "فحص د", role: "teacher", schoolId: sc, username: "chk-d", password: "Chk@2026" });' +
+    'Store.update("users", u4.user.id, { password: "" });' +
+    'var g4 = Store.accountCheck(u4.user.id);' +
+    'var dup = Store.addUser({ name: "فحص هـ", role: "teacher", schoolId: sc, username: "chk-a", password: "Chk@2026" });' +
+    'var g5 = dup.ok ? Store.accountCheck(dup.user.id) : { errors: ["اسم مكرر رُفض عند الإضافة"] };' +
+    'return { ok: g1.ok, e2: g2.errors.join(" | "), e3: g3.errors.join(" | "), e4: g4.errors.join(" | "), e5: g5.errors.join(" | "),' +
+    ' via: g1.canLoginBy.join(" أو ") };');
+  ok(accC.ok === true, 'فحص الدخول: حساب سليم يُعلن «يمكنه الدخول»', 'via=' + accC.via);
+  ok(/اسم مستخدم/.test(accC.e2) && /كلمة مرور/.test(accC.e4), 'فحص الدخول يكشف: لا اسم مستخدم · لا كلمة مرور', JSON.stringify({ e2: accC.e2, e4: accC.e4 }));
+  ok(/بانتظار اعتماد/.test(accC.e3), 'فحص الدخول يكشف: الحساب بانتظار اعتماد المدير', accC.e3);
+
   const errs = (await B.pageErrors(page)).map(String).filter((e) => !/favicon|manifest/i.test(e));
   ok(errs.length === 0, 'صفر أخطاء JS على قاعدة قديمة', errs.slice(0, 3).join(' | '));
 
