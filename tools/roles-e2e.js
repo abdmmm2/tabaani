@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 15, principal: 17, deputy: 16, guidance: 9, teacher: 9,
+  super: 16, principal: 18, deputy: 17, guidance: 9, teacher: 10,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 4, specialist: 2
 };
@@ -577,6 +577,37 @@ async function backupSuite(page, base, hitsFn) {
     'return { n: rows.length, changed: after !== oldp, untouched: !other || otherAfter === oldOther, before: before };');
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
+
+  /* كشوف الدرجات: محلّل الإملاء الصوتي (أرقام عربية + كلمات) وربط الاسم والعمود */
+  const parse = await page.eval(
+    'function P(t) { var r = App.grades.parseVoice(t); return { name: r.name, value: r.value, column: r.column }; }' +
+    'return { a: P("محمد عبدالله النفيعي ٣ درجات مشاركة"), b: P("ساره العتيبي ثلاث درجات واجب"),' +
+    ' c: P("خالد خمس درجات اختبار"), d: P("نوره درجتان تسميع"), e: P("فهد 1.5 سلوك") };');
+  ok(parse.a.value === 3 && parse.a.column === 'participation' && /محمد/.test(parse.a.name),
+    'الإملاء الصوتي: أرقام عربية + العمود + الاسم', JSON.stringify(parse.a));
+  ok(parse.b.value === 3 && parse.b.column === 'homework' && parse.c.value === 5 && parse.c.column === 'quiz',
+    'أرقام منطوقة بالكلمات (ثلاث/خمس) وأعمدة (واجب/اختبار)', JSON.stringify({ b: parse.b, c: parse.c }));
+  ok(parse.d.value === 2 && parse.d.column === 'recitation' && parse.e.value === 1.5 && parse.e.column === 'behavior',
+    '«درجتان» والكسور العشرية تُفهم صحيحة', JSON.stringify({ d: parse.d, e: parse.e }));
+
+  /* المطابقة مع طلاب الفصل + الحفظ + الطباعة */
+  const gr = await page.eval(
+    'var k = Store.list("classes")[0]; var sts = Store.studentsOf(k.id);' +
+    'var hit = Store.findStudentByName(sts[0].name.split(" ").slice(0, 2).join(" "), [k.id]);' +
+    'var vm = App.grades.voiceMatch(sts[1].name.split(" ")[0] + " 4 درجات مشاركة", [k.id]);' +
+    'var scope = App.grades.voiceMatch(sts[0].name.split(" ")[0] + " 2 درجات واجب", [Store.list("classes")[3].id]);' +
+    'var before = Store.studentPoints(sts[0].id, "participation");' +
+    'var r = Store.saveGradeSheet({ classId: k.id, subject: "الرياضيات", column: "participation", how: "صوتي",' +
+    ' rows: [{ studentId: sts[0].id, name: sts[0].name, value: 4 }, { studentId: sts[1].id, name: sts[1].name, value: 3, how: "يدوي" }] });' +
+    'var after = Store.studentPoints(sts[0].id, "participation");' +
+    'var sheets = Store.gradeSheets({ classId: k.id });' +
+    'return { hit: !!hit && hit.student.id === sts[0].id, vmName: vm.student ? vm.student.name : "", vmVal: vm.value, vmCol: vm.column,' +
+    ' outside: scope.student ? scope.student.name : null, saved: r.ok, before: before, after: after, sheets: sheets.length, rows: sheets.length ? sheets[0].rows.length : 0 };');
+  ok(gr.hit === true, 'مطابقة اسم الطالب داخل الفصل تعمل', 'hit=' + gr.hit);
+  ok(gr.vmVal === 4 && gr.vmCol === 'participation' && gr.vmName, 'الإملاء يربط الاسم بالطالب والعمود المطلوب', JSON.stringify({ n: gr.vmName, v: gr.vmVal, c: gr.vmCol }));
+  ok(gr.outside === null, 'المطابقة محصورة في فصول المعلم (لا طالب من فصل آخر)', 'outside=' + gr.outside);
+  ok(gr.saved && gr.sheets >= 1 && gr.rows === 2 && gr.after === gr.before + 4,
+    'حفظ الكشف يزيد رصيد الطالب في العمود الصحيح', JSON.stringify({ before: gr.before, after: gr.after, rows: gr.rows }));
 
   /* ربط تلقرام للمشرف العام: خطوات + حقول + فحص حقيقي بلا نجاح كاذب */
   const tg = await page.eval(

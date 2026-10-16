@@ -121,7 +121,7 @@
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
       reports: [], telegram: [], audit: [], notif: [], exits: [],
-      entryPermits: [], messages: [], serviceRequests: [], pledges: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [],
       educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
@@ -561,7 +561,7 @@
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
       faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
-      entryPermits: [], messages: [], serviceRequests: [], pledges: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
       letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
         mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
     };
@@ -572,7 +572,7 @@
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
     'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages',
-    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates', 'serviceRequests', 'pledges'];
+    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates', 'serviceRequests', 'pledges', 'gradeSheets'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -1596,6 +1596,84 @@
       u.sentTo = u.sentTo || [];
       if (u.sentTo.indexOf(to) === -1) u.sentTo.push(to);
       save(); return u;
+    },
+
+    /* =====================================================================
+       كشوف الدرجات والمشاركات (إدخال يدوي · صوتي · صورة)
+       ===================================================================== */
+    GRADE_COLUMNS: [
+      { id: 'participation', label: 'مشاركة', short: 'مشاركة', kind: 'points' },
+      { id: 'homework', label: 'واجب', short: 'واجب', kind: 'points' },
+      { id: 'quiz', label: 'اختبار قصير', short: 'اختبار', kind: 'points' },
+      { id: 'project', label: 'مشروع', short: 'مشروع', kind: 'points' },
+      { id: 'recitation', label: 'تسميع', short: 'تسميع', kind: 'points' },
+      { id: 'behavior', label: 'سلوك', short: 'سلوك', kind: 'points' },
+      { id: 'duty', label: 'مهام صفية', short: 'مهام', kind: 'points' },
+      { id: 'exam', label: 'درجة اختبار', short: 'اختبار', kind: 'score' }
+    ],
+    gradeColumn: function (id) {
+      return store.GRADE_COLUMNS.filter(function (c) { return c.id === id || c.label === id || c.short === id; })[0] || store.GRADE_COLUMNS[0];
+    },
+    gradeSheets: function (f) {
+      f = f || {};
+      var sc = store.searchScope();
+      return store.list('gradeSheets').filter(function (g) {
+        if (sc.kind === 'school' && g.schoolId !== sc.schoolId) return false;
+        if (sc.kind === 'self' && g.by !== sc.userId) return false;
+        if (f.classId && g.classId !== f.classId) return false;
+        if (f.subject && g.subject !== f.subject) return false;
+        if (f.schoolId && g.schoolId !== f.schoolId) return false;
+        if (f.column && g.column !== f.column) return false;
+        return true;
+      }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    },
+    saveGradeSheet: function (d) {
+      d = d || {};
+      var me = store.session || {};
+      var rows = (d.rows || []).filter(function (r) { return r && r.studentId; }).map(function (r) {
+        return { studentId: r.studentId, name: r.name || ((store.student(r.studentId) || {}).name || ''), value: Number(r.value) || 0,
+          before: r.before === undefined ? null : r.before, how: r.how || 'يدوي' };
+      });
+      if (!rows.length) return { ok: false, error: 'لا درجات لحفظها' };
+      var sc = store.klass(d.classId) || {};
+      var g = store.insert('gradeSheets', {
+        schoolId: d.schoolId || me.schoolId || sc.schoolId, classId: d.classId,
+        subject: String(d.subject || '').trim(), column: d.column || 'participation',
+        columnLabel: store.gradeColumn(d.column).label, termId: (db.settings || {}).activeTermId || '',
+        how: d.how || 'يدوي', rows: rows, note: String(d.note || '').trim(),
+        photoId: d.photoId || '', by: me.userId || '', byName: me.name || '', at: now(),
+        total: rows.reduce(function (a, r) { return a + (Number(r.value) || 0); }, 0)
+      });
+      rows.forEach(function (r) {
+        var st = store.student(r.studentId);
+        if (st) { st.points = st.points || {}; st.points[store.gradeColumn(d.column).id] = (st.points[store.gradeColumn(d.column).id] || 0) + (Number(r.value) || 0); }
+      });
+      save();
+      return { ok: true, sheet: g };
+    },
+    studentPoints: function (studentId, columnId) {
+      var st = store.student(studentId) || {};
+      var p = st.points || {};
+      return columnId ? (p[store.gradeColumn(columnId).id] || 0) : p;
+    },
+    /** بحث اسم الطالب داخل فصول محددة (للإدخال الصوتي) */
+    findStudentByName: function (q, classIds) {
+      var term = String(q || '').trim();
+      if (!term) return null;
+      var norm = function (t) { return String(t || '').replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim(); };
+      var t = norm(term), best = null, score = 0;
+      store.list('students').forEach(function (st) {
+        if (classIds && classIds.length && classIds.indexOf(st.classId) === -1) return;
+        var n = norm(st.name);
+        if (!n) return;
+        if (n === t) { best = st; score = 100; return; }
+        var parts = t.split(' ').filter(Boolean);
+        var hits = parts.filter(function (w) { return w.length > 2 && n.indexOf(w) > -1; }).length;
+        var s2 = parts.length ? (hits / parts.length) * 90 - Math.abs(n.length - t.length) * 0.2 : 0;
+        if (n.indexOf(t) > -1) s2 = Math.max(s2, 80);
+        if (s2 > score) { score = s2; best = st; }
+      });
+      return score >= 45 ? { student: best, score: Math.round(score), confident: score >= 70 } : null;
     },
 
     /* =====================================================================
