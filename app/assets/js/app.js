@@ -446,6 +446,16 @@
       var duty = S.todayDutyFor(S.session.userId);
       if (duty) main.insertBefore(App.dutyBanner(duty), content);
 
+      /* لافتة تحديثات المنصة (لكل دور ما يخصه) */
+      try {
+        var reg = App.modules || {};
+        var canSee = function (role, modIds) { return (modIds || []).some(function (id) {
+          return !!reg[id] && (reg[id].roles || []).indexOf(role) > -1;
+        }); };
+        var unseen = S.unseenUpdates(S.session.userId, function (role, ids) { return canSee(role, ids); });
+        if (unseen.length) main.insertBefore(App.updatesBanner(unseen, function () { App.route(); }), content);
+      } catch (e) {}
+
       /* محاولة رفع أي نسخة معلّقة (انقطاع سابق) */
       if (S.session && S.session.role === 'super') window.App.cloud.retryPending();
 

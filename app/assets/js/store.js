@@ -571,7 +571,7 @@
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
     'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages',
-    'paymentRequests', 'invoices', 'expenses', 'tickets'];
+    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -1532,6 +1532,67 @@
         .replace(/[^\u0621-\u064A0-9a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
     },
     /** ردّ البوت بلهجة سعودية — يرجّع {agent, text, category, subject, matched, offerTicket} */
+    /* =====================================================================
+       تحديثات المنصة: نشر + إشعار حقيقي (إيميل/تلقرام) + لافتة عند الدخول
+       ===================================================================== */
+    /** التحديثات المنشورة (الأحدث أولًا) */
+    updates: function () { return (db.updates || []).slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }); },
+    addUpdate: function (d) {
+      d = d || {};
+      var title = String(d.title || '').trim();
+      if (!title) return { ok: false, error: 'عنوان التحديث مطلوب' };
+      var u = store.insert('updates', {
+        title: title, body: String(d.body || '').trim(), version: String(d.version || ''),
+        audience: (d.audience && d.audience.length) ? d.audience : ['super'],
+        sections: d.sections || [], at: now(), by: (store.session && store.session.name) || '',
+        sentTo: [], seenBy: []
+      });
+      save();
+      return { ok: true, update: u };
+    },
+    updateAudienceName: function (u) {
+      var a = (u && u.audience) || [];
+      if (a.indexOf('all') > -1) return 'كل المستخدمين';
+      if (a.length === 1 && a[0] === 'super') return 'المشرف العام';
+      return a.map(function (r) { return store.roleLabel(r, null); }).join(' · ');
+    },
+    /** من يستحق هذا التحديث (بالمعرّف) — والفئات: super أو أدوار أو أقسام (وحدات) */
+    updateTargets: function (u, canSeeModule) {
+      var a = (u && u.audience) || [], sec = (u && u.sections) || [];
+      return store.list('users').filter(function (x) {
+        if (a.indexOf('all') > -1) return true;
+        if (a.indexOf(x.role) > -1) return true;
+        if (sec.length && canSeeModule && canSeeModule(x.role, sec)) return true;
+        return false;
+      });
+    },
+    /** التحديثات التي لم يرَها هذا المستخدم (بحسب دوره/أقسامه) */
+    unseenUpdates: function (userId, canSeeModule, role) {
+      var me = userId || (store.session && store.session.userId);
+      var r = role || (store.session && store.session.role);
+      return store.updates().filter(function (u) {
+        if ((u.seenBy || []).indexOf(me) > -1) return false;
+        var a = u.audience || [];
+        if (a.indexOf('all') > -1) return true;
+        if (a.indexOf(r) > -1) return true;
+        if ((u.sections || []).length && canSeeModule && canSeeModule(r, u.sections)) return true;
+        return false;
+      });
+    },
+    markUpdateSeen: function (id, userId) {
+      var u = store.find('updates', id); if (!u) return null;
+      u.seenBy = u.seenBy || [];
+      var me = userId || (store.session && store.session.userId);
+      if (me && u.seenBy.indexOf(me) === -1) u.seenBy.push(me);
+      save(); return u;
+    },
+    markUpdateSent: function (id, to) {
+      var u = store.find('updates', id); if (!u) return null;
+      u.sentTo = u.sentTo || [];
+      if (u.sentTo.indexOf(to) === -1) u.sentTo.push(to);
+      save(); return u;
+    },
+
     /** لوحة تحكم المشرف العام: إحصاءات + إيرادات + توزيع لكل مدرسة ودور (بنداء واحد) */
     platformDashboard: function () {
       var schools = store.list('schools');

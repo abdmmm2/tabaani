@@ -765,3 +765,10 @@ body.lp-open .lp-veil { opacity: 1; pointer-events: auto; }
 .ctl-user { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: var(--fs-sm); cursor: pointer; }
 .ctl-user input { width: 18px; height: 18px; }
 .ctl-uname { flex: 1; }
+
+/* لافتة تحديثات المنصة */
+.update-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 14px;
+  background: #EAF3FF; border: 1px solid #C7DEFF; border-radius: var(--r-md); padding: 10px 14px; }
+.update-banner .ub-ic { font-size: 20px; }
+.update-banner .ub-txt { flex: 1 1 260px; font-size: var(--fs-sm); line-height: 1.8; }
+.update-banner .ub-txt strong { color: #1E4C8A; }

@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 11, principal: 15, deputy: 16, guidance: 9, teacher: 9,
+  super: 12, principal: 15, deputy: 16, guidance: 9, teacher: 9,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 4
 };
@@ -561,6 +561,41 @@ async function backupSuite(page, base, hitsFn) {
     'return { n: rows.length, changed: after !== oldp, untouched: !other || otherAfter === oldOther, before: before };');
   ok(pwInd.n === 1 && pwInd.changed === true && pwInd.untouched === true,
     'توليد كلمات المرور لأفراد محددين: يغيّر المحدد فقط ويترك الباقي', JSON.stringify(pwInd));
+
+  /* تحديثات المنصة: نشر + استهداف (المشرف العام كامل / الأدوار حسب أقسامها) + لافتة + إرسال حقيقي */
+  const upd = await page.eval(
+    'var sup = Store.addUpdate({ title: "تحديث للمشرف العام", body: "ميزات جديدة في لوحة التحكم", version: "v62", audience: ["super"] });' +
+    'var tch = Store.addUpdate({ title: "تحديث للمعلمين", body: "تحسين التحضير", audience: ["teacher"] });' +
+    'var sec = Store.addUpdate({ title: "تحديث قسم الحضور", body: "سجل الحضور أسرع", sections: ["attendance"] });' +
+    'var supTargets = Store.updateTargets(sup.update, function (r, ids) { return ids.some(function (id) { return false; }); });' +
+    'var tchTargets = Store.updateTargets(tch.update);' +
+    'var secTargets = Store.updateTargets(sec.update, function (r, ids) { return r === "teacher"; });' +
+    'return { ok: sup.ok && tch.ok && sec.ok, supN: supTargets.length, supRoles: supTargets.map(function (u) { return u.role; }).join(","),' +
+    ' tchRoles: tchTargets.map(function (u) { return u.role; }).join(","), secN: secTargets.length, total: Store.updates().length };');
+  ok(upd.ok && /^super/.test(upd.supRoles) && upd.supN >= 1, 'تحديث «المشرف العام» يستهدفه وحده', JSON.stringify(upd));
+  ok(/^teacher/.test(upd.tchRoles) && upd.tchRoles.indexOf('student') === -1, 'تحديث «المعلمين» يذهب للمعلمين فقط', upd.tchRoles);
+  ok(upd.secN >= 1, 'تحديث «قسم الحضور» يذهب لمن يفتح ذلك القسم', 'n=' + upd.secN);
+
+  /* اللافتة: تظهر لمن لم يقرأ ثم تختفي بعد «تم» */
+  const banner = await page.eval('var u = Store.updates()[0];' +
+    'var before = Store.unseenUpdates(Store.session.userId, function (r, ids) { return r === "teacher"; }).length;' +
+    'var b = App.updatesBanner(Store.unseenUpdates(Store.session.userId, function (r, ids) { return r === "teacher"; }), null);' +
+    'document.body.appendChild(b);' +
+    'var shown = !!document.querySelector(".update-banner");' +
+    'var btn = [].slice.call(document.querySelectorAll(".update-banner button")).filter(function (x) { return x.textContent.indexOf("تم") > -1; })[0];' +
+    'btn.click();' +
+    'var after = Store.unseenUpdates(Store.session.userId, function (r, ids) { return r === "teacher"; }).length;' +
+    'return { before: before, shown: shown, after: after, gone: !document.querySelector(".update-banner") };');
+  ok(banner.before >= 1 && banner.shown && banner.after < banner.before && banner.gone,
+    'اللافتة تظهر عند وجود تحديث لم يُقرأ وتختفي بعد «تم»', JSON.stringify(banner));
+
+  /* إرسال حقيقي: تقرير صريح (تلقرام/إيميل) بلا نجاح كاذب */
+  const snd = await page.eval('window.__ur = null; var u = Store.updates()[0]; App.sendUpdate(u, "both", function (r) { window.__ur = r; }); return true;');
+  void snd;
+  await B.sleep(2500);
+  const ur = await page.eval('return window.__ur;');
+  ok(ur && typeof ur.total === 'number' && typeof ur.tg === 'number' && typeof ur.mail === 'number' && Array.isArray(ur.failed),
+    'إرسال التحديث يعيد تقريرًا صريحًا (تلقرام · إيميل · المتفشّلون)', JSON.stringify(ur && { total: ur.total, tg: ur.tg, mail: ur.mail, failed: ur.failed.length }));
 
   /* جنس المستخدم الفردي + فلتر الوظائف في لوحة التحكم */
   await loginAsRaw(page, base, OWNER.username, OWNER.password);   /* البلوك يحتاج جلسة مشرف عام */
