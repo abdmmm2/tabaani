@@ -773,6 +773,29 @@
         draw();
       }
 
+      /* ===== كلمات المرور (مدير المدرسة): توليد وتسليم ===== */
+      function pwPanel() {
+        var sid = S.session.schoolId;
+        function gen(kind, label) {
+          UI.confirm('توليد كلمات مرور جديدة لـ ' + label + '؟\n• لكل حساب كلمة مختلفة\n• تُحدَّث على السحابة فيدخلون من أي جهاز ✓\n• يُطلب منهم تغييرها عند أول دخول ✓', { ok: 'توليد' })
+            .then(function (yes) {
+              if (!yes) return;
+              var rows = S.generatePasswords({ schoolId: sid, kind: kind, excludeSelf: true });
+              UI.toast('وُلّدت كلمات مرور لـ ' + rows.length + ' حسابًا', rows.length ? 'ok' : 'warn');
+              if (rows.length) UI.passwordSheet(rows, { title: 'كلمات المرور — ' + label });
+            });
+        }
+        return UI.panel('كلمات المرور', 'ولّد كلمات مرور جديدة وسلّمها — وتُحدَّث سحابيًا حتى يدخلوا من أي جهاز.', [
+          h('button', { class: 'btn btn-primary', type: 'button', text: 'توليد للموظفين', onClick: function () { gen('staff', 'الموظفين'); } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: 'توليد للطلاب', onClick: function () { gen('students', 'الطلاب'); } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: 'توليد للجميع', onClick: function () { gen(null, 'كل الحسابات'); } }),
+          h('button', { class: 'btn btn-soft', type: 'button', text: 'عرض آخر كشف', onClick: function () { UI.passwordSheet(S.lastGeneratedPasswords(), { title: 'آخر كشف كلمات مرور' }); } })
+        ], [
+          h('div', { class: 'muted', text: 'حسابات مدرستك: ' + S.usersQuery({ schoolId: sid }).length + ' — يمكنك أيضاً ربط محادثة تلقرام لكل موظف من بطاقته.' })
+        ]);
+      }
+      var _drawStaff = draw;
+      draw = function () { _drawStaff(); view.appendChild(pwPanel()); };
       draw();
     }
   });
