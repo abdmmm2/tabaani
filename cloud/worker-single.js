@@ -857,7 +857,7 @@ export default {
       }
       else if (p === '/api/me/password' && ctx && req.method === 'POST') res = await handleMyPassword(env, req, ctx);
       else if (p === '/api/me/ping' && ctx && req.method === 'POST') res = await handlePing(env, ctx);
-      else if (p === '/api/presence' && ctx && req.method === 'GET') res = await handlePresence(env, ctx);
+      else if (p === '/api/presence' && ctx && req.method === 'GET') res = await handlePresence(env, ctx, req);
       else if (p === '/api/me/data' && ctx && req.method === 'GET') res = await handleMyData(env, ctx);
       else if (p === '/api/me/data' && ctx && (req.method === 'POST' || req.method === 'PUT')) res = await handleMyWrite(env, req, ctx);
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
@@ -1343,8 +1343,20 @@ async function handlePing(env, ctx) {
   await run(env, 'UPDATE users SET last_seen = ?, online_since = ? WHERE id = ?', now, since, ctx.user.id);
   return json({ ok: true, at: now, since: since });
 }
-async function handlePresence(env, ctx) {
+async function handlePresence(env, ctx, req) {
   const u = ctx.user, now = Math.floor(Date.now() / 1000);
+  const wantSchool = clean(new URL(req.url).searchParams.get('schoolId') || '', 60);
+  const schoolRows = async (sid) => all(env, `SELECT id, name, role, username, status, last_seen, online_since FROM users
+    WHERE school_id = ? AND status = 'active' ORDER BY role, name`, sid);
+  const mapRows = (rows) => rows.map(function (r) {
+    return { id: r.id, name: r.name, role: r.role, username: r.username,
+      online: Number(r.last_seen || 0) >= now - ONLINE_WINDOW, lastSeen: Number(r.last_seen || 0), since: Number(r.online_since || 0) };
+  });
+  /* المشرف العام: تصفية مدرسة محددة (اختياري) */
+  if (u.role === 'super' && wantSchool) {
+    const rows = await schoolRows(wantSchool);
+    return json({ ok: true, scope: 'school', now, schoolId: wantSchool, rows: mapRows(rows) });
+  }
   if (u.role === 'super') {
     const rows = await all(env, `SELECT school_id, COUNT(*) AS n,
       SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS online, MAX(last_seen) AS last
@@ -1361,12 +1373,8 @@ async function handlePresence(env, ctx) {
   }
   if (u.role !== 'principal' && u.role !== 'deputy') return json({ ok: false, msg: 'غير مصرّح.' }, 403);
   if (!u.school_id) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
-  const rows = await all(env, `SELECT id, name, role, username, status, last_seen, online_since FROM users
-    WHERE school_id = ? AND status = 'active' ORDER BY role, name`, u.school_id);
-  return json({ ok: true, scope: 'school', now, schoolId: u.school_id, rows: rows.map(function (r) {
-    return { id: r.id, name: r.name, role: r.role, username: r.username,
-      online: Number(r.last_seen || 0) >= now - ONLINE_WINDOW, lastSeen: Number(r.last_seen || 0), since: Number(r.online_since || 0) };
-  }) });
+  const rows = await schoolRows(u.school_id);
+  return json({ ok: true, scope: 'school', now, schoolId: u.school_id, rows: mapRows(rows) });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */
