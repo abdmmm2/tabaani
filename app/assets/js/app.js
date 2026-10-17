@@ -1260,6 +1260,9 @@
       ]));
       panel.appendChild(h('div', { class: 'form-grid' }, [nameF.wrap, userF.wrap, mailF.wrap, p1.wrap, p2.wrap]));
       panel.appendChild(err);
+      panel.appendChild(h('div', { class: 'callout info', text: 'لديك حساب بالفعل (على السحابة أو جهاز آخر)؟ لا تُنشئ حسابًا جديدًا — اضغط «تسجيل الدخول» بالأسفل ✓' }));
+      panel.appendChild(h('button', { class: 'btn btn-outline btn-block', type: 'button', text: 'لديك حساب؟ تسجيل الدخول',
+        onClick: function () { App.openLogin(true); } }));
       panel.appendChild(h('button', { class: 'btn btn-primary btn-lg', type: 'button', text: 'إنشاء الحساب والبدء', onClick: function () {
         err.hidden = true;
         if (!nameF.input.value.trim()) { err.hidden = false; err.textContent = 'اكتب اسم المشرف العام'; return; }
