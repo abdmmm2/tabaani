@@ -61,7 +61,7 @@
       /* الباقة والاشتراك — مباشرة من لوحة التحكم (إيقاف/تفعيل/سداد لكل مدرسة) */
       (function () {
         var schools = S.list('schools');
-        if (!schools.length) return null;
+        if (!schools.length) return UI.panel('الباقة والاشتراك', 'لا مدارس بعد', [h('button', { class: 'btn btn-primary', type: 'button', text: 'إضافة مدرسة', onClick: function () { state.view = 'schools'; draw(); } })], [UI.empty('أضف مدرسة أولًا لعرض حالتها.')]);
         if (!App._dashSchool || !schools.some(function (s) { return s.id === App._dashSchool; })) App._dashSchool = schools[0].id;
         var st = S.licenseState(App._dashSchool) || {};
         var sel = h('select', { class: 'input', onchange: function (e) { App._dashSchool = e.target.value; App.route(); } },
@@ -320,7 +320,7 @@
       : state.view === 'finance' ? financeView(d)
       : home(d);
     if (state.view !== 'home') hostRef.appendChild(nav);
-    body.forEach(function (el) { hostRef.appendChild(el); });
+    body.filter(Boolean).forEach(function (el) { hostRef.appendChild(el); });   /* تجاهل العناصر الفارغة */
   }
 
   App.controlPanel = function (view, legacy) {

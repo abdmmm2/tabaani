@@ -38,6 +38,8 @@
   /* --------------------------------------------------------------- النوافذ */
   function modal(opts) {
     var backdrop = h('div', { class: 'modal-backdrop' });
+    /* إغلاق بالضغط على الخلفية (مفيد على الجوال حين يكون زر × بعيدًا) */
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) { try { backdrop.remove(); } catch (x) {} } });
     var box = h('div', { class: 'modal' + (opts.wide ? ' modal-wide' : ''), role: 'dialog', 'aria-modal': 'true' });
     var close = function () { backdrop.remove(); document.removeEventListener('keydown', onKey); };
     var onKey = function (e) { if (e.key === 'Escape') close(); };

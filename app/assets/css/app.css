@@ -843,3 +843,16 @@ body.ack-locked .support-fab { display: none !important; }
   .modal-body { padding: 12px; }
   .modal-head { padding: 12px 14px; }
 }
+
+/* ===== نوافذ الجوال: لا تتجاوز الشاشة، ورأس ثابت يحمل زر × ===== */
+.modal-backdrop { align-items: center; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.modal { max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); }
+.modal-head { position: sticky; top: 0; z-index: 3; background: var(--surface); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+@media (max-width: 700px) {
+  .modal-backdrop { padding: 4px; align-items: flex-start; }
+  .modal { width: 100%; margin: 4px 0; max-height: calc(100dvh - 10px); border-radius: 14px; }
+  .modal-head { padding: 9px 11px; }
+  .modal-head h3 { font-size: 15px; }
+  .modal-body { padding: 11px 12px; }
+  .modal-foot { padding: 9px 12px; position: sticky; bottom: 0; background: var(--bg-soft); }
+}
