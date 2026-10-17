@@ -97,7 +97,7 @@
           h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '4px' },
             text: 'حسابات هذا الجهاز: ' + S.list('users').length + ' · الإصدار v' + App.version() })]),
         h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)' },
-          text: (App.signIn ? 'وضع الدخول: سحابي ✓' : 'وضع الدخول: محلي ✗ (نسخة قديمة — اضغط تحديث قسري)') + ' · الإصدار v' + App.version() }),
+          text: (App.signIn ? ('وضع الدخول: سحابي ✓ · ' + String(App.cloudUrl ? App.cloudUrl() : '').replace(/^https?:\/\//, '')) : 'وضع الدخول: محلي ✗ (نسخة قديمة — اضغط تحديث قسري)') + ' · الإصدار v' + App.version() }),
         firstTime ? h('div', { class: 'callout info', text: 'جهاز جديد؟ ادخل بحسابك العادي (اسم المستخدم أو البريد) — بياناتك تأتي من السحابة ✓' }) : null,
         App.loginPanel(),
         firstTime ? h('div', { style: { marginTop: '10px' } }, [

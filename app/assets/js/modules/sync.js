@@ -123,7 +123,8 @@
 
   /** الدخول الموحّد: يتحقق من الخادم أولًا (أي جهاز) ثم محليًا كاحتياط (بلا إنترنت) */
   App.signIn = function (username, password, onOk, onErr) {
-    var cfg = cloudCfg();
+    /* الدخول دائمًا عبر الخادم الرسمي (لا نعتمد على رابط مزامنة قديم قد يكون خاطئًا) */
+    var cfg = { url: DEFAULT_CLOUD, token: '' };
     var local = function () {
       var res = S.authenticate(username, password);
       if (!res.ok) {
