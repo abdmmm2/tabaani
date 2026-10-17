@@ -407,6 +407,7 @@ export default {
       else if (p === '/api/admin/users' && ctx && ctx.user.role === 'super') res = await handleAdminUsers(env);
       else if (p === '/api/admin/setpass' && ctx && ctx.user.role === 'super') res = await handleAdminSetPass(env, req, ctx);
       else if (p === '/api/admin/passwords' && ctx) res = await handleBulkPasswords(env, req, ctx);
+      else if (p === '/api/admin/deleteuser' && ctx) res = await handleDeleteUser(env, req, ctx);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -818,6 +819,26 @@ async function handleBulkPasswords(env, req, ctx) {
   await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'passwords_generated',
     'حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, updated, skipped });
+}
+
+/* حذف حساب صريح: المشرف العام لأي حساب، والمدير لحسابات مدرسته فقط */
+async function handleDeleteUser(env, req, ctx) {
+  const isSuper = ctx.user.role === 'super';
+  if (!isSuper && ctx.user.role !== 'principal') return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const un = clean(body.username, 60).toLowerCase();
+  if (!un) return json({ ok: false, msg: 'اسم المستخدم مطلوب.' }, 400);
+  if (un === String(ctx.user.username || '').toLowerCase()) return json({ ok: false, msg: 'لا يمكنك حذف حسابك الحالي.' }, 400);
+  const acc = await one(env, 'SELECT id, role, school_id FROM users WHERE lower(username) = ?', un);
+  if (!acc) return json({ ok: false, msg: 'لا حساب بهذا الاسم.' }, 404);
+  if (!isSuper && String(acc.school_id || '') !== String(ctx.user.school_id || '')) return json({ ok: false, msg: 'خارج نطاق مدرستك.' }, 403);
+  if (acc.role === 'super') {
+    const n = await one(env, "SELECT COUNT(*) AS n FROM users WHERE role = 'super' AND status = 'active'");
+    if (Number(n && n.n) <= 1) return json({ ok: false, msg: 'لا يمكن حذف آخر مشرف عام.' }, 400);
+  }
+  await run(env, "UPDATE users SET status = 'deleted', token_version = COALESCE(token_version,0) + 1 WHERE id = ?", acc.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'user_deleted', 'target=' + un, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, msg: 'حُذف الحساب.' });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

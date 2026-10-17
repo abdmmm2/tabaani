@@ -4218,8 +4218,11 @@
         return { ok: false, error: 'لا يمكن حذف المشرف العام الأخير' };
       }
       if (u.id === (store.session.userId || '')) return { ok: false, error: 'لا يمكنك حذف حسابك الحالي' };
+      var uname = u.username;
       store.db.users = store.db.users.filter(function (x) { return x.id !== id; });
       save();
+      /* الوضع السحابي: حذف صريح على الخادم أيضًا (يعطّل الدخول فورًا) */
+      if (cloud && uname) cloudPost('/api/admin/deleteuser', { username: uname }, 'POST').catch(function () {});
       return { ok: true };
     },
     resetUserPassword: function (id, pass) {
