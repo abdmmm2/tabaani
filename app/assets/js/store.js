@@ -787,6 +787,8 @@
       var u = (userId && typeof userId === 'object') ? userId : store.user(userId);
       if (!u) return { applies: false, blocked: false, reason: 'مستخدم غير معروف' };
       if (u.role === 'student') return { applies: false, blocked: false, reason: 'الطلاب لا يخضعون للتحقق بمرحلتين' };
+      /* المشرف العام/المالك: مسار الاسترجاع — لا يُطلب منه رمز أبدًا */
+      if (u.role === 'super' || u.owner) return { applies: false, blocked: false, reason: 'حساب المشرف العام — بلا رمز تحقق' };
       if (u.schoolId && !store.isPro(u.schoolId)) {
         return { applies: false, blocked: false, pro: false, reason: 'التحقق بمرحلتين يُرسل الرمز عبر تلقرام — متاح في باقة «تابعني برو»' };
       }
