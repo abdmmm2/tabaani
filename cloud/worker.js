@@ -117,6 +117,8 @@ async function auth(env, req) {
   if (!p) return null;
   const u = await one(env, 'SELECT * FROM users WHERE id = ?', p.uid);
   if (!u || u.status !== 'active') return null;
+  /* إبطال الجلسات: أي رمز أقدم من آخر تغيير لكلمة المرور لا يعمل */
+  if (Number(u.token_version || 0) !== Number(p.v || 0)) return null;
   return { user: u, token: p };
 }
 
@@ -190,7 +192,7 @@ async function handleLogin(env, req) {
   if (u.status !== 'active') return json({ ok: false, msg: 'الحساب موقوف — راجع إدارة المدرسة.' }, 403);
   const okp = await verifyPassword(pass, u.pass);
   if (!okp) return json({ ok: false, msg: 'بيانات الدخول غير صحيحة.' }, 401);
-  const token = await signToken({ uid: u.id, role: u.role, schoolId: u.school_id }, env.TOKEN_SECRET || 'tabaani-dev-secret');
+  const token = await signToken({ uid: u.id, role: u.role, schoolId: u.school_id, v: Number(u.token_version || 0) }, env.TOKEN_SECRET || 'tabaani-dev-secret');
   await audit(env, u.username, u.role, u.school_id, 'login', '', req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, token, user: publicUser(u) });
 }
@@ -365,6 +367,7 @@ export default {
         res = await handleActivationRequest(env, body, req);
       } else if (p === '/api/activation/verify' && req.method === 'POST') res = await handleActivationVerify(env, req);
       else if (p === '/api/auth/forgot' && req.method === 'POST') res = await handleForgot(env, req);
+      else if (p === '/api/auth/reset' && req.method === 'POST') res = await handleReset(env, req);
       else if (p === '/api/auth/login' && req.method === 'POST') res = await handleLogin(env, req);
       else if (p === '/api/health') res = json({ ok: true, service: 'tabaani-cloud', at: nowMs(), mail: !!env.MAIL_ENDPOINT, telegram: !!env.TG_TOKEN });
       else {
@@ -400,6 +403,7 @@ export default {
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
         else if (p === '/' || p === '/index.html') res = await servePublic(env, req);
         else if (p === '/api/seed' && req.method === 'POST' && (env.SEED_KEY || 'seed') === (url.searchParams.get('key') || '')) res = await handleSeed(env, req);
+        else if (!ctx && /^\/api\/(me|ack|sync|search|admin|notify)\b/.test(p)) res = json({ ok: false, msg: 'انتهت الجلسة — سجّل الدخول من جديد.', expired: true }, 401);
         else res = json({ ok: false, msg: 'مسار غير معروف: ' + p }, 404);
       }
       const h2 = new Headers(res.headers);
@@ -464,6 +468,47 @@ async function handleForgot(env, req) {
   await audit(env, user.id, user.role, user.school_id, 'password_reset_request', clean(ident, 80), req.headers.get('CF-Connecting-IP') || '');
   if (!mail.ok) return json({ ok: false, msg: 'تعذّر إرسال الرمز الآن. حاول بعد قليل أو تواصل مع إدارة تابني.' }, 502);
   return json(generic, 200);
+}
+
+/* ------------------- استعادة كلمة المرور: التحقق وتعيين الجديدة -------------------
+   • الكود ٦ أرقام · ٣ محاولات · صلاحية ١٥ دقيقة.
+   • النجاح ⇒ كلمة مرور PBKDF2 + زيادة token_version (إبطال كل الجلسات السابقة). */
+async function handleReset(env, req) {
+  const body = await req.json().catch(() => ({}));
+  const ident = clean(body.ident || body.email || body.username, 160).toLowerCase().trim();
+  const code = normDigits(clean(body.code, 12));
+  const pass = String(body.password || body.newPassword || '');
+  const ip = req.headers.get('CF-Connecting-IP') || '';
+  const bad = { ok: false, msg: 'الكود غير صحيح أو منتهي الصلاحية.' };
+  if (!ident || !/^\d{6}$/.test(code)) return json({ ok: false, msg: 'أدخل الرمز المكوّن من ٦ أرقام.' }, 400);
+  if (pass.length < 8) return json({ ok: false, msg: 'كلمة المرور ٨ أحرف على الأقل.' }, 400);
+
+  const u = await one(env, 'SELECT * FROM users WHERE lower(username) = ? OR (email <> \'\' AND lower(email) = ?) LIMIT 1', ident, ident);
+  if (!u) return json(bad, 400);
+  const row = await one(env, 'SELECT * FROM reset_codes WHERE user_id = ? AND used = 0 ORDER BY at DESC LIMIT 1', u.id);
+  if (!row) return json(bad, 400);
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (Number(row.expires_at) < nowSec) {
+    await run(env, 'UPDATE reset_codes SET used = 1 WHERE id = ?', row.id);
+    return json({ ok: false, msg: 'انتهت صلاحية الرمز — اطلب رمزًا جديدًا.' }, 400);
+  }
+  if (Number(row.tries) >= MAX_CODE_TRIES) {
+    await run(env, 'UPDATE reset_codes SET used = 1 WHERE id = ?', row.id);
+    return json({ ok: false, msg: 'محاولات كثيرة — اطلب رمزًا جديدًا.' }, 429);
+  }
+  const h = await hashCode(code, row.email || u.email);
+  if (h !== row.hash) {
+    await run(env, 'UPDATE reset_codes SET tries = tries + 1 WHERE id = ?', row.id);
+    const n = Number(row.tries) + 1;
+    return json({ ok: false, msg: n >= MAX_CODE_TRIES ? 'محاولات كثيرة — اطلب رمزًا جديدًا.' : ('الرمز غير صحيح (بقيت ' + (MAX_CODE_TRIES - n) + ' محاولات).') }, 400);
+  }
+
+  await run(env, 'UPDATE reset_codes SET used = 1 WHERE id = ?', row.id);
+  await run(env, 'UPDATE users SET pass = ?, must_change = 0, token_version = COALESCE(token_version,0) + 1 WHERE id = ?',
+    packPassword(await hashPassword(pass)), u.id);
+  await audit(env, u.username, u.role, u.school_id, 'password_reset_done', '', ip);
+  return json({ ok: true, msg: 'تم تغيير كلمة المرور ✓ سجّل الدخول بكلمة المرور الجديدة.' });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

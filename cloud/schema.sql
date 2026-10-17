@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS registrations (
 CREATE INDEX IF NOT EXISTS idx_reg_email ON registrations(email);
 CREATE INDEX IF NOT EXISTS idx_reg_status ON registrations(status);
 
+-- ترقية: إبطال الجلسات عند تغيير كلمة المرور (تُتجاهل لو العمود موجود)
+ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0;
+
 -- أكواد التفعيل (تُخزَّن مُجزَّأةً — لا يُحفظ الكود نفسه)
 CREATE TABLE IF NOT EXISTS activation_codes (
   id         TEXT PRIMARY KEY,
@@ -84,6 +87,7 @@ CREATE TABLE IF NOT EXISTS users (
   ack_status   TEXT NOT NULL DEFAULT 'pending', -- pending | submitted | approved
   ack_doc      TEXT DEFAULT '',
   status       TEXT NOT NULL DEFAULT 'active',
+  token_version INTEGER NOT NULL DEFAULT 0,   -- يُزاد عند تغيير كلمة المرور ⇒ إبطال كل الجلسات السابقة
   class_ids    TEXT DEFAULT ''              -- JSON array (للمعلمين)
 );
 CREATE INDEX IF NOT EXISTS idx_users_school ON users(school_id);
