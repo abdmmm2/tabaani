@@ -609,7 +609,32 @@
     try { return new Date(d).toTimeString().slice(0, 5); } catch (e) { return ''; }
   }
 
+  /* ============== وضع السحابة (٣أ): بيانات المستخدم بنطاقه، بلا نسخة كاملة على الجهاز ============== */
+  var CLOUD_KEY = 'tabaani-cloud-session-v1';
+  var cloud = null;          /* { url, token, user } */
+  var cloudTimer = null;
+  function cloudPost(path, body, method) {
+    return fetch(cloud.url.replace(/\/$/, '') + path, {
+      method: method || 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cloud.token },
+      body: body == null ? null : JSON.stringify(body)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; }); });
+  }
+  function cloudRemember() {
+    try {
+      if (cloud) localStorage.setItem(CLOUD_KEY, JSON.stringify({ url: cloud.url, token: cloud.token, user: cloud.user }));
+      else localStorage.removeItem(CLOUD_KEY);
+    } catch (e) {}
+  }
+
   function save() {
+    if (cloud) {
+      /* لا نكتب نسخة كاملة على الجهاز — نرفع ما يراه المستخدم فقط (الخادم يفلتر نطاقه) */
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(function () { store.cloudPush(); }, 1200);
+      (global.dispatchEvent) && global.dispatchEvent(new CustomEvent('store:changed'));
+      return;
+    }
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
     (global.dispatchEvent) && global.dispatchEvent(new CustomEvent('store:changed'));
   }
@@ -646,6 +671,40 @@
   var store = {
     get db() { return db || load(); },
     load: load, save: save, resetEmptyAll: function () { return resetEmpty(); },
+
+    /* ------------------------------ وضع السحابة ------------------------------ */
+    /** بدء جلسة سحابية بعد التحقق من الخادم (البيانات بنطاق المستخدم فقط) */
+    cloudStart: function (url, token, user, data) {
+      cloud = { url: url, token: token, user: user };
+      db = normalizeDb(Object.assign(emptyDb(), data || {}));
+      store.session = { userId: user.id, role: user.role, schoolId: user.schoolId || null, name: user.name };
+      try { sessionStorage.setItem('tabaani-session', JSON.stringify(store.session)); } catch (e) {}
+      cloudRemember();
+      return db;
+    },
+    cloudSession: function () { return cloud; },
+    cloudMode: function () { return !!cloud; },
+    cloudSaved: function () { try { return !!localStorage.getItem(CLOUD_KEY); } catch (e) { return false; } },
+    cloudExit: function () { cloud = null; cloudRemember(); },
+    /** رفع ما تغيّر إلى الخادم (مفلتر بنطاق الدور على الخادم) */
+    cloudPush: function () {
+      if (!cloud) return Promise.resolve(null);
+      return cloudPost('/api/me/data', { data: db }, 'POST').then(function (r) { return r.body; }).catch(function () { return null; });
+    },
+    /** استئناف جلسة محفوظة عند فتح التطبيق (أي جهاز) */
+    cloudResume: function () {
+      var c = null; try { c = JSON.parse(localStorage.getItem(CLOUD_KEY) || 'null'); } catch (e) {}
+      if (!c || !c.url || !c.token) return Promise.resolve(null);
+      cloud = { url: c.url, token: c.token, user: c.user };
+      return cloudPost('/api/me', null, 'GET').then(function (m) {
+        if (m.status !== 200 || !m.body || !m.body.ok) { store.cloudExit(); return null; }
+        return cloudPost('/api/me/data', null, 'GET').then(function (d) {
+          if (d.status !== 200 || !d.body || !d.body.ok) { store.cloudExit(); return null; }
+          store.cloudStart(c.url, c.token, m.body.user, d.body.data || {});
+          return m.body.user;
+        });
+      }).catch(function () { return null; });
+    },
     resetDem: function () { return reset(); },
     reset: reset,
     uid: uid, now: now,
@@ -2781,6 +2840,7 @@
     },
 
     logout: function () {
+      try { store.cloudExit(); } catch (e) {}
       store.session = { userId: null, role: null, schoolId: null, name: '' };
       try { sessionStorage.removeItem('tabaani-session'); } catch (e) {}
       store.loginOtpClear();   /* لا يبقى رمز دخول معلّق بعد الخروج */

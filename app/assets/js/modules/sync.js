@@ -121,6 +121,36 @@
     return true;
   };
 
+  /** الدخول الموحّد: يتحقق من الخادم أولًا (أي جهاز) ثم محليًا كاحتياط (بلا إنترنت) */
+  App.signIn = function (username, password, onOk, onErr) {
+    var cfg = cloudCfg();
+    var local = function () {
+      var res = S.authenticate(username, password);
+      if (!res.ok) { onErr(res.error || 'بيانات الدخول غير صحيحة.'); return; }
+      var tf = S.twoFactorFor(res.user);
+      if (tf.blocked) { onErr(tf.reason + ' — اربط تلقرام أو أوقف الإلزام من الإعدادات.'); return; }
+      if (tf.applies) { S.logout(); App.twoFactorScreen(res.user, function () { onOk(res.user); }); return; }
+      onOk(res.user);
+    };
+    if (!navigator.onLine) { local(); return; }
+    fetch(cfg.url.replace(/\/$/, '') + '/api/auth/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, j: j }; }); })
+      .then(function (res) {
+        if (res.status !== 200 || !res.j || !res.j.ok) { local(); return; }
+        var tok = res.j.token;
+        fetch(cfg.url.replace(/\/$/, '') + '/api/me/data', { headers: { authorization: 'Bearer ' + tok } })
+          .then(function (r) { return r.json().catch(function () { return {}; }); })
+          .then(function (d) {
+            S.cloudStart(cfg.url, tok, res.j.user, (d && d.data) || {});
+            onOk(res.j.user);
+          })
+          .catch(function () { local(); });
+      })
+      .catch(function () { local(); });
+  };
+
   /** تجهيز/تحديث الحسابات السحابية للمستخدمين الحاليين (المشرف العام) */
   App.cloudProvision = function (onDone) {
     var cfg = pairedCfg();

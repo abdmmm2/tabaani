@@ -1140,6 +1140,17 @@
         }, 900);
       };
       App._stamp();
+      /* استئناف جلسة سحابية محفوظة (الدخول من أي جهاز) */
+      if (S.cloudSaved && S.cloudSaved()) {
+        S.cloudResume().then(function (cu) {
+          if (cu) { App.shell(); return; }
+          var u2 = S.restore();
+          if (u2) { App.shell(); return; }
+          if (App.landing) App.landing({ login: !!location.hash.match(/login/) });
+          else App.login();
+        });
+        return;
+      }
       /* الصفحة الرئيسية العامة أولًا (شاشة التهيئة تُفتح من أيقونة الدخول) */
       var u = S.restore();
       if (u) { App.shell(); return; }

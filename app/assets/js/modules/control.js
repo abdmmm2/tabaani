@@ -58,6 +58,26 @@
     return [
       h('div', { class: 'stat-row' }, kids),
       h('div', { class: 'ctl-tiles' }, tiles),
+      /* الباقة والاشتراك — مباشرة من لوحة التحكم (إيقاف/تفعيل/سداد لكل مدرسة) */
+      (function () {
+        var schools = S.list('schools');
+        if (!schools.length) return null;
+        if (!App._dashSchool || !schools.some(function (s) { return s.id === App._dashSchool; })) App._dashSchool = schools[0].id;
+        var st = S.licenseState(App._dashSchool) || {};
+        var sel = h('select', { class: 'input', onchange: function (e) { App._dashSchool = e.target.value; App.route(); } },
+          schools.map(function (s) { return h('option', { value: s.id, selected: s.id === App._dashSchool, text: s.name }); }));
+        return UI.panel('الباقة والاشتراك — هذه المدرسة', 'حالة الاشتراك والإيقاف والسداد لهذه المدرسة', [
+          st.blocked
+            ? h('button', { class: 'btn btn-primary', type: 'button', text: 'تفعيل دخول المدرسة', onClick: function () { App.activateFlow(App._dashSchool); } })
+            : h('button', { class: 'btn btn-danger', type: 'button', text: 'إيقاف دخول المدرسة', onClick: function () { App.suspendFlow(App._dashSchool); } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: 'تسجيل السداد (+سنة)', onClick: function () { App.payFlow(App._dashSchool); } }),
+          st.blocked ? null : h('button', { class: 'btn btn-soft', type: 'button', text: 'تحديد السبب والملاحظة', onClick: function () { App.suspendDialog(App._dashSchool); } }),
+          h('button', { class: 'btn btn-soft', type: 'button', text: 'الباقة والتفاصيل', onClick: function () { App.licenseDialog(App._dashSchool); } })
+        ], [
+          h('div', { style: { marginBottom: '8px', maxWidth: '360px' } }, [sel]),
+          h('div', { class: 'lic-banner is-' + App._licTone(st) }, [App.licenseBadge(App._dashSchool), App._licLine(st)])
+        ]);
+      })(),
       UI.panel('الطلاب في كل مدرسة', 'عدد الطلاب لكل مدرسة مسجّلة', null, [
         schoolLabels.length ? UI.chart({ type: 'bar', labels: schoolLabels, series: [{ name: 'طلاب', values: schoolValues }], height: 240 })
           : UI.empty('لا مدارس بعد — ابدأ بتسجيل مدرسة من الزر أعلاه.')

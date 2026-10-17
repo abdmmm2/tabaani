@@ -187,7 +187,7 @@ async function handleLogin(env, req) {
   const body = await req.json().catch(() => ({}));
   const username = clean(body.username, 60).toLowerCase(), pass = String(body.password || '');
   if (!username || !pass) return json({ ok: false, msg: 'أدخل اسم المستخدم وكلمة المرور.' }, 400);
-  const u = await one(env, 'SELECT * FROM users WHERE lower(username) = ?', username);
+  const u = await one(env, 'SELECT * FROM users WHERE lower(username) = ? OR (email <> \'\' AND lower(email) = ?) LIMIT 1', username, username);
   if (!u) return json({ ok: false, msg: 'بيانات الدخول غير صحيحة.' }, 401);
   if (u.status !== 'active') return json({ ok: false, msg: 'الحساب موقوف — راجع إدارة المدرسة.' }, 403);
   const okp = await verifyPassword(pass, u.pass);
@@ -398,7 +398,11 @@ export default {
           res = json({ ok: true, msg: 'أُعيد ضبط نسخة ' + target, schoolId: target });
         }
       }
+      else if (p === '/api/me/data' && ctx && req.method === 'GET') res = await handleMyData(env, ctx);
+      else if (p === '/api/me/data' && ctx && (req.method === 'POST' || req.method === 'PUT')) res = await handleMyWrite(env, req, ctx);
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
+      else if (p === '/api/admin/outbox' && ctx && ctx.user.role === 'super') res = await handleOutbox(env, req);
+      else if (p === '/api/admin/stats' && ctx && ctx.user.role === 'super') res = await handleAdminStats(env);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -549,6 +553,147 @@ async function handleProvision(env, req, ctx) {
   await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'accounts_provisioned',
     'أُنشئ ' + created + ' · حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, created, updated, skipped, total: list.length });
+}
+
+/* ------------ تشخيص (المشرف العام): آخر الرسائل الصادرة + إحصاءات ------------ */
+async function handleOutbox(env, req) {
+  const limit = Math.min(50, Math.max(1, parseInt(new URL(req.url).searchParams.get('limit') || '15', 10) || 15));
+  const rows = await all(env, 'SELECT channel, to_val, subject, ok, error, at, body FROM outbox ORDER BY at DESC LIMIT ?', limit);
+  return json({ ok: true, rows: rows.map(function (r) {
+    return { channel: r.channel, to: r.to_val, subject: r.subject, ok: r.ok, error: r.error, at: r.at, body: r.body };
+  }) });
+}
+async function handleAdminStats(env) {
+  const n = async (sql, ...a) => Number(((await one(env, sql, ...a)) || {}).n || 0);
+  return json({ ok: true, stats: {
+    users: await n('SELECT COUNT(*) AS n FROM users'),
+    usersWithEmail: await n("SELECT COUNT(*) AS n FROM users WHERE email <> ''"),
+    registrations: await n('SELECT COUNT(*) AS n FROM registrations'),
+    resetCodes: await n('SELECT COUNT(*) AS n FROM reset_codes'),
+    outbox: await n('SELECT COUNT(*) AS n FROM outbox')
+  } });
+}
+
+/* ================== بيانات المستخدم بنطاقه (٣أ) ==================
+   • المشرف العام: نسخة المنصة كاملة.
+   • مدير/وكيل/إرشاد/محاسب/دعم/مختص: مدرسته كاملة.
+   • المعلم: فصوله وطلابه فقط (+ الكتابة على الحضور/المخالفات/الأذونات/الكشوف/رسائله).
+   • الطالب: بياناته ورسائله فقط. */
+const ADMIN_ROLES = ['principal', 'deputy', 'guidance', 'accountant', 'support', 'specialist'];
+
+function skeleton() {
+  return { meta: { version: 1 }, settings: { hijri: true }, regions: [], users: [], schools: [], classes: [],
+    students: [], assignments: [], transfers: [], periods: [], sessions: [], violations: [], permissions: [],
+    programs: [], programRegs: [], activities: [], activityReqs: [], dutyLocations: [], duties: [], terms: [],
+    activityLog: [], checkins: [], faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [],
+    exits: [], entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [],
+    paymentRequests: [], invoices: [], expenses: [], tickets: [], updates: [], letterhead: null };
+}
+function myClassIds(db, u) {
+  return (db.classes || []).filter(function (c) {
+    var t = c.teacherId || c.teacher || '';
+    return t === u.id || (Array.isArray(c.teachers) && c.teachers.indexOf(u.id) > -1) || c.supervisorId === u.id;
+  }).map(function (c) { return c.id; });
+}
+function filterForUser(db, u) {
+  if (!db) return null;
+  if (u.role === 'super' || ADMIN_ROLES.indexOf(u.role) > -1) return db;
+  var out = skeleton();
+  out.meta = db.meta; out.settings = db.settings; out.regions = db.regions || []; out.letterhead = db.letterhead || null;
+  out.schools = (db.schools || []).filter(function (s) { return s.id === u.school_id; });
+  if (u.role === 'teacher') {
+    var ids = myClassIds(db, u);
+    var students = (db.students || []).filter(function (s) { return ids.indexOf(s.classId) > -1; });
+    var sids = students.map(function (s) { return s.id; });
+    out.classes = (db.classes || []).filter(function (c) { return ids.indexOf(c.id) > -1; });
+    out.students = students;
+    out.users = (db.users || []).filter(function (x) { return x.id === u.id; });
+    out.sessions = (db.sessions || []).filter(function (a) { return ids.indexOf(a.classId) > -1 || a.teacherId === u.id; });
+    out.violations = (db.violations || []).filter(function (v) { return ids.indexOf(v.classId) > -1 || sids.indexOf(v.studentId) > -1; });
+    out.permissions = (db.permissions || []).filter(function (p) { return sids.indexOf(p.studentId) > -1; });
+    out.gradeSheets = (db.gradeSheets || []).filter(function (g) { return ids.indexOf(g.classId) > -1; });
+    out.messages = (db.messages || []).filter(function (m) { return m.fromUserId === u.id || m.toUserId === u.id; });
+    out.notif = (db.notif || []).filter(function (n) { return n.toUserId === u.id; });
+    out.tickets = (db.tickets || []).filter(function (t) { return t.byUserId === u.id; });
+    out.terms = (db.terms || []).filter(function (t) { return t.active; });
+    return out;
+  }
+  if (u.role === 'student') {
+    out.students = (db.students || []).filter(function (s) { return s.id === u.id || s.userId === u.id; });
+    var st = out.students[0] || {};
+    out.classes = (db.classes || []).filter(function (c) { return c.id === st.classId; });
+    out.sessions = (db.sessions || []).filter(function (a) { return a.classId === st.classId; });
+    out.users = (db.users || []).filter(function (x) { return x.id === u.id; });
+    out.violations = (db.violations || []).filter(function (v) { return v.studentId === st.id; });
+    out.permissions = (db.permissions || []).filter(function (p) { return p.studentId === st.id; });
+    out.gradeSheets = (db.gradeSheets || []).filter(function (g) { return g.classId === st.classId; });
+    out.messages = (db.messages || []).filter(function (m) { return m.fromUserId === u.id || m.toUserId === u.id; });
+    out.notif = (db.notif || []).filter(function (n) { return n.toUserId === u.id; });
+    return out;
+  }
+  return out;
+}
+async function handleMyData(env, ctx) {
+  const u = ctx.user;
+  const key = u.role === 'super' ? 'platform' : u.school_id;
+  if (!key) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', key);
+  const db = row ? JSON.parse(row.json) : null;
+  const view = filterForUser(db, u);
+  return json({ ok: true, version: row ? row.version : 0, updatedAt: row ? row.updated_at : 0,
+    scope: u.role, schoolId: u.school_id || null, data: view });
+}
+const TEACHER_WRITE = ['sessions', 'violations', 'permissions', 'gradeSheets', 'messages'];
+const STUDENT_WRITE = ['messages'];
+function upsert(db, coll, item) {
+  if (!item || !item.id) return false;
+  var arr = db[coll] || (db[coll] = []);
+  for (var i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === item.id) { arr[i] = item; return true; } }
+  arr.push(item); return true;
+}
+async function handleMyWrite(env, req, ctx) {
+  const u = ctx.user;
+  const isSuper = u.role === 'super';
+  if (!u.school_id && !isSuper) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const key = isSuper ? 'platform' : u.school_id;
+  const body = await req.json().catch(() => ({}));
+  const incoming = body.data;
+  if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
+  const row = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', key);
+  const db = row ? JSON.parse(row.json) : skeleton();
+  const allowed = u.role === 'teacher' ? TEACHER_WRITE : (u.role === 'student' ? STUDENT_WRITE
+    : ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) ? Object.keys(skeleton()) : []));
+  const ids = u.role === 'teacher' ? myClassIds(db, u) : [];
+  const sids = u.role === 'teacher'
+    ? (db.students || []).filter(function (s) { return ids.indexOf(s.classId) > -1; }).map(function (s) { return s.id; })
+    : (db.students || []).filter(function (s) { return s.id === u.id || s.userId === u.id; }).map(function (s) { return s.id; });
+  let changed = 0, rejected = 0;
+  allowed.forEach(function (coll) {
+    if (!Array.isArray(incoming[coll]) || coll === 'users' || coll === 'schools') return;
+    incoming[coll].forEach(function (item) {
+      var okScope = true;
+      if (u.role === 'teacher') {
+        if (coll === 'sessions') okScope = ids.indexOf(item.classId) > -1 || item.teacherId === u.id;
+        else if (coll === 'violations' || coll === 'permissions') okScope = ids.indexOf(item.classId) > -1 || sids.indexOf(item.studentId) > -1;
+        else if (coll === 'gradeSheets') okScope = ids.indexOf(item.classId) > -1;
+        else if (coll === 'messages') okScope = item.fromUserId === u.id || item.toUserId === u.id;
+      } else if (u.role === 'student') {
+        okScope = coll === 'messages' && (item.fromUserId === u.id || item.toUserId === u.id);
+      }
+      if (!okScope) { rejected++; return; }
+      if (upsert(db, coll, item)) changed++;
+    });
+  });
+  /* التاريخ على الخادم */
+  if (db.meta) db.meta.updatedAt = nowMs();
+  const version = (row ? row.version : 0) + 1;
+  const text = JSON.stringify(db);
+  if (text.length > 4_000_000) return json({ ok: false, msg: 'حجم البيانات كبير.' }, 413);
+  if (row) await run(env, 'UPDATE data SET version = ?, json = ?, updated_at = ?, by_user = ? WHERE school_id = ?',
+    version, text, nowMs(), u.username, key);
+  else await run(env, 'INSERT INTO data (school_id,version,json,updated_at,by_user) VALUES (?,?,?,?,?)',
+    key, version, text, nowMs(), u.username);
+  return json({ ok: true, version, changed, rejected });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */
