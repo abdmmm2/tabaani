@@ -4262,9 +4262,14 @@
           .catch(function () {});
       }
       store.lastPasswords = rows;
+      /* نحفظ الكشف في المتصفح حتى لا يضيع بعد إعادة التحميل */
+      try { localStorage.setItem('tabaani-last-passwords', JSON.stringify({ at: Date.now(), rows: rows })); } catch (e) {}
       return rows;
     },
-    lastGeneratedPasswords: function () { return store.lastPasswords || []; },
+    lastGeneratedPasswords: function () {
+      if (store.lastPasswords && store.lastPasswords.length) return store.lastPasswords;
+      try { var x = JSON.parse(localStorage.getItem('tabaani-last-passwords') || 'null'); return (x && x.rows) || []; } catch (e) { return []; }
+    },
 
     /* ===================== الإعلان الافتتاحي للموقع ===================== */
     /* ملاحظة: هذا إعداد النموذج في المتصفح. للنشر للزوار صدّر الملف من الوحدة
