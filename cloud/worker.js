@@ -403,6 +403,8 @@ export default {
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
       else if (p === '/api/admin/outbox' && ctx && ctx.user.role === 'super') res = await handleOutbox(env, req);
       else if (p === '/api/admin/stats' && ctx && ctx.user.role === 'super') res = await handleAdminStats(env);
+      else if (p === '/api/admin/users' && ctx && ctx.user.role === 'super') res = await handleAdminUsers(env);
+      else if (p === '/api/admin/setpass' && ctx && ctx.user.role === 'super') res = await handleAdminSetPass(env, req, ctx);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -694,6 +696,27 @@ async function handleMyWrite(env, req, ctx) {
   else await run(env, 'INSERT INTO data (school_id,version,json,updated_at,by_user) VALUES (?,?,?,?,?)',
     key, version, text, nowMs(), u.username);
   return json({ ok: true, version, changed, rejected });
+}
+
+/* ---------- دعم المشرف العام: قائمة الحسابات + تعيين كلمة مرور سحابية ---------- */
+async function handleAdminUsers(env) {
+  const rows = await all(env, "SELECT id, username, name, role, email, status, school_id, ack_status FROM users ORDER BY role, username");
+  return json({ ok: true, rows: rows.map(function (r) {
+    return { id: r.id, username: r.username, name: r.name, role: r.role, email: r.email || '', status: r.status, schoolId: r.school_id || null, ack: r.ack_status };
+  }) });
+}
+async function handleAdminSetPass(env, req, ctx) {
+  const body = await req.json().catch(() => ({}));
+  const username = clean(body.username, 60).toLowerCase();
+  const pass = String(body.password || '');
+  if (!username || pass.length < 8) return json({ ok: false, msg: 'اسم المستخدم وكلمة مرور (٨ أحرف+) مطلوبان.' }, 400);
+  const u = await one(env, 'SELECT id FROM users WHERE lower(username) = ?', username);
+  if (!u) return json({ ok: false, msg: 'لا حساب بهذا الاسم.' }, 404);
+  const force = body.mustChange !== false;
+  await run(env, 'UPDATE users SET pass = ?, must_change = ?, token_version = COALESCE(token_version,0) + 1 WHERE id = ?',
+    packPassword(await hashPassword(pass)), force ? 1 : 0, u.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'admin_setpass', 'target=' + username, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, msg: 'عُيّنت كلمة المرور — سيُطلب تغييرها عند أول دخول.' });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

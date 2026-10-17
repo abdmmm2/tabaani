@@ -108,9 +108,22 @@
       clearTimeout(control._t); control._t = setTimeout(function () { spec.onInput(e); }, 220);
     });
     if (spec.onChange) control.addEventListener('change', spec.onChange);
+    /* 👁 إظهار/إخفاء كلمة المرور */
+    var holder = control;
+    if (spec.type === 'password') {
+      var eye = h('button', { class: 'pw-eye', type: 'button', title: 'إظهار كلمة المرور', 'aria-label': 'إظهار كلمة المرور', text: '👁' });
+      eye.addEventListener('click', function () {
+        var show = control.type === 'password';
+        control.type = show ? 'text' : 'password';
+        eye.textContent = show ? '🙈' : '👁';
+        eye.title = show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور';
+        try { control.focus({ preventScroll: true }); } catch (e) {}
+      });
+      holder = h('div', { class: 'pw-box' }, [control, eye]);
+    }
     var wrap = h('div', { class: 'field' + (spec.half ? ' half' : '') }, [
       h('label', { for: id, text: spec.label }),
-      control,
+      holder,
       spec.help ? h('p', { class: 'hint', text: spec.help }) : null
     ]);
     if (spec.required) wrap.classList.add('is-required');
@@ -700,6 +713,20 @@
       (bot ? '<text fill="' + color + '" font-size="9.2" font-weight="700" x="100" y="172" text-anchor="middle" direction="rtl">' + bot + '</text>' : '') +
       '</svg>';
   }
+
+  /* 👁 زر إظهار كلمة المرور */
+  var PW_CSS = '.pw-box{position:relative;display:block}' +
+    '.pw-box .input{padding-inline-end:44px}' +
+    '.pw-eye{position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:8px;background:transparent;font-size:17px;line-height:1;cursor:pointer}' +
+    '.pw-eye:hover{background:rgba(14,95,76,.08)}';
+  function ensurePwCss() {
+    try {
+      if (document.getElementById('pw-eye-css')) return;
+      var st = document.createElement('style'); st.id = 'pw-eye-css'; st.textContent = PW_CSS;
+      document.head.appendChild(st);
+    } catch (e) {}
+  }
+  ensurePwCss();
 
   /** تنسيق المبالغ: 1,500.00 */
   function fmtMoney(n) {
