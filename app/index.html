@@ -6,7 +6,7 @@
 <title>تابعني للخدمات الذكية</title>
 <meta name="description" content="تابعني لإدارة خدمات المدارس: الحسابات، إسناد المواد، التحضير، المخالفات السلوكية، الاستئذان، التطوع، النشاط الطلابي، والتقارير الرسمية بالباركود.">
 <meta name="theme-color" content="#14100A">
-<meta name="app-version" content="98">
+<meta name="app-version" content="99">
 <link rel="icon" href="assets/img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,6 +19,28 @@
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
+  <!-- وضع الإنقاذ: ?fresh=1 يمسح الكاش ويسجّل الخدمة ثم يعيد التحميل -->
+  <script>
+    (function () {
+      try {
+        if (!/[?&]fresh=1/.test(location.search)) return;
+        var done = false;
+        function go() { if (done) return; done = true; location.replace(location.pathname); }
+        var jobs = [];
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+            return Promise.all(rs.map(function (r) { return r.unregister(); }));
+          }).catch(function () {}));
+        }
+        if (window.caches && caches.keys) {
+          jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).catch(function () {}));
+        }
+        Promise.all(jobs).then(go).catch(go);
+        setTimeout(go, 2500);
+      } catch (e) {}
+    })();
+  </script>
+
 <div id="app" aria-live="polite"></div>
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
 
