@@ -4253,6 +4253,11 @@
         };
       });
       save();
+      /* الوضع السحابي: حدّث كلمات المرور على الخادم أيضًا حتى يدخلوا من أي جهاز */
+      if (cloud && rows.length) {
+        cloudPost('/api/admin/passwords', { users: rows.map(function (r) { return { username: r.username, password: r.password }; }) }, 'POST')
+          .catch(function () {});
+      }
       store.lastPasswords = rows;
       return rows;
     },

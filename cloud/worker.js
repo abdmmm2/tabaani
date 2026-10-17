@@ -406,6 +406,7 @@ export default {
       else if (p === '/api/admin/stats' && ctx && ctx.user.role === 'super') res = await handleAdminStats(env);
       else if (p === '/api/admin/users' && ctx && ctx.user.role === 'super') res = await handleAdminUsers(env);
       else if (p === '/api/admin/setpass' && ctx && ctx.user.role === 'super') res = await handleAdminSetPass(env, req, ctx);
+      else if (p === '/api/admin/passwords' && ctx) res = await handleBulkPasswords(env, req, ctx);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -704,10 +705,16 @@ async function handleMyWrite(env, req, ctx) {
     : (db.students || []).filter(function (s) { return s.id === u.id || s.userId === u.id; }).map(function (s) { return s.id; });
   let changed = 0, rejected = 0;
   allowed.forEach(function (coll) {
-    if (!Array.isArray(incoming[coll]) || coll === 'users' || coll === 'schools') return;
+    if (!Array.isArray(incoming[coll])) return;
+    if (coll === 'schools' && !isSuper) return;          /* المدارس للمشرف العام فقط */
     incoming[coll].forEach(function (item) {
       var okScope = true;
-      if (u.role === 'teacher') {
+      if (coll === 'users') {
+        /* المستخدمون: المشرف العام للجميع، ومدير المدرسة لمدرسته فقط وبلا ترقية إلى مشرف */
+        if (isSuper) okScope = true;
+        else if (ADMIN_ROLES.indexOf(u.role) > -1) okScope = String(item.schoolId || '') === String(u.school_id || '') && item.role !== 'super';
+        else okScope = !!(item && item.id === u.id);
+      } else if (u.role === 'teacher') {
         if (coll === 'sessions') okScope = ids.indexOf(item.classId) > -1 || item.teacherId === u.id;
         else if (coll === 'violations' || coll === 'permissions') okScope = ids.indexOf(item.classId) > -1 || sids.indexOf(item.studentId) > -1;
         else if (coll === 'gradeSheets') okScope = ids.indexOf(item.classId) > -1;
@@ -719,6 +726,22 @@ async function handleMyWrite(env, req, ctx) {
       if (upsert(db, coll, item)) changed++;
     });
   });
+  /* تحديث كلمات مرور الحسابات السحابية إذا تغيّرت في التطبيق (للمشرف/المدير) */
+  if ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) && Array.isArray(incoming.users)) {
+    for (const it of incoming.users) {
+      if (!it || !it.username || !it.password) continue;
+      if (!isSuper && String(it.schoolId || '') !== String(u.school_id || '')) continue;
+      const un = String(it.username).toLowerCase();
+      const acc = await one(env, 'SELECT id FROM users WHERE lower(username) = ?', un);
+      if (acc) continue;   /* الحساب موجود: كلمة مروره السحابية هي المرجع (لا نكتب فوقها) */
+      /* مستخدم جديد في التطبيق ⇒ حساب سحابي تلقائي (يدخل من أي جهاز) */
+      await run(env, `INSERT INTO users (id,at,school_id,name,role,username,pass,email,phone,telegram,must_change,ack_status,status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,'pending','active')`,
+        rid('u'), nowMs(), it.schoolId || u.school_id, clean(it.name, 80) || un, clean(it.role, 20) || 'teacher',
+        un, packPassword(await hashPassword(String(it.password))), clean(it.email, 160).toLowerCase(),
+        clean(it.phone, 30), clean(it.telegram, 40));
+    }
+  }
   /* التاريخ على الخادم */
   if (db.meta) db.meta.updatedAt = nowMs();
   const version = (row ? row.version : 0) + 1;
@@ -769,6 +792,32 @@ async function handleMyPassword(env, req, ctx) {
   const token = await signToken({ uid: ctx.user.id, role: ctx.user.role, schoolId: ctx.user.school_id, v: v },
     env.TOKEN_SECRET || 'tabaani-dev-secret');
   return json({ ok: true, token, msg: 'تم تغيير كلمة المرور ✓' });
+}
+
+/* تعيين كلمات مرور دفعة واحدة (توليد كلمات المرور في التطبيق)
+   • المشرف العام: أي حساب.
+   • مدير المدرسة/الوكلاء: حسابات مدرستهم فقط. */
+async function handleBulkPasswords(env, req, ctx) {
+  const isSuper = ctx.user.role === 'super';
+  if (!isSuper && ADMIN_ROLES.indexOf(ctx.user.role) === -1) return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const list = Array.isArray(body.users) ? body.users.slice(0, 300) : [];
+  if (!list.length) return json({ ok: false, msg: 'لا مستخدمين.' }, 400);
+  let updated = 0, skipped = 0;
+  for (const x of list) {
+    const un = clean(x.username, 60).toLowerCase();
+    const pw = String(x.password || '');
+    if (!un || pw.length < 6) { skipped++; continue; }
+    const acc = await one(env, 'SELECT id, school_id FROM users WHERE lower(username) = ?', un);
+    if (!acc) { skipped++; continue; }
+    if (!isSuper && String(acc.school_id || '') !== String(ctx.user.school_id || '')) { skipped++; continue; }
+    await run(env, 'UPDATE users SET pass = ?, must_change = 1, token_version = COALESCE(token_version,0) + 1 WHERE id = ?',
+      packPassword(await hashPassword(pw)), acc.id);
+    updated++;
+  }
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'passwords_generated',
+    'حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, updated, skipped });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */
