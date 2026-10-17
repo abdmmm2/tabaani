@@ -398,6 +398,7 @@ export default {
           res = json({ ok: true, msg: 'أُعيد ضبط نسخة ' + target, schoolId: target });
         }
       }
+      else if (p === '/api/me/password' && ctx && req.method === 'POST') res = await handleMyPassword(env, req, ctx);
       else if (p === '/api/me/data' && ctx && req.method === 'GET') res = await handleMyData(env, ctx);
       else if (p === '/api/me/data' && ctx && (req.method === 'POST' || req.method === 'PUT')) res = await handleMyWrite(env, req, ctx);
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
@@ -635,13 +636,45 @@ function filterForUser(db, u) {
   }
   return out;
 }
+/* مصدر النسخة: نسخة المدرسة إن وُجدت، وإلا نسخة المنصة (المشرف) مع فلترة المدرسة */
+async function blobKeyFor(env, u) {
+  if (u.role === 'super') return 'platform';
+  const own = await one(env, 'SELECT school_id FROM data WHERE school_id = ?', u.school_id);
+  if (own) return u.school_id;
+  const plat = await one(env, 'SELECT school_id FROM data WHERE school_id = ?', 'platform');
+  if (plat) return 'platform';
+  return u.school_id;
+}
+/* فلترة نسخة المنصة إلى مدرسة واحدة (المشرف/المدير) */
+function filterSchool(db, sid) {
+  if (!db) return null;
+  var out = skeleton();
+  out.meta = db.meta; out.settings = db.settings; out.regions = db.regions || []; out.letterhead = db.letterhead || null;
+  Object.keys(out).forEach(function (k) {
+    if (!Array.isArray(out[k]) || k === 'meta' || k === 'settings' || k === 'regions') return;
+    var src = db[k];
+    if (!Array.isArray(src)) return;
+    out[k] = src.filter(function (it) {
+      if (!it || typeof it !== 'object') return false;
+      return it.schoolId === sid || !it.schoolId;   /* بيانات المدرسة + العناصر العامة */
+    });
+  });
+  out.schools = (db.schools || []).filter(function (x) { return x.id === sid; });
+  return out;
+}
 async function handleMyData(env, ctx) {
   const u = ctx.user;
-  const key = u.role === 'super' ? 'platform' : u.school_id;
-  if (!key) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  if (!u.school_id && u.role !== 'super') return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const key = await blobKeyFor(env, u);
   const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', key);
-  const db = row ? JSON.parse(row.json) : null;
+  let db = row ? JSON.parse(row.json) : null;
+  if (db && u.role !== 'super' && key === 'platform') db = filterSchool(db, u.school_id);
   const view = filterForUser(db, u);
+  /* نضمن وجود سجل المستخدم نفسه (حتى لو لم يكن في النسخة) ليكتمل الدخول */
+  if (view && Array.isArray(view.users) && !view.users.some(function (x) { return x && x.id === u.id; })) {
+    view.users.push({ id: u.id, name: u.name, role: u.role, username: u.username, email: u.email || '',
+      schoolId: u.school_id || null, status: u.status, createdAt: nowMs() });
+  }
   return json({ ok: true, version: row ? row.version : 0, updatedAt: row ? row.updated_at : 0,
     scope: u.role, schoolId: u.school_id || null, data: view });
 }
@@ -657,7 +690,7 @@ async function handleMyWrite(env, req, ctx) {
   const u = ctx.user;
   const isSuper = u.role === 'super';
   if (!u.school_id && !isSuper) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
-  const key = isSuper ? 'platform' : u.school_id;
+  const key = isSuper ? 'platform' : await blobKeyFor(env, u);
   const body = await req.json().catch(() => ({}));
   const incoming = body.data;
   if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
@@ -717,6 +750,25 @@ async function handleAdminSetPass(env, req, ctx) {
     packPassword(await hashPassword(pass)), force ? 1 : 0, u.id);
   await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'admin_setpass', 'target=' + username, req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, msg: 'عُيّنت كلمة المرور — سيُطلب تغييرها عند أول دخول.' });
+}
+
+/* تغيير كلمة المرور من داخل الحساب (سحابيًا) — يرجّع رمزًا جديدًا */
+async function handleMyPassword(env, req, ctx) {
+  const body = await req.json().catch(() => ({}));
+  const cur = String(body.current || body.old || '');
+  const next = String(body.next || body.password || '');
+  const ip = req.headers.get('CF-Connecting-IP') || '';
+  if (!cur || !next) return json({ ok: false, msg: 'أدخل الحالية والجديدة.' }, 400);
+  if (next.length < 8) return json({ ok: false, msg: 'كلمة المرور ٨ أحرف على الأقل.' }, 400);
+  const okp = await verifyPassword(cur, ctx.user.pass);
+  if (!okp) return json({ ok: false, msg: 'كلمة المرور الحالية غير صحيحة.' }, 401);
+  const v = Number(ctx.user.token_version || 0) + 1;
+  await run(env, 'UPDATE users SET pass = ?, must_change = 0, token_version = ? WHERE id = ?',
+    packPassword(await hashPassword(next)), v, ctx.user.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'password_changed', '', ip);
+  const token = await signToken({ uid: ctx.user.id, role: ctx.user.role, schoolId: ctx.user.school_id, v: v },
+    env.TOKEN_SECRET || 'tabaani-dev-secret');
+  return json({ ok: true, token, msg: 'تم تغيير كلمة المرور ✓' });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

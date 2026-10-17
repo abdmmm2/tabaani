@@ -691,6 +691,14 @@
       if (!cloud) return Promise.resolve(null);
       return cloudPost('/api/me/data', { data: db }, 'POST').then(function (r) { return r.body; }).catch(function () { return null; });
     },
+    /** تغيير كلمة المرور في وضع السحابة (يرجّع {ok,msg}) */
+    cloudPassword: function (cur, next) {
+      if (!cloud) return Promise.resolve(null);
+      return cloudPost('/api/me/password', { current: cur, next: next }, 'POST').then(function (r) {
+        if (r.status === 200 && r.body && r.body.ok && r.body.token) { cloud.token = r.body.token; cloudRemember(); }
+        return r.body || {};
+      }).catch(function () { return { ok: false, msg: 'تعذّر الاتصال بالخادم.' }; });
+    },
     /** استئناف جلسة محفوظة عند فتح التطبيق (أي جهاز) */
     cloudResume: function () {
       var c = null; try { c = JSON.parse(localStorage.getItem(CLOUD_KEY) || 'null'); } catch (e) {}

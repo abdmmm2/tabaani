@@ -974,6 +974,16 @@
         actions: [
           { label: 'إلغاء', class: 'btn-outline', onClick: function (c) { c(); } },
           { label: 'حفظ', class: 'btn-primary', onClick: function (close) {
+            if (p1.input.value !== p2.input.value) { err.hidden = false; err.textContent = 'كلمتا المرور غير متطابقتين'; return; }
+            var issues = S.passwordIssues(p1.input.value);
+            if (issues.length) { err.hidden = false; err.textContent = 'كلمة المرور ضعيفة: تحتاج ' + issues.join(' + '); return; }
+            if (S.cloudMode && S.cloudMode() && S.cloudPassword) {
+              S.cloudPassword(cur.input.value, p1.input.value).then(function (r) {
+                if (!r || !r.ok) { err.hidden = false; err.textContent = (r && r.msg) || 'تعذّر تغيير كلمة المرور.'; return; }
+                UI.toast('تم تغيير كلمة المرور ✓', 'ok'); close();
+              });
+              return;
+            }
             var res = S.changePassword(S.session.userId, cur.input.value, p1.input.value, p2.input.value);
             if (!res.ok) { err.hidden = false; err.textContent = res.error; return; }
             UI.toast('تم تغيير كلمة المرور', 'ok'); close();
