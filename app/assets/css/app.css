@@ -832,3 +832,14 @@ body.ack-locked .support-fab { display: none !important; }
 .lp-promo-timer { margin-top: 8px; font-size: 11.5px; color: #8C8171; }
 .lp-promo-x { position: absolute; top: 8px; inset-inline-end: 10px; width: 34px; height: 34px; border-radius: 50%;
   border: none; background: rgba(255,255,255,.92); font-size: 22px; line-height: 1; color: #6B6255; cursor: pointer; }
+
+/* ===== الجوال: أزرار الحساب في القائمة + نوافذ مناسبة للشاشة ===== */
+.side-pw { display: block; width: 100%; margin-top: 8px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.28);
+  border-radius: 8px; background: rgba(255,255,255,.06); color: #fff; font: inherit; font-size: 12.5px; cursor: pointer; }
+.side-pw:hover { background: rgba(255,255,255,.14); }
+@media (max-width: 640px) {
+  .modal-backdrop { padding: 6px; }
+  .modal { max-height: 94vh; }
+  .modal-body { padding: 12px; }
+  .modal-head { padding: 12px 14px; }
+}

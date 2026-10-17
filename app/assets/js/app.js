@@ -405,7 +405,9 @@
       sidebar.appendChild(nav);
       sidebar.appendChild(h('div', { class: 'side-role' }, [
         h('div', { style: { fontWeight: '700', color: '#fff' }, text: S.session.name }),
-        h('div', { text: S.roleLabel(S.session.role) })
+        h('div', { text: S.roleLabel(S.session.role) }),
+        h('button', { class: 'side-pw', type: 'button', text: '🔑 تغيير كلمة المرور',
+          onClick: function () { sidebar.classList.remove('is-open'); if (sidebar._backdrop) sidebar._backdrop.classList.remove('is-open'); App.openChangePassword(); } })
       ]));
 
       S.genderizeDom(sidebar);
