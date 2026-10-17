@@ -294,6 +294,8 @@
     /* (٢) سحب تلقائي: كل ٢٠ ثانية + عند عودة التركيز للتطبيق */
     var polling = false;
     function checkRemote() {
+      /* في وضع السحابة (v94+): البيانات تُقرأ من الخادم مباشرة — لا سحب دوري ولا تنبيهات */
+      if (S.cloudMode && S.cloudMode()) return;
       var c = S.syncCfg();
       /* السحب التلقائي يعمل فقط في الوضع «تلقائي» — ولا يُقاطع من يكتب ولا يدهس تعديلات غير مرفوعة */
       if (!c.url || !c.token || !c.auto || !navigator.onLine || polling) return;
@@ -317,9 +319,9 @@
           var res = S.applyServerData(j.data);
           if (res.ok) {
             S.saveSyncCfg({ lastVersion: j.version, lastAt: new Date().toISOString() });
-            UI.toast('تم تحديث البيانات من السحابة (v' + j.version + ') ✓', 'ok');
             App._syncNoticeShown = 0;
-            App.route();
+            /* بلا تنبيه مزعج — ولا نعيد الرسم إن كانت القائمة الجانبية مفتوحة */
+            if (!document.querySelector('.sidebar.is-open')) App.route();
           }
         })
         .catch(function () { polling = false; });

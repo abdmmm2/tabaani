@@ -743,6 +743,15 @@ async function handleMyWrite(env, req, ctx) {
         clean(it.phone, 30), clean(it.telegram, 40));
     }
   }
+  /* استبدال كامل لمجموعات محددة (مثل تفريغ الإشعارات) — للمشرف/المدير فقط */
+  if ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) && Array.isArray(body.replace)) {
+    body.replace.slice(0, 10).forEach(function (coll) {
+      if (typeof coll !== 'string' || !Array.isArray(incoming[coll])) return;
+      if (coll === 'users' || coll === 'schools') return;
+      db[coll] = incoming[coll];
+      changed++;
+    });
+  }
   /* التاريخ على الخادم */
   if (db.meta) db.meta.updatedAt = nowMs();
   const version = (row ? row.version : 0) + 1;
