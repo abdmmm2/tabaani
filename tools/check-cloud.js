@@ -141,7 +141,7 @@ function ok(cond, label, extra) {
   });
   const worker = fs.readFileSync(path.join(ROOT, 'cloud', 'worker.js'), 'utf8');
   ['/api/register', '/api/activation/verify', '/api/auth/login', '/api/auth/forgot', '/api/auth/reset', '/api/ack/submit', '/api/ack/approve',
-    '/api/sync', '/api/search', '/api/admin/approve', '/api/notify'].forEach((r) => {
+    '/api/sync', '/api/search', '/api/admin/approve', '/api/admin/provision', '/api/notify'].forEach((r) => {
     ok(worker.indexOf(r) > -1, 'worker.js فيه المسار ' + r);
   });
   ok(/handleForgot/.test(worker) && /reset_codes/.test(worker), 'استعادة كلمة المرور: الدالة والجدول موجودان');
@@ -152,6 +152,9 @@ function ok(cond, label, extra) {
   ok(/token_version/.test(worker) && /token_version/.test(fs.readFileSync(path.join(ROOT, 'cloud', 'schema.sql'), 'utf8')),
     'إبطال الجلسات بعد تغيير كلمة المرور (token_version)');
   ok(/MAX_CODE_TRIES/.test(worker), 'حد المحاولات (٣) مطبَّق عند التحقق');
+  ok(/handleProvision/.test(worker) && /ctx\.user\.role !== 'super'/.test(worker), 'تجهيز الحسابات السحابية للمشرف العام فقط');
+  ok(/App\.forgotCloud/.test(fs.readFileSync(path.join(ROOT, 'app', 'assets', 'js', 'modules', 'sync.js'), 'utf8')),
+    'شاشة الاستعادة متصلة بالمسار السحابي');
   ok(/MAIL_ENDPOINT/.test(worker) && /TG_TOKEN/.test(worker) && /TOKEN_SECRET/.test(worker),
     'الخادم يقرأ الأسرار من البيئة (لا توكنات في الكود)');
   ok(!/password\s*:\s*['"][^'"]+['"]/.test(worker) && !/Tabaani@2026/.test(worker),

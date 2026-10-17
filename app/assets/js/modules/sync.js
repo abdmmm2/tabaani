@@ -40,6 +40,114 @@
     return out;
   }
 
+  /* ------------------- استعادة كلمة المرور عبر السحابة ------------------- */
+  var DEFAULT_CLOUD = 'https://tabaani.tabaani.workers.dev';
+  /** إعدادات السحابة للاستعادة: رابط المزامنة إن وُجد، وإلا الخادم الرسمي (مسارات عامة بلا رمز) */
+  function cloudCfg() {
+    try { var c = S.syncCfg(); if (c && c.url) return { url: c.url, token: c.token || '' }; } catch (e) {}
+    return { url: DEFAULT_CLOUD, token: '' };
+  }
+  /** إقران كامل (يتطلب رمز جلسة) — للرفع والتجهيز */
+  function pairedCfg() {
+    try { var c = S.syncCfg(); return (c && c.url && c.token) ? c : null; } catch (e) { return null; }
+  }
+  App.cloudReady = function () { return true; };
+  App.cloudUrl = function () { return cloudCfg().url; };
+
+  App.forgotCloud = function (cfg) {
+    cfg = cfg || cloudCfg(); if (!cfg) return false;
+    var ident = '';
+    var body = h('div', { class: 'stack' });
+    function stepOne() {
+      var id = UI.field({ name: 'ident', label: 'اسم المستخدم أو البريد الإلكتروني', required: true, value: ident });
+      var err = h('p', { class: 'hint hint-error', hidden: true });
+      var busy = false;
+      var form = h('form', { class: 'stack', onsubmit: function (e) {
+        e.preventDefault();
+        if (busy) return; busy = true;
+        err.hidden = true; ident = id.input.value;
+        fetch(cfg.url.replace(/\/$/, '') + '/api/auth/forgot', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ident: ident })
+        }).then(function (r) { return r.json().catch(function () { return {}; }); }).then(function (j) {
+          busy = false;
+          if (!j.ok) { err.hidden = false; err.textContent = j.msg || 'تعذّر إرسال الرمز الآن.'; return; }
+          stepTwo(j);
+        }).catch(function () {
+          busy = false; err.hidden = false;
+          UI.clear(err);
+          err.appendChild(h('span', { text: 'تعذّر الاتصال بالخادم — تحقّق من الإنترنت. ' }));
+          err.appendChild(h('button', { class: 'btn-link', type: 'button', text: 'استعادة محلية على هذا الجهاز', onClick: function () { App.forgotLocal(); } }));
+        });
+      } }, [id.wrap, err, h('button', { class: 'btn btn-primary btn-block', type: 'submit', text: 'أرسل رمز التحقق' }), h('p', { class: 'muted', style: { fontSize: 'var(--fs-xs)' }, text: 'يصل الرمز إلى البريد المسجّل في حسابك ✓' })]);
+      UI.clear(body); body.appendChild(form);
+    }
+    function stepTwo(resp) {
+      var code = UI.field({ name: 'code', label: 'رمز التحقق (٦ أرقام)', required: true, inputmode: 'numeric' });
+      var p1 = UI.field({ name: 'password', label: 'كلمة المرور الجديدة', type: 'password', required: true, help: '٨ أحرف على الأقل' });
+      var p2 = UI.field({ name: 'password2', label: 'تأكيد كلمة المرور', type: 'password', required: true });
+      var err = h('p', { class: 'hint hint-error', hidden: true });
+      var busy = false;
+      var form = h('form', { class: 'stack', onsubmit: function (e) {
+        e.preventDefault();
+        if (busy) return; busy = true;
+        if (p1.input.value !== p2.input.value) { busy = false; err.hidden = false; err.textContent = 'كلمتا المرور غير متطابقتين.'; return; }
+        err.hidden = true;
+        fetch(cfg.url.replace(/\/$/, '') + '/api/auth/reset', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ident: ident, code: code.input.value, password: p1.input.value })
+        }).then(function (r) { return r.json().catch(function () { return {}; }); }).then(function (j) {
+          busy = false;
+          if (!j.ok) { err.hidden = false; err.textContent = j.msg || 'تعذّر تعيين كلمة المرور.'; return; }
+          UI.toast('تم تغيير كلمة المرور ✓ سجّل الدخول بالجديدة', 'ok');
+          App.login();
+        }).catch(function () {
+          busy = false; err.hidden = false; err.textContent = 'تعذّر الاتصال بالخادم — أعد المحاولة.';
+        });
+      } }, [code.wrap, p1.wrap, p2.wrap, err,
+        h('button', { class: 'btn btn-primary btn-block', type: 'submit', text: 'تعيين كلمة المرور الجديدة' }),
+        h('button', { class: 'btn-link', type: 'button', text: 'لم يصلك الرمز؟ إعادة الإرسال', onClick: stepOne })]);
+      UI.clear(body);
+      body.appendChild(h('div', { class: 'stack' }, [
+        h('div', { class: 'callout ok', text: (resp && resp.msg) || 'إن كان الحساب مسجّلًا ببريد فسيصلك رمز التحقق خلال دقيقة.' }),
+        form
+      ]));
+    }
+    stepOne();
+    App.authShell('استعادة كلمة المرور', 'الرمز يصل إلى بريدك المسجّل ✓', h('div', { class: 'stack' }, [
+      body,
+      h('button', { class: 'btn-link', type: 'button', text: 'رجوع لتسجيل الدخول', onClick: function () { App.login(); } })
+    ]));
+    return true;
+  };
+
+  /** تجهيز/تحديث الحسابات السحابية للمستخدمين الحاليين (المشرف العام) */
+  App.cloudProvision = function (onDone) {
+    var cfg = pairedCfg();
+    if (!cfg) { UI.toast('اربط المزامنة السحابية أولًا', 'warn'); return; }
+    var users = S.list('users').map(function (u) {
+      return { id: u.id, name: u.name, role: u.role, username: u.username, email: u.email || '',
+        password: u.password || '', phone: u.phone || '', telegram: u.telegramChatId || '',
+        schoolId: u.schoolId || null, status: u.status || 'active',
+        ackStatus: (u.ack && u.ack.status) || 'pending' };
+    }).filter(function (u) { return u.username && u.password; });
+    if (!users.length) { UI.toast('لا مستخدمين صالحين للتهيئة', 'warn'); return; }
+    UI.confirm('تجهيز ' + users.length + ' حسابًا سحابيًا؟\n' +
+      '• يستطيعون الدخول من أي جهاز واستعادة كلمة المرور بالبريد ✓\n' +
+      '• كلمات المرور تُخزَّن مشفّرة (PBKDF2) على الخادم.',
+      { ok: 'تجهيز الآن' }).then(function (yes) {
+      if (!yes) return;
+      fetch(cfg.url.replace(/\/$/, '') + '/api/admin/provision', {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + cfg.token },
+        body: JSON.stringify({ users: users })
+      }).then(function (r) { return r.json().catch(function () { return {}; }); }).then(function (j) {
+        if (!j.ok) { UI.toast(j.msg || 'تعذّر التجهيز', 'bad'); return; }
+        UI.toast('جاهز ✓ أُنشئ ' + j.created + ' · حُدّث ' + j.updated + (j.skipped ? ' · تُخطّي ' + j.skipped : ''), 'ok');
+        if (onDone) onDone(j);
+      }).catch(function () { UI.toast('تعذّر الاتصال بالخادم', 'bad'); });
+    });
+  };
+
   App.syncPush = function (cb) {
     var c = S.syncCfg();
     if (!c.url || !c.token) { if (cb) cb({ ok: false, error: 'المزامنة غير مقرونة بعد' }); return; }
@@ -238,6 +346,7 @@
         host.appendChild(UI.panel('النسخ', 'كشوف الدرجات ونقاط الطلاب تُرفع مع النسخة تلقائيًا.', [
           h('button', { class: 'btn btn-primary', type: 'button', text: '⬆️ ارفع نسختي إلى السحابة', onClick: function () { App.syncPush(); } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: '⬇️ نزّل نسخة الخادم ودمج', onClick: function () { App.syncPull(); } }),
+          h('button', { class: 'btn btn-outline', type: 'button', text: '☁️ تجهيز الحسابات السحابية', onClick: function () { App.cloudProvision(); } }),
           h('button', { class: 'btn btn-outline', type: 'button', text: '🔌 افصل المزامنة', onClick: function () {
             UI.confirm('سيُحذف رمز الجلسة من هذا الجهاز (تبقى بياناتك كما هي). متابعة؟', function () {
               S.saveSyncCfg({ token: '', lastError: '' }); UI.toast('فُصلت المزامنة', 'ok'); App.route();
@@ -249,6 +358,7 @@
             UI.statCard('كشوف الدرجات', String(S.gradeSheetsForCloud().length), 'كشفًا محفوظًا محليًا', 'brand'),
             UI.statCard('إصدار الخادم', 'v' + c.lastVersion, c.lastAt ? UI.fmtDateTime(c.lastAt) : '—', 'brand')
           ]),
+          h('div', { class: 'callout info', text: '«تجهيز الحسابات السحابية» يرسل مستخدمي هذا الجهاز إلى الخادم بكلمات مرور مشفّرة — بعدها يستطيع كل مستخدم الدخول من أي جهاز واستعادة كلمة المرور على بريده ✓' }),
           c.lastError ? h('div', { class: 'callout warn', text: 'آخر خطأ: ' + c.lastError }) : null
         ]));
       }

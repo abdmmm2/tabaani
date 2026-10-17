@@ -768,6 +768,7 @@ export default {
           res = json({ ok: true, msg: 'أُعيد ضبط نسخة ' + target, schoolId: target });
         }
       }
+      else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -879,6 +880,45 @@ async function handleReset(env, req) {
     packPassword(await hashPassword(pass)), u.id);
   await audit(env, u.username, u.role, u.school_id, 'password_reset_done', '', ip);
   return json({ ok: true, msg: 'تم تغيير كلمة المرور ✓ سجّل الدخول بكلمة المرور الجديدة.' });
+}
+
+/* ------------- تجهيز حسابات سحابية للمستخدمين الحاليين (المشرف العام فقط) -------------
+   يستقبل قائمة المستخدمين من التطبيق (المرة الأولى أو بعد إضافة موظفين)،
+   ويُنشئ/يحدّث حسابات الدخول السحابية بكلمات مرور PBKDF2. */
+async function handleProvision(env, req, ctx) {
+  if (ctx.user.role !== 'super') return json({ ok: false, msg: 'للمشرف العام فقط.' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const list = Array.isArray(body.users) ? body.users.slice(0, 500) : [];
+  if (!list.length) return json({ ok: false, msg: 'لا يوجد مستخدمون في الطلب.' }, 400);
+  let created = 0, updated = 0, skipped = 0;
+  for (const x of list) {
+    const username = clean(x.username, 60).toLowerCase();
+    const role = clean(x.role, 20);
+    const pass = String(x.password || '');
+    const email = clean(x.email, 160).toLowerCase();
+    if (!username || !role || !pass) { skipped++; continue; }
+    const name = clean(x.name, 80) || username;
+    const status = (x.status === 'suspended' || x.status === 'pending') ? x.status : 'active';
+    const ack = (x.ackStatus === 'approved' || x.ackStatus === 'submitted') ? x.ackStatus : 'pending';
+    const schoolId = clean(x.schoolId, 60) || null;
+    const phone = clean(x.phone, 30), tg = clean(x.telegram, 40);
+    const packed = packPassword(await hashPassword(pass));
+    const ex = await one(env, 'SELECT id FROM users WHERE lower(username) = ?', username);
+    if (ex) {
+      await run(env, `UPDATE users SET name=?, role=?, school_id=?, email=?, phone=?, telegram=?, status=?, ack_status=?, pass=?,
+        token_version = COALESCE(token_version,0) + 1 WHERE id=?`,
+        name, role, schoolId, email, phone, tg, status, ack, packed, ex.id);
+      updated++;
+    } else {
+      await run(env, `INSERT INTO users (id,at,school_id,name,role,username,pass,email,phone,telegram,must_change,ack_status,status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)`,
+        rid('u'), nowMs(), schoolId, name, role, username, packed, email, phone, tg, ack, status);
+      created++;
+    }
+  }
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'accounts_provisioned',
+    'أُنشئ ' + created + ' · حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, created, updated, skipped, total: list.length });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

@@ -898,8 +898,13 @@
       App.authShell('إنشاء حساب جديد', 'سجّل بياناتك للانضمام إلى مدرستك على تابعني.', content);
     },
 
-    /** استعادة كلمة المرور (خطوتان) */
+    /** استعادة كلمة المرور — المسار السحابي (البريد) افتراضيًا من أي جهاز */
     forgot: function () {
+      if (App.forgotCloud && App.forgotCloud()) return;
+      App.forgotLocal();
+    },
+    /** الاستعادة المحلية (هذا الجهاز فقط): رمز يظهر على الشاشة — للحالات بلا إنترنت */
+    forgotLocal: function () {
       var step = 1, ident = '';
       var body = h('div', { class: 'stack' });
 
