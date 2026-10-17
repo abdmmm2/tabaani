@@ -856,3 +856,19 @@ body.ack-locked .support-fab { display: none !important; }
   .modal-body { padding: 11px 12px; }
   .modal-foot { padding: 9px 12px; position: sticky; bottom: 0; background: var(--bg-soft); }
 }
+
+/* ===== المتواجدون الآن (قائمة جانبية) ===== */
+.presence { margin-top: 10px; padding: 8px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 10px;
+  background: rgba(255,255,255,.05); color: #EAF3EF; font-size: 12px; }
+.presence-head { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; font-size: 12.5px; }
+.presence-row { display: flex; align-items: center; gap: 6px; padding: 4px 2px; border-radius: 7px; }
+.presence-group { cursor: pointer; }
+.presence-row:hover { background: rgba(255,255,255,.07); }
+.presence-sub { display: flex; align-items: center; gap: 6px; padding: 3px 2px 3px 16px; font-size: 11.3px; opacity: .92; }
+.presence-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.presence-meta { flex: 0 0 auto; font-size: 10.6px; opacity: .82; }
+.presence-caret { flex: 0 0 auto; opacity: .7; font-size: 10px; }
+.presence-empty { opacity: .6; font-size: 11px; padding: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.dot.on { background: #3EE08F; box-shadow: 0 0 6px rgba(62,224,143,.85); }
+.dot.off { background: #8A9A94; opacity: .65; }

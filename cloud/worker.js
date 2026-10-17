@@ -399,6 +399,8 @@ export default {
         }
       }
       else if (p === '/api/me/password' && ctx && req.method === 'POST') res = await handleMyPassword(env, req, ctx);
+      else if (p === '/api/me/ping' && ctx && req.method === 'POST') res = await handlePing(env, ctx);
+      else if (p === '/api/presence' && ctx && req.method === 'GET') res = await handlePresence(env, ctx);
       else if (p === '/api/me/data' && ctx && req.method === 'GET') res = await handleMyData(env, ctx);
       else if (p === '/api/me/data' && ctx && (req.method === 'POST' || req.method === 'PUT')) res = await handleMyWrite(env, req, ctx);
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
@@ -848,6 +850,42 @@ async function handleDeleteUser(env, req, ctx) {
   await run(env, "UPDATE users SET status = 'deleted', token_version = COALESCE(token_version,0) + 1 WHERE id = ?", acc.id);
   await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'user_deleted', 'target=' + un, req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, msg: 'حُذف الحساب.' });
+}
+
+/* ==================== المتواجدون الآن (presence) ==================== */
+const ONLINE_WINDOW = 120;   /* ثانية: يُعدّ متصلًا إذا ظهر خلال دقيقتين */
+async function handlePing(env, ctx) {
+  const now = Math.floor(Date.now() / 1000);
+  const u = await one(env, 'SELECT last_seen, online_since FROM users WHERE id = ?', ctx.user.id);
+  const wasOffline = !u || Number(u.last_seen || 0) < now - ONLINE_WINDOW;
+  const since = wasOffline ? now : (Number(u.online_since || 0) || now);
+  await run(env, 'UPDATE users SET last_seen = ?, online_since = ? WHERE id = ?', now, since, ctx.user.id);
+  return json({ ok: true, at: now, since: since });
+}
+async function handlePresence(env, ctx) {
+  const u = ctx.user, now = Math.floor(Date.now() / 1000);
+  if (u.role === 'super') {
+    const rows = await all(env, `SELECT school_id, COUNT(*) AS n,
+      SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS online, MAX(last_seen) AS last
+      FROM users WHERE status = 'active' AND school_id IS NOT NULL AND school_id <> '' GROUP BY school_id`, now - ONLINE_WINDOW);
+    let names = {};
+    try {
+      const row = await one(env, 'SELECT json FROM data WHERE school_id = ?', 'platform');
+      if (row) (JSON.parse(row.json).schools || []).forEach(function (s) { names[s.id] = s.name; });
+    } catch (e) {}
+    return json({ ok: true, scope: 'schools', now, rows: rows.map(function (r) {
+      return { schoolId: r.school_id, name: names[r.school_id] || r.school_id,
+        total: Number(r.n || 0), online: Number(r.online || 0) > 0, onlineCount: Number(r.online || 0), lastSeen: Number(r.last || 0) };
+    }) });
+  }
+  if (u.role !== 'principal' && u.role !== 'deputy') return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  if (!u.school_id) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const rows = await all(env, `SELECT id, name, role, username, status, last_seen, online_since FROM users
+    WHERE school_id = ? AND status = 'active' ORDER BY role, name`, u.school_id);
+  return json({ ok: true, scope: 'school', now, schoolId: u.school_id, rows: rows.map(function (r) {
+    return { id: r.id, name: r.name, role: r.role, username: r.username,
+      online: Number(r.last_seen || 0) >= now - ONLINE_WINDOW, lastSeen: Number(r.last_seen || 0), since: Number(r.online_since || 0) };
+  }) });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

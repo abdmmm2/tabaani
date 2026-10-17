@@ -409,6 +409,9 @@
         h('button', { class: 'side-pw', type: 'button', text: '🔑 تغيير كلمة المرور',
           onClick: function () { sidebar.classList.remove('is-open'); if (sidebar._backdrop) sidebar._backdrop.classList.remove('is-open'); App.openChangePassword(); } })
       ]));
+      /* المتواجدون الآن (وضع السحابة) */
+      if (App.presencePanel) { var pp = App.presencePanel(); if (pp) sidebar.appendChild(pp); }
+      if (App.presenceStart) App.presenceStart();
 
       S.genderizeDom(sidebar);
       /* الشريط العلوي */
