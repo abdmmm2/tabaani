@@ -1496,6 +1496,7 @@
         stats('مخالفات غير مغلقة', openV, null, openV ? 'gold' : null);
         stats('حصص الجدول اليومي', pN + ' حصص');
         action('إضافة حساب موظف', 'staff', 'btn-primary');
+        action('🔑 كلمات المرور', 'staff');
         action('استيراد المعلمين (Excel)', 'staff');
         action('إسناد المواد', 'staff');
       }
