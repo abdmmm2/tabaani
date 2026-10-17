@@ -104,6 +104,19 @@
           h('button', { class: 'btn btn-outline btn-block', type: 'button', text: 'أول مرة للمنصة؟ إنشاء حساب المشرف العام',
             onClick: function () { closeAll(); App.setupScreen(); } })
         ]) : null,
+        (function () {
+          var out = h('div', { class: 'muted', style: { fontSize: 'var(--fs-xs)', marginTop: '6px' } });
+          return h('div', {}, [
+            h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🩺 فحص السحابة', onClick: function () {
+              out.textContent = 'جارٍ الفحص…';
+              var url = (App.cloudUrl ? App.cloudUrl() : 'https://tabaani.tabaani.workers.dev');
+              fetch(url.replace(/\/$/, '') + '/api/health?ts=' + Date.now())
+                .then(function (r) { return r.text().then(function (t) { out.textContent = 'الرد ' + r.status + ' — ' + String(t).slice(0, 140); }); })
+                .catch(function (e) { out.textContent = 'فشل الاتصال: ' + String((e && e.message) || e); });
+            } }),
+            out
+          ]);
+        })(),
         h('div', { class: 'cluster', style: { marginTop: '10px', flexWrap: 'wrap', gap: '8px' } }, [
           h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🔄 تحديث قسري', onClick: function () { closeAll(); App.hardUpdate(); } }),
           h('button', { class: 'btn btn-outline btn-sm', type: 'button', text: '🧾 تقرير تشخيص', onClick: function () { closeAll(); App.diagReport(); } }),
