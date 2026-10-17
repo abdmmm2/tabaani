@@ -37,13 +37,17 @@ const nowMs = () => Date.now();
 
 /* --------------------- تهيئة الجداول تلقائيًا (self-migrate) --------------------- */
 let schemaReady = false;
-async function ensureSchema(env) {
-  if (schemaReady) return { ok: true, skipped: true };
-  try {
-    await one(env, 'SELECT COUNT(*) AS n FROM users');
-    schemaReady = true;
-    return { ok: true, already: true };
-  } catch (e) {
+async function ensureSchema(env, force) {
+  if (schemaReady && !force) return { ok: true, skipped: true };
+  /* force = يطبّق المخطط كاملًا (جداول/فهارس IF NOT EXISTS) ⇒ يضيف الجديد لقاعدة قائمة */
+  if (!force) {
+    try {
+      await one(env, 'SELECT COUNT(*) AS n FROM users');
+      schemaReady = true;
+      return { ok: true, already: true };
+    } catch (e) {}
+  }
+  {
     /* الجداول غير موجودة ⇒ ننشئها من المخطط المدمج */
     try {
       /* ننفّذ الجمل واحدة واحدة بعد تنقية التعليقات (D1.execute يرفض التعليقات) */
@@ -57,7 +61,7 @@ async function ensureSchema(env) {
       }
       await one(env, 'SELECT COUNT(*) AS n FROM users');
       schemaReady = true;
-      return { ok: true, created: true, statements: done, tables: (SCHEMA_SQL.match(/CREATE TABLE/gi) || []).length };
+      return { ok: true, created: !force, updated: !!force, statements: done, tables: (SCHEMA_SQL.match(/CREATE TABLE/gi) || []).length };
     } catch (e3) {
       return { ok: false, error: String((e3 && e3.message) || e3) };
     }
@@ -352,7 +356,7 @@ export default {
     try {
       let res;
       if (p === '/api/init') {
-        const r = await ensureSchema(env);
+        const r = await ensureSchema(env, url.searchParams.get('force') !== null || req.method === 'POST');
         res = json(r.ok ? { ok: true, msg: 'الجداول جاهزة', ...r, tables: r.tables || 8 } : { ok: false, msg: 'تعذّر إنشاء الجداول', error: r.error }, r.ok ? 200 : 500);
       }
       else if (p === '/api/register' && req.method === 'POST') res = await handleRegister(env, req);
@@ -360,6 +364,7 @@ export default {
         const body = await req.json().catch(() => ({}));
         res = await handleActivationRequest(env, body, req);
       } else if (p === '/api/activation/verify' && req.method === 'POST') res = await handleActivationVerify(env, req);
+      else if (p === '/api/auth/forgot' && req.method === 'POST') res = await handleForgot(env, req);
       else if (p === '/api/auth/login' && req.method === 'POST') res = await handleLogin(env, req);
       else if (p === '/api/health') res = json({ ok: true, service: 'tabaani-cloud', at: nowMs(), mail: !!env.MAIL_ENDPOINT, telegram: !!env.TG_TOKEN });
       else {
@@ -420,6 +425,45 @@ async function handleActivationRequest(env, body, req) {
     body: 'كود التفعيل الجديد: ' + code + '\nصالح ١٥ دقيقة.' });
   await logOutbox(env, { channel: 'email', to: email || reg.email, subject: 'كود تفعيل جديد', body: regId, ok: mail.ok, error: mail.error });
   return json({ ok: true, mailed: mail.ok, msg: mail.ok ? 'أُرسل كود جديد إلى بريدك.' : ('تعذّر الإرسال: ' + (mail.error || '')) });
+}
+
+/* ------------------- استعادة كلمة المرور: طلب رمز بالبريد -------------------
+   • ردّ عام دائمًا (لا نكشف وجود الحساب).
+   • الكود ٦ أرقام يُخزَّن مُجزَّأً (SHA-256 مع البريد) — لا يُحفظ كنص.
+   • صلاحية ١٥ دقيقة · ٣ محاولات · ٣ طلبات/ساعة · مهلة ٦٠ ثانية بين الطلبات. */
+async function handleForgot(env, req) {
+  const body = await req.json().catch(() => ({}));
+  const ident = clean(body.ident || body.email || body.username, 160).toLowerCase().trim();
+  const generic = { ok: true, msg: 'إن كان الحساب مسجّلًا ببريد فسيصلك رمز التحقق خلال دقيقة.' };
+  if (!ident) return json(generic, 200);
+
+  /* حدود الإرسال (منع الإزعاج والاستهلاك) */
+  const now = nowMs();
+  const last = await one(env, 'SELECT at FROM reset_codes WHERE ident = ? ORDER BY at DESC LIMIT 1', ident);
+  if (last && now - last.at < 60_000) return json({ ...generic, wait: 60 }, 200);
+  const hourAgo = Math.floor(now / 1000) - 3600;
+  const cnt = await one(env, 'SELECT COUNT(*) AS n FROM reset_codes WHERE ident = ? AND at > ?', ident, hourAgo * 1000);
+  if (cnt && Number(cnt.n) >= 3) return json({ ...generic, limited: true }, 200);
+
+  const user = await one(env, 'SELECT * FROM users WHERE lower(username) = ? OR (email <> \'\' AND lower(email) = ?) LIMIT 1', ident, ident);
+  if (!user || !user.email) return json(generic, 200);
+
+  const code = genCode();
+  const hash = await hashCode(code, user.email);
+  /* إبطال أي كود سابق لنفس المستخدم */
+  await run(env, 'UPDATE reset_codes SET used = 1 WHERE user_id = ? AND used = 0', user.id);
+  await run(env, 'INSERT INTO reset_codes (id,user_id,ident,email,hash,at,expires_at,tries,used) VALUES (?,?,?,?,?,?,?,0,0)',
+    rid('rs'), user.id, ident, String(user.email).toLowerCase(), hash, now, codeExpiry(15));
+
+  const mail = await sendMail(env, {
+    to: user.email,
+    subject: 'تابعني — رمز استعادة كلمة المرور',
+    body: 'رمز استعادة كلمة المرور في تابعني: ' + code + '\n\nصالح ١٥ دقيقة، ولا تشاركه مع أي شخص.\nإذا لم تطلبه فتجاهل هذه الرسالة.'
+  });
+  await logOutbox(env, { channel: 'email', to: user.email, subject: 'استعادة كلمة المرور', body: user.id, ok: mail.ok, error: mail.error });
+  await audit(env, user.id, user.role, user.school_id, 'password_reset_request', clean(ident, 80), req.headers.get('CF-Connecting-IP') || '');
+  if (!mail.ok) return json({ ok: false, msg: 'تعذّر إرسال الرمز الآن. حاول بعد قليل أو تواصل مع إدارة تابني.' }, 502);
+  return json(generic, 200);
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

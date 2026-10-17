@@ -7,3 +7,11 @@ Thumbs.db
 # أدوات التطوير المؤقتة
 node_modules/
 *.tmp
+
+# أسرار التطوير المحلية
+cloud/.dev.vars
+.dev.vars
+
+# حالة wrangler المحلية
+cloud/.wrangler/
+.wrangler/

@@ -136,14 +136,19 @@ function ok(cond, label, extra) {
     'الملف المدموج يشمل المخطط والتهيئة وبلا استيراد');
 
   const schema = fs.readFileSync(path.join(ROOT, 'cloud', 'schema.sql'), 'utf8');
-  ['registrations', 'activation_codes', 'schools', 'users', 'data', 'outbox', 'audit'].forEach((t) => {
+  ['registrations', 'activation_codes', 'reset_codes', 'schools', 'users', 'data', 'outbox', 'audit'].forEach((t) => {
     ok(new RegExp('CREATE TABLE IF NOT EXISTS ' + t + '\\b').test(schema), 'schema.sql فيه جدول ' + t);
   });
   const worker = fs.readFileSync(path.join(ROOT, 'cloud', 'worker.js'), 'utf8');
-  ['/api/register', '/api/activation/verify', '/api/auth/login', '/api/ack/submit', '/api/ack/approve',
+  ['/api/register', '/api/activation/verify', '/api/auth/login', '/api/auth/forgot', '/api/ack/submit', '/api/ack/approve',
     '/api/sync', '/api/search', '/api/admin/approve', '/api/notify'].forEach((r) => {
     ok(worker.indexOf(r) > -1, 'worker.js فيه المسار ' + r);
   });
+  ok(/handleForgot/.test(worker) && /reset_codes/.test(worker), 'استعادة كلمة المرور: الدالة والجدول موجودان');
+  ok(/hashCode\(code, user\.email\)/.test(worker), 'رمز الاستعادة يُخزَّن مُجزَّأً (لا نص صريح)');
+  ok(/٣ طلبات|>= 3/.test(worker) && /60_000/.test(worker), 'حدود إرسال: ٣/ساعة ومهلة ٦٠ ثانية');
+  ok(/إن كان الحساب مسجّلًا ببريد/.test(worker), 'الرد عام لا يكشف وجود الحساب');
+  ok(/UPDATE reset_codes SET used = 1/.test(worker), 'إبطال الأكواد السابقة عند طلب جديد');
   ok(/MAIL_ENDPOINT/.test(worker) && /TG_TOKEN/.test(worker) && /TOKEN_SECRET/.test(worker),
     'الخادم يقرأ الأسرار من البيئة (لا توكنات في الكود)');
   ok(!/password\s*:\s*['"][^'"]+['"]/.test(worker) && !/Tabaani@2026/.test(worker),

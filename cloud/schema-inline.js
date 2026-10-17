@@ -45,6 +45,21 @@ CREATE TABLE IF NOT EXISTS activation_codes (
 CREATE INDEX IF NOT EXISTS idx_code_reg ON activation_codes(reg_id);
 CREATE INDEX IF NOT EXISTS idx_code_email ON activation_codes(email);
 
+-- أكواد استعادة كلمة المرور (تُخزَّن مُجزَّأةً — لا يُحفظ الكود نفسه)
+CREATE TABLE IF NOT EXISTS reset_codes (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  ident      TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  hash       TEXT NOT NULL,
+  at         INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  tries      INTEGER NOT NULL DEFAULT 0,
+  used       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_reset_user ON reset_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_reset_ident ON reset_codes(ident);
+
 -- المدارس (نسخة مرجعية على الخادم)
 CREATE TABLE IF NOT EXISTS schools (
   id      TEXT PRIMARY KEY,
