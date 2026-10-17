@@ -64,18 +64,17 @@
     var err = h('p', { class: 'hint hint-error', hidden: true });
     return h('form', { class: 'stack', onsubmit: function (e) {
       e.preventDefault();
-      var res = S.authenticate(user.input.value, pass.input.value);
-      if (!res.ok) { err.hidden = false; err.textContent = res.error; return; }
-      var tf = S.twoFactorFor(res.user);
-      if (tf.blocked) { err.hidden = false; err.textContent = tf.reason; return; }
       err.hidden = true;
-      function afterAuth() {
+      function ok(u) {
         closeAll();
-        App.enter(res.user.id);
-        if (res.user.mustChange) App.firstLoginPassword(res.user);
+        App.enter(u.id);
+        if (u.mustChange) App.firstLoginPassword(u);
       }
-      if (tf.applies) { closeAll(); App.twoFactorScreen(res.user, afterAuth); return; }   /* نُغلق نافذة الدخول لتظهر شاشة الرمز وحدها */
-      afterAuth();
+      function bad(msg) { err.hidden = false; err.textContent = msg || 'بيانات الدخول غير صحيحة.'; }
+      if (App.signIn) { App.signIn(user.input.value, pass.input.value, ok, bad); return; }  /* السحابة أولًا */
+      var res = S.authenticate(user.input.value, pass.input.value);
+      if (!res.ok) { bad(res.error); return; }
+      ok(res.user);
     } }, [
       user.wrap, pass.wrap, err,
       h('button', { class: 'btn btn-primary btn-block btn-lg', type: 'submit', text: 'تسجيل الدخول' }),
