@@ -126,13 +126,16 @@
     var cfg = cloudCfg();
     var local = function () {
       var res = S.authenticate(username, password);
-      if (!res.ok) { onErr(res.error || 'بيانات الدخول غير صحيحة.'); return; }
+      if (!res.ok) {
+        var msg = res.error || 'بيانات الدخول غير صحيحة.';
+        if (/غير موجود/.test(msg)) msg = 'بيانات الدخول غير صحيحة — تحقّق من اسم المستخدم أو البريد وكلمة المرور.';
+        onErr(msg); return;
+      }
       var tf = S.twoFactorFor(res.user);
       if (tf.blocked) { onErr(tf.reason + ' — اربط تلقرام أو أوقف الإلزام من الإعدادات.'); return; }
       if (tf.applies) { S.logout(); App.twoFactorScreen(res.user, function () { onOk(res.user); }); return; }
       onOk(res.user);
     };
-    if (!navigator.onLine) { local(); return; }
     fetch(cfg.url.replace(/\/$/, '') + '/api/auth/login', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: username, password: password })
