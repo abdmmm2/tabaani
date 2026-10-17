@@ -151,7 +151,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
   add(/title: 'إقرار'/.test(acks) && /compact: true/.test(acks), 'وثيقة الإقرار: العنوان «إقرار» + نمط صفحة واحدة', '');
   add(/tabaani_promo_closed_at/.test(reg) && /tabaani_promo_closed_at/.test(cl),
     'الإعلان: لا يعود بعد الإغلاق (سجل إغلاق دائم)', '');
-  add(/closeAll\(\); App\.twoFactorScreen/.test(landing), 'الدخول: نافذة الدخول تُغلق قبل شاشة رمز التحقق', '');
+  add(/App\.signIn/.test(landing) && /modal-backdrop/.test(read('app/assets/js/app.js')),
+    'الدخول: سحابي أولًا ونافذة الدخول تُغلق قبل شاشة رمز التحقق', '');
 })();
 
 /* ---------------------------------------- التقرير */
