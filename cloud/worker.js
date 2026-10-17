@@ -593,7 +593,7 @@ function skeleton() {
     students: [], assignments: [], transfers: [], periods: [], sessions: [], violations: [], permissions: [],
     programs: [], programRegs: [], activities: [], activityReqs: [], dutyLocations: [], duties: [], terms: [],
     activityLog: [], checkins: [], faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [],
-    exits: [], entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [],
+    exits: [], entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [], sheets: [],
     paymentRequests: [], invoices: [], expenses: [], tickets: [], updates: [], letterhead: null };
 }
 function myClassIds(db, u) {
@@ -623,6 +623,13 @@ function filterForUser(db, u) {
     out.notif = (db.notif || []).filter(function (n) { return n.toUserId === u.id; });
     out.tickets = (db.tickets || []).filter(function (t) { return t.byUserId === u.id; });
     out.terms = (db.terms || []).filter(function (t) { return t.active; });
+    /* كشوف صانع الكشوفات: كشوف فصوله + الكشوف العامة الموجّهة له */
+    out.sheets = (db.sheets || []).filter(function (sh) {
+      if (String(sh.schoolId || '') !== String(u.school_id || '')) return false;
+      var cids = sh.classIds || (sh.classId ? [sh.classId] : []);
+      if (sh.teacherIds && sh.teacherIds.indexOf(u.id) > -1) return true;
+      return !cids.length || cids.some(function (id) { return ids.indexOf(id) > -1; });
+    });
     return out;
   }
   if (u.role === 'student') {
@@ -727,6 +734,7 @@ async function handleMyWrite(env, req, ctx) {
       } else if (u.role === 'student') {
         okScope = coll === 'messages' && (item.fromUserId === u.id || item.toUserId === u.id);
       }
+      if (coll === 'sheets' && !isSuper) okScope = String(item.schoolId || '') === String(u.school_id || '');
       if (!okScope) { rejected++; return; }
       if (coll === 'users') {
         /* امنع تكرار المستخدم: طابق المعرّف أولًا، ثم اسم المستخدم (يُحدَّث السجل القائم) */

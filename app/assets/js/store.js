@@ -121,7 +121,7 @@
       programs: [], programRegs: [], activities: [], activityReqs: [],
       dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [], faceScans: [],
       reports: [], telegram: [], audit: [], notif: [], exits: [],
-      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [], sheets: [],
       educationDepts: [], letterhead: null, subjects: [],
       promo: {
         enabled: true, mode: 'active', frequency: 'session', autoClose: 0, updatedAt: '2026-10-13',
@@ -561,7 +561,7 @@
       sessions: [], violations: [], permissions: [], programs: [], programRegs: [], activities: [],
       activityReqs: [], dutyLocations: [], duties: [], terms: [], activityLog: [], checkins: [],
       faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [], exits: [],
-      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
+      entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [], sheets: [], paymentRequests: [], invoices: [], expenses: [], tickets: [],
       letterhead: null, settings: { hijri: true, ministry: 'المملكة العربية السعودية — وزارة التعليم',
         mobileNotify: false, deprivationPct: 25, deprivationBySubject: {}, activeTermId: null }
     };
@@ -572,7 +572,7 @@
     'sessions', 'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
     'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans', 'reports', 'telegram',
     'audit', 'notif', 'subjects', 'exits', 'entryPermits', 'messages',
-    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates', 'serviceRequests', 'pledges', 'gradeSheets'];
+    'paymentRequests', 'invoices', 'expenses', 'tickets', 'updates', 'serviceRequests', 'pledges', 'gradeSheets', 'sheets'];
   function normalizeDb(d) {
     if (!d || typeof d !== 'object') return emptyDb();
     if (!d.meta) d.meta = { version: 1, createdAt: now() };
@@ -717,7 +717,7 @@
      'violations', 'permissions', 'programs', 'programRegs', 'activities', 'activityReqs',
      'dutyLocations', 'duties', 'terms', 'activityLog', 'checkins', 'faceScans',
      'reports', 'telegram', 'audit', 'notif', 'subjects', 'exits', 'entryPermits',
-     'messages'].forEach(function (k) { d[k] = []; });
+     'messages', 'sheets'].forEach(function (k) { d[k] = []; });
     d.users = supers;
     d.letterhead = null;
     d.settings = Object.assign({}, d.settings, { deprivationBySubject: {}, activeTermId: null });

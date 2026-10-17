@@ -21,7 +21,7 @@ const OWNER = { username: 'e2e-root', name: 'مراجع آلي', password: 'E2eR
 
 /* العدد المتوقّع للوحدات لكل دور — حدّثه عمدًا عند إضافة/نقل وحدة */
 const EXPECTED = {
-  super: 17, principal: 19, deputy: 17, guidance: 9, teacher: 10,
+  super: 17, principal: 20, deputy: 18, guidance: 9, teacher: 11,
   teachers_deputy: 5, volunteer: 5, activity: 5, absence_monitor: 3, guard: 3, student: 6,
   accountant: 3, support: 4, specialist: 2
 };
