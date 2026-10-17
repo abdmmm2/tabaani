@@ -30,6 +30,85 @@ function isValidPhone(p) { return /^05\d{8}$/.test(normPhone(p)); }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || '').trim()); }
 function clean(s, max = 200) { return String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max); }
 
+
+/* --------------------- تنظيف تكرار المستخدمين (مرّة واحدة) ---------------------
+   يحدث التكرار عندما تُدفع نسخة محلية قديمة (بمعرّفاتها) إلى نسخة سحابية
+   أنشأت الحساب نفسه بمعرّف خادم (u_...). الدمج يحتفظ بمعرّف واحد ويحوّل
+   كل المراجع القديمة إليه، فلا تختفي إسنادات أو حضور أو رسائل.
+   - preferId: معرّف الجلسة الحالية (يبقى هو الأصل حتى لا ينفصل الدخول عن البيانات).
+   - يُفضّل معرّف الخادم u_... ثم الأحدث إنشاءً.
+   - يدمج الحقول الناقصة ويأخذ أقوى حالة إقرار (approved > submitted > pending).
+   ========================================================================== */
+function dedupeUsers(db, preferId) {
+  const res = { merged: 0, map: {} };
+  if (!db || !Array.isArray(db.users) || db.users.length < 2) return res;
+
+  const ts = (v) => {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return n;
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? t : 0;
+  };
+  const empty = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+  const ackRank = (a) => (a && a.status === 'approved' ? 3 : a && a.status === 'submitted' ? 2 : a && a.status === 'pending' ? 1 : 0);
+
+  const groups = new Map();
+  db.users.forEach((u, i) => {
+    if (!u || typeof u !== 'object') return;
+    const un = String(u.username || '').trim().toLowerCase();
+    const key = un ? 'u:' + un : 'id:' + String(u.id || ('#' + i));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(u);
+  });
+
+  const out = [];
+  const oldNew = {};
+  groups.forEach((arr) => {
+    if (arr.length === 1) { out.push(arr[0]); return; }
+    const picked = (preferId && arr.filter((x) => x.id === preferId)[0])
+      || arr.filter((x) => /^u_/.test(String(x.id || ''))).sort((a, b) => ts(b.createdAt) - ts(a.createdAt))[0]
+      || arr.slice().sort((a, b) => ts(b.createdAt) - ts(a.createdAt))[0]
+      || arr[0];
+    arr.forEach((x) => {
+      if (x === picked) return;
+      if (x.id && x.id !== picked.id) { oldNew[x.id] = picked.id; res.merged++; }
+      Object.keys(x).forEach((k) => {
+        if (k === 'id') return;
+        if (k === 'ack') {
+          if (ackRank(x.ack) > ackRank(picked.ack)) picked.ack = x.ack;
+          else if (empty(picked.ack) && x.ack) picked.ack = x.ack;
+          return;
+        }
+        if (k === 'owner') { if (x.owner) picked.owner = true; return; }
+        if (empty(picked[k]) && !empty(x[k])) picked[k] = x[k];
+      });
+    });
+    out.push(picked);
+  });
+
+  if (!res.merged) return res;
+  db.users = out;
+
+  /* تحويل كل مرجع نصّي مطابق لمعرّف مدموج (في أي مجموعة أو حقل متداخل) */
+  const keys = Object.keys(oldNew);
+  const remap = (v) => {
+    if (typeof v === 'string') return oldNew[v] || v;
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) v[i] = remap(v[i]);
+      return v;
+    }
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach((k) => { v[k] = remap(v[k]); });
+    }
+    return v;
+  };
+  if (keys.length) {
+    Object.keys(db).forEach((coll) => { if (coll !== 'users') remap(db[coll]); });
+  }
+  res.map = oldNew;
+  return res;
+}
+
 /* ------------------------------ الترميزات ------------------------------ */
 function b64(bytes) {
   let s = '';
@@ -249,6 +328,12 @@ CREATE INDEX IF NOT EXISTS idx_reg_status ON registrations(status);
 -- ترقية: إبطال الجلسات عند تغيير كلمة المرور (تُتجاهل لو العمود موجود)
 ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0;
 
+-- ترقية: بداية الاتصال (تُتجاهل لو موجود)
+ALTER TABLE users ADD COLUMN online_since INTEGER NOT NULL DEFAULT 0;
+
+-- ترقية: آخر ظهور (تُتجاهل لو موجود)
+ALTER TABLE users ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0;
+
 -- أكواد التفعيل (تُخزَّن مُجزَّأةً — لا يُحفظ الكود نفسه)
 CREATE TABLE IF NOT EXISTS activation_codes (
   id         TEXT PRIMARY KEY,
@@ -308,6 +393,8 @@ CREATE TABLE IF NOT EXISTS users (
   ack_doc      TEXT DEFAULT '',
   status       TEXT NOT NULL DEFAULT 'active',
   token_version INTEGER NOT NULL DEFAULT 0,   -- يُزاد عند تغيير كلمة المرور ⇒ إبطال كل الجلسات السابقة
+  last_seen    INTEGER NOT NULL DEFAULT 0,   -- آخر ظهور (ثوانٍ) للمتواجدين الآن
+  online_since INTEGER NOT NULL DEFAULT 0,   -- بداية الاتصال الحالية
   class_ids    TEXT DEFAULT ''              -- JSON array (للمعلمين)
 );
 CREATE INDEX IF NOT EXISTS idx_users_school ON users(school_id);
@@ -557,7 +644,7 @@ async function handleLogin(env, req) {
   const body = await req.json().catch(() => ({}));
   const username = clean(body.username, 60).toLowerCase(), pass = String(body.password || '');
   if (!username || !pass) return json({ ok: false, msg: 'أدخل اسم المستخدم وكلمة المرور.' }, 400);
-  const u = await one(env, 'SELECT * FROM users WHERE lower(username) = ?', username);
+  const u = await one(env, 'SELECT * FROM users WHERE lower(username) = ? OR (email <> \'\' AND lower(email) = ?) LIMIT 1', username, username);
   if (!u) return json({ ok: false, msg: 'بيانات الدخول غير صحيحة.' }, 401);
   if (u.status !== 'active') return json({ ok: false, msg: 'الحساب موقوف — راجع إدارة المدرسة.' }, 403);
   const okp = await verifyPassword(pass, u.pass);
@@ -768,7 +855,18 @@ export default {
           res = json({ ok: true, msg: 'أُعيد ضبط نسخة ' + target, schoolId: target });
         }
       }
+      else if (p === '/api/me/password' && ctx && req.method === 'POST') res = await handleMyPassword(env, req, ctx);
+      else if (p === '/api/me/ping' && ctx && req.method === 'POST') res = await handlePing(env, ctx);
+      else if (p === '/api/presence' && ctx && req.method === 'GET') res = await handlePresence(env, ctx);
+      else if (p === '/api/me/data' && ctx && req.method === 'GET') res = await handleMyData(env, ctx);
+      else if (p === '/api/me/data' && ctx && (req.method === 'POST' || req.method === 'PUT')) res = await handleMyWrite(env, req, ctx);
       else if (p === '/api/admin/provision' && ctx) res = await handleProvision(env, req, ctx);
+      else if (p === '/api/admin/outbox' && ctx && ctx.user.role === 'super') res = await handleOutbox(env, req);
+      else if (p === '/api/admin/stats' && ctx && ctx.user.role === 'super') res = await handleAdminStats(env);
+      else if (p === '/api/admin/users' && ctx && ctx.user.role === 'super') res = await handleAdminUsers(env);
+      else if (p === '/api/admin/setpass' && ctx && ctx.user.role === 'super') res = await handleAdminSetPass(env, req, ctx);
+      else if (p === '/api/admin/passwords' && ctx) res = await handleBulkPasswords(env, req, ctx);
+      else if (p === '/api/admin/deleteuser' && ctx) res = await handleDeleteUser(env, req, ctx);
       else if (p === '/api/admin/requests' && ctx) res = await handleAdminRequests(env, req, ctx);
         else if (p === '/api/admin/approve' && ctx) res = await handleAdminApprove(env, req, ctx);
         else if (p === '/api/notify' && ctx) res = await handleNotify(env, req, ctx);
@@ -919,6 +1017,356 @@ async function handleProvision(env, req, ctx) {
   await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'accounts_provisioned',
     'أُنشئ ' + created + ' · حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
   return json({ ok: true, created, updated, skipped, total: list.length });
+}
+
+/* ------------ تشخيص (المشرف العام): آخر الرسائل الصادرة + إحصاءات ------------ */
+async function handleOutbox(env, req) {
+  const limit = Math.min(50, Math.max(1, parseInt(new URL(req.url).searchParams.get('limit') || '15', 10) || 15));
+  const rows = await all(env, 'SELECT channel, to_val, subject, ok, error, at, body FROM outbox ORDER BY at DESC LIMIT ?', limit);
+  return json({ ok: true, rows: rows.map(function (r) {
+    return { channel: r.channel, to: r.to_val, subject: r.subject, ok: r.ok, error: r.error, at: r.at, body: r.body };
+  }) });
+}
+async function handleAdminStats(env) {
+  const n = async (sql, ...a) => Number(((await one(env, sql, ...a)) || {}).n || 0);
+  return json({ ok: true, stats: {
+    users: await n('SELECT COUNT(*) AS n FROM users'),
+    usersWithEmail: await n("SELECT COUNT(*) AS n FROM users WHERE email <> ''"),
+    registrations: await n('SELECT COUNT(*) AS n FROM registrations'),
+    resetCodes: await n('SELECT COUNT(*) AS n FROM reset_codes'),
+    outbox: await n('SELECT COUNT(*) AS n FROM outbox')
+  } });
+}
+
+/* ================== بيانات المستخدم بنطاقه (٣أ) ==================
+   • المشرف العام: نسخة المنصة كاملة.
+   • مدير/وكيل/إرشاد/محاسب/دعم/مختص: مدرسته كاملة.
+   • المعلم: فصوله وطلابه فقط (+ الكتابة على الحضور/المخالفات/الأذونات/الكشوف/رسائله).
+   • الطالب: بياناته ورسائله فقط. */
+const ADMIN_ROLES = ['principal', 'deputy', 'guidance', 'accountant', 'support', 'specialist'];
+
+function skeleton() {
+  return { meta: { version: 1 }, settings: { hijri: true }, regions: [], users: [], schools: [], classes: [],
+    students: [], assignments: [], transfers: [], periods: [], sessions: [], violations: [], permissions: [],
+    programs: [], programRegs: [], activities: [], activityReqs: [], dutyLocations: [], duties: [], terms: [],
+    activityLog: [], checkins: [], faceScans: [], reports: [], telegram: [], audit: [], notif: [], subjects: [],
+    exits: [], entryPermits: [], messages: [], serviceRequests: [], pledges: [], gradeSheets: [],
+    paymentRequests: [], invoices: [], expenses: [], tickets: [], updates: [], letterhead: null };
+}
+function myClassIds(db, u) {
+  return (db.classes || []).filter(function (c) {
+    var t = c.teacherId || c.teacher || '';
+    return t === u.id || (Array.isArray(c.teachers) && c.teachers.indexOf(u.id) > -1) || c.supervisorId === u.id;
+  }).map(function (c) { return c.id; });
+}
+function filterForUser(db, u) {
+  if (!db) return null;
+  if (u.role === 'super' || ADMIN_ROLES.indexOf(u.role) > -1) return db;
+  var out = skeleton();
+  out.meta = db.meta; out.settings = db.settings; out.regions = db.regions || []; out.letterhead = db.letterhead || null;
+  out.schools = (db.schools || []).filter(function (s) { return s.id === u.school_id; });
+  if (u.role === 'teacher') {
+    var ids = myClassIds(db, u);
+    var students = (db.students || []).filter(function (s) { return ids.indexOf(s.classId) > -1; });
+    var sids = students.map(function (s) { return s.id; });
+    out.classes = (db.classes || []).filter(function (c) { return ids.indexOf(c.id) > -1; });
+    out.students = students;
+    out.users = (db.users || []).filter(function (x) { return x.id === u.id; });
+    out.sessions = (db.sessions || []).filter(function (a) { return ids.indexOf(a.classId) > -1 || a.teacherId === u.id; });
+    out.violations = (db.violations || []).filter(function (v) { return ids.indexOf(v.classId) > -1 || sids.indexOf(v.studentId) > -1; });
+    out.permissions = (db.permissions || []).filter(function (p) { return sids.indexOf(p.studentId) > -1; });
+    out.gradeSheets = (db.gradeSheets || []).filter(function (g) { return ids.indexOf(g.classId) > -1; });
+    out.messages = (db.messages || []).filter(function (m) { return m.fromUserId === u.id || m.toUserId === u.id; });
+    out.notif = (db.notif || []).filter(function (n) { return n.toUserId === u.id; });
+    out.tickets = (db.tickets || []).filter(function (t) { return t.byUserId === u.id; });
+    out.terms = (db.terms || []).filter(function (t) { return t.active; });
+    return out;
+  }
+  if (u.role === 'student') {
+    out.students = (db.students || []).filter(function (s) { return s.id === u.id || s.userId === u.id; });
+    var st = out.students[0] || {};
+    out.classes = (db.classes || []).filter(function (c) { return c.id === st.classId; });
+    out.sessions = (db.sessions || []).filter(function (a) { return a.classId === st.classId; });
+    out.users = (db.users || []).filter(function (x) { return x.id === u.id; });
+    out.violations = (db.violations || []).filter(function (v) { return v.studentId === st.id; });
+    out.permissions = (db.permissions || []).filter(function (p) { return p.studentId === st.id; });
+    out.gradeSheets = (db.gradeSheets || []).filter(function (g) { return g.classId === st.classId; });
+    out.messages = (db.messages || []).filter(function (m) { return m.fromUserId === u.id || m.toUserId === u.id; });
+    out.notif = (db.notif || []).filter(function (n) { return n.toUserId === u.id; });
+    return out;
+  }
+  return out;
+}
+/* مصدر النسخة: نسخة المدرسة إن وُجدت، وإلا نسخة المنصة (المشرف) مع فلترة المدرسة */
+async function blobKeyFor(env, u) {
+  if (u.role === 'super') return 'platform';
+  const own = await one(env, 'SELECT school_id FROM data WHERE school_id = ?', u.school_id);
+  if (own) return u.school_id;
+  const plat = await one(env, 'SELECT school_id FROM data WHERE school_id = ?', 'platform');
+  if (plat) return 'platform';
+  return u.school_id;
+}
+/* فلترة نسخة المنصة إلى مدرسة واحدة (المشرف/المدير) */
+function filterSchool(db, sid) {
+  if (!db) return null;
+  var out = skeleton();
+  out.meta = db.meta; out.settings = db.settings; out.regions = db.regions || []; out.letterhead = db.letterhead || null;
+  Object.keys(out).forEach(function (k) {
+    if (!Array.isArray(out[k]) || k === 'meta' || k === 'settings' || k === 'regions') return;
+    var src = db[k];
+    if (!Array.isArray(src)) return;
+    out[k] = src.filter(function (it) {
+      if (!it || typeof it !== 'object') return false;
+      return it.schoolId === sid || !it.schoolId;   /* بيانات المدرسة + العناصر العامة */
+    });
+  });
+  out.schools = (db.schools || []).filter(function (x) { return x.id === sid; });
+  return out;
+}
+async function handleMyData(env, ctx) {
+  const u = ctx.user;
+  if (!u.school_id && u.role !== 'super') return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const key = await blobKeyFor(env, u);
+  const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', key);
+  let db = row ? JSON.parse(row.json) : null;
+  if (db) dedupeUsers(db, u.id);   /* تنظيف التكرار قبل عرض أي نسخة */
+  if (db && u.role !== 'super' && key === 'platform') db = filterSchool(db, u.school_id);
+  const view = filterForUser(db, u);
+  /* نضمن وجود سجل المستخدم نفسه (حتى لو لم يكن في النسخة) ليكتمل الدخول */
+  if (view && Array.isArray(view.users) && !view.users.some(function (x) { return x && x.id === u.id; })) {
+    view.users.push({ id: u.id, name: u.name, role: u.role, username: u.username, email: u.email || '',
+      schoolId: u.school_id || null, status: u.status, createdAt: nowMs() });
+  }
+  return json({ ok: true, version: row ? row.version : 0, updatedAt: row ? row.updated_at : 0,
+    scope: u.role, schoolId: u.school_id || null, data: view });
+}
+const TEACHER_WRITE = ['sessions', 'violations', 'permissions', 'gradeSheets', 'messages'];
+const STUDENT_WRITE = ['messages'];
+function upsert(db, coll, item) {
+  if (!item || !item.id) return false;
+  var arr = db[coll] || (db[coll] = []);
+  for (var i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === item.id) { arr[i] = item; return true; } }
+  arr.push(item); return true;
+}
+async function handleMyWrite(env, req, ctx) {
+  const u = ctx.user;
+  const isSuper = u.role === 'super';
+  if (!u.school_id && !isSuper) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const key = isSuper ? 'platform' : await blobKeyFor(env, u);
+  const body = await req.json().catch(() => ({}));
+  const incoming = body.data;
+  if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
+  const row = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', key);
+  const db = row ? JSON.parse(row.json) : skeleton();
+  dedupeUsers(db, u.id);   /* النسخة المخزّنة قد تحمل تكرارًا من دفعات سابقة */
+  const allowed = u.role === 'teacher' ? TEACHER_WRITE : (u.role === 'student' ? STUDENT_WRITE
+    : ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) ? Object.keys(skeleton()) : []));
+  const ids = u.role === 'teacher' ? myClassIds(db, u) : [];
+  const sids = u.role === 'teacher'
+    ? (db.students || []).filter(function (s) { return ids.indexOf(s.classId) > -1; }).map(function (s) { return s.id; })
+    : (db.students || []).filter(function (s) { return s.id === u.id || s.userId === u.id; }).map(function (s) { return s.id; });
+  let changed = 0, rejected = 0;
+  allowed.forEach(function (coll) {
+    if (!Array.isArray(incoming[coll])) return;
+    if (coll === 'schools' && !isSuper) return;          /* المدارس للمشرف العام فقط */
+    incoming[coll].forEach(function (item) {
+      var okScope = true;
+      if (coll === 'users') {
+        /* المستخدمون: المشرف العام للجميع، ومدير المدرسة لمدرسته فقط وبلا ترقية إلى مشرف */
+        if (isSuper) okScope = true;
+        else if (ADMIN_ROLES.indexOf(u.role) > -1) okScope = String(item.schoolId || '') === String(u.school_id || '') && item.role !== 'super';
+        else okScope = !!(item && item.id === u.id);
+      } else if (u.role === 'teacher') {
+        if (coll === 'sessions') okScope = ids.indexOf(item.classId) > -1 || item.teacherId === u.id;
+        else if (coll === 'violations' || coll === 'permissions') okScope = ids.indexOf(item.classId) > -1 || sids.indexOf(item.studentId) > -1;
+        else if (coll === 'gradeSheets') okScope = ids.indexOf(item.classId) > -1;
+        else if (coll === 'messages') okScope = item.fromUserId === u.id || item.toUserId === u.id;
+      } else if (u.role === 'student') {
+        okScope = coll === 'messages' && (item.fromUserId === u.id || item.toUserId === u.id);
+      }
+      if (!okScope) { rejected++; return; }
+      if (coll === 'users') {
+        /* امنع تكرار المستخدم: طابق المعرّف أولًا، ثم اسم المستخدم (يُحدَّث السجل القائم) */
+        const un = String(item.username || '').trim().toLowerCase();
+        const same = (db.users || []).filter(function (x) {
+          return (item.id && x.id === item.id) || (un && String(x.username || '').trim().toLowerCase() === un);
+        })[0];
+        if (same) {
+          const keepId = same.id, oldId = item.id;
+          Object.keys(item).forEach(function (k) { if (k !== 'id') same[k] = item[k]; });
+          if (oldId && oldId !== keepId) {
+            /* حوّل مراجع المعرّف الوارد إلى المعرّف المحفوظ */
+            const fix = function (v) {
+              if (typeof v === 'string') return v === oldId ? keepId : v;
+              if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = fix(v[i]); return v; }
+              if (v && typeof v === 'object') Object.keys(v).forEach(function (k) { v[k] = fix(v[k]); });
+              return v;
+            };
+            fix(incoming);
+          }
+          changed++;
+        } else if (upsert(db, coll, item)) changed++;
+      } else if (upsert(db, coll, item)) changed++;
+    });
+  });
+  /* تحديث كلمات مرور الحسابات السحابية إذا تغيّرت في التطبيق (للمشرف/المدير) */
+  if ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) && Array.isArray(incoming.users)) {
+    for (const it of incoming.users) {
+      if (!it || !it.username || !it.password) continue;
+      if (!isSuper && String(it.schoolId || '') !== String(u.school_id || '')) continue;
+      const un = String(it.username).toLowerCase();
+      const acc = await one(env, 'SELECT id FROM users WHERE lower(username) = ?', un);
+      if (acc) continue;   /* الحساب موجود: كلمة مروره السحابية هي المرجع (لا نكتب فوقها) */
+      /* مستخدم جديد في التطبيق ⇒ حساب سحابي تلقائي (يدخل من أي جهاز) */
+      await run(env, `INSERT INTO users (id,at,school_id,name,role,username,pass,email,phone,telegram,must_change,ack_status,status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,0,'pending','active')`,
+        rid('u'), nowMs(), it.schoolId || u.school_id, clean(it.name, 80) || un, clean(it.role, 20) || 'teacher',
+        un, packPassword(await hashPassword(String(it.password))), clean(it.email, 160).toLowerCase(),
+        clean(it.phone, 30), clean(it.telegram, 40));
+    }
+  }
+  /* استبدال كامل لمجموعات محددة (مثل تفريغ الإشعارات) — للمشرف/المدير فقط */
+  if ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) && Array.isArray(body.replace)) {
+    body.replace.slice(0, 10).forEach(function (coll) {
+      if (typeof coll !== 'string' || !Array.isArray(incoming[coll])) return;
+      if (coll === 'users' || coll === 'schools') return;
+      db[coll] = incoming[coll];
+      changed++;
+    });
+  }
+  dedupeUsers(db, u.id);   /* لا تُحفظ نسخة مكرّرة بعد الدمج */
+  /* التاريخ على الخادم */
+  if (db.meta) db.meta.updatedAt = nowMs();
+  const version = (row ? row.version : 0) + 1;
+  const text = JSON.stringify(db);
+  if (text.length > 4_000_000) return json({ ok: false, msg: 'حجم البيانات كبير.' }, 413);
+  if (row) await run(env, 'UPDATE data SET version = ?, json = ?, updated_at = ?, by_user = ? WHERE school_id = ?',
+    version, text, nowMs(), u.username, key);
+  else await run(env, 'INSERT INTO data (school_id,version,json,updated_at,by_user) VALUES (?,?,?,?,?)',
+    key, version, text, nowMs(), u.username);
+  return json({ ok: true, version, changed, rejected });
+}
+
+/* ---------- دعم المشرف العام: قائمة الحسابات + تعيين كلمة مرور سحابية ---------- */
+async function handleAdminUsers(env) {
+  const rows = await all(env, "SELECT id, username, name, role, email, status, school_id, ack_status FROM users ORDER BY role, username");
+  return json({ ok: true, rows: rows.map(function (r) {
+    return { id: r.id, username: r.username, name: r.name, role: r.role, email: r.email || '', status: r.status, schoolId: r.school_id || null, ack: r.ack_status };
+  }) });
+}
+async function handleAdminSetPass(env, req, ctx) {
+  const body = await req.json().catch(() => ({}));
+  const username = clean(body.username, 60).toLowerCase();
+  const pass = String(body.password || '');
+  if (!username || pass.length < 8) return json({ ok: false, msg: 'اسم المستخدم وكلمة مرور (٨ أحرف+) مطلوبان.' }, 400);
+  const u = await one(env, 'SELECT id FROM users WHERE lower(username) = ?', username);
+  if (!u) return json({ ok: false, msg: 'لا حساب بهذا الاسم.' }, 404);
+  const force = body.mustChange !== false;
+  await run(env, 'UPDATE users SET pass = ?, must_change = ?, token_version = COALESCE(token_version,0) + 1 WHERE id = ?',
+    packPassword(await hashPassword(pass)), force ? 1 : 0, u.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'admin_setpass', 'target=' + username, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, msg: 'عُيّنت كلمة المرور — سيُطلب تغييرها عند أول دخول.' });
+}
+
+/* تغيير كلمة المرور من داخل الحساب (سحابيًا) — يرجّع رمزًا جديدًا */
+async function handleMyPassword(env, req, ctx) {
+  const body = await req.json().catch(() => ({}));
+  const cur = String(body.current || body.old || '');
+  const next = String(body.next || body.password || '');
+  const ip = req.headers.get('CF-Connecting-IP') || '';
+  if (!cur || !next) return json({ ok: false, msg: 'أدخل الحالية والجديدة.' }, 400);
+  if (next.length < 8) return json({ ok: false, msg: 'كلمة المرور ٨ أحرف على الأقل.' }, 400);
+  const okp = await verifyPassword(cur, ctx.user.pass);
+  if (!okp) return json({ ok: false, msg: 'كلمة المرور الحالية غير صحيحة.' }, 401);
+  const v = Number(ctx.user.token_version || 0) + 1;
+  await run(env, 'UPDATE users SET pass = ?, must_change = 0, token_version = ? WHERE id = ?',
+    packPassword(await hashPassword(next)), v, ctx.user.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'password_changed', '', ip);
+  const token = await signToken({ uid: ctx.user.id, role: ctx.user.role, schoolId: ctx.user.school_id, v: v },
+    env.TOKEN_SECRET || 'tabaani-dev-secret');
+  return json({ ok: true, token, msg: 'تم تغيير كلمة المرور ✓' });
+}
+
+/* تعيين كلمات مرور دفعة واحدة (توليد كلمات المرور في التطبيق)
+   • المشرف العام: أي حساب.
+   • مدير المدرسة/الوكلاء: حسابات مدرستهم فقط. */
+async function handleBulkPasswords(env, req, ctx) {
+  const isSuper = ctx.user.role === 'super';
+  if (!isSuper && ADMIN_ROLES.indexOf(ctx.user.role) === -1) return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const list = Array.isArray(body.users) ? body.users.slice(0, 300) : [];
+  if (!list.length) return json({ ok: false, msg: 'لا مستخدمين.' }, 400);
+  let updated = 0, skipped = 0;
+  for (const x of list) {
+    const un = clean(x.username, 60).toLowerCase();
+    const pw = String(x.password || '');
+    if (!un || pw.length < 6) { skipped++; continue; }
+    const acc = await one(env, 'SELECT id, school_id FROM users WHERE lower(username) = ?', un);
+    if (!acc) { skipped++; continue; }
+    if (!isSuper && String(acc.school_id || '') !== String(ctx.user.school_id || '')) { skipped++; continue; }
+    await run(env, 'UPDATE users SET pass = ?, must_change = 1, token_version = COALESCE(token_version,0) + 1 WHERE id = ?',
+      packPassword(await hashPassword(pw)), acc.id);
+    updated++;
+  }
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'passwords_generated',
+    'حُدّث ' + updated + ' · تُخطّي ' + skipped, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, updated, skipped });
+}
+
+/* حذف حساب صريح: المشرف العام لأي حساب، والمدير لحسابات مدرسته فقط */
+async function handleDeleteUser(env, req, ctx) {
+  const isSuper = ctx.user.role === 'super';
+  if (!isSuper && ctx.user.role !== 'principal') return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  const body = await req.json().catch(() => ({}));
+  const un = clean(body.username, 60).toLowerCase();
+  if (!un) return json({ ok: false, msg: 'اسم المستخدم مطلوب.' }, 400);
+  if (un === String(ctx.user.username || '').toLowerCase()) return json({ ok: false, msg: 'لا يمكنك حذف حسابك الحالي.' }, 400);
+  const acc = await one(env, 'SELECT id, role, school_id FROM users WHERE lower(username) = ?', un);
+  if (!acc) return json({ ok: false, msg: 'لا حساب بهذا الاسم.' }, 404);
+  if (!isSuper && String(acc.school_id || '') !== String(ctx.user.school_id || '')) return json({ ok: false, msg: 'خارج نطاق مدرستك.' }, 403);
+  if (acc.role === 'super') {
+    const n = await one(env, "SELECT COUNT(*) AS n FROM users WHERE role = 'super' AND status = 'active'");
+    if (Number(n && n.n) <= 1) return json({ ok: false, msg: 'لا يمكن حذف آخر مشرف عام.' }, 400);
+  }
+  await run(env, "UPDATE users SET status = 'deleted', token_version = COALESCE(token_version,0) + 1 WHERE id = ?", acc.id);
+  await audit(env, ctx.user.username, ctx.user.role, ctx.user.school_id, 'user_deleted', 'target=' + un, req.headers.get('CF-Connecting-IP') || '');
+  return json({ ok: true, msg: 'حُذف الحساب.' });
+}
+
+/* ==================== المتواجدون الآن (presence) ==================== */
+const ONLINE_WINDOW = 120;   /* ثانية: يُعدّ متصلًا إذا ظهر خلال دقيقتين */
+async function handlePing(env, ctx) {
+  const now = Math.floor(Date.now() / 1000);
+  const u = await one(env, 'SELECT last_seen, online_since FROM users WHERE id = ?', ctx.user.id);
+  const wasOffline = !u || Number(u.last_seen || 0) < now - ONLINE_WINDOW;
+  const since = wasOffline ? now : (Number(u.online_since || 0) || now);
+  await run(env, 'UPDATE users SET last_seen = ?, online_since = ? WHERE id = ?', now, since, ctx.user.id);
+  return json({ ok: true, at: now, since: since });
+}
+async function handlePresence(env, ctx) {
+  const u = ctx.user, now = Math.floor(Date.now() / 1000);
+  if (u.role === 'super') {
+    const rows = await all(env, `SELECT school_id, COUNT(*) AS n,
+      SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS online, MAX(last_seen) AS last
+      FROM users WHERE status = 'active' AND school_id IS NOT NULL AND school_id <> '' GROUP BY school_id`, now - ONLINE_WINDOW);
+    let names = {};
+    try {
+      const row = await one(env, 'SELECT json FROM data WHERE school_id = ?', 'platform');
+      if (row) (JSON.parse(row.json).schools || []).forEach(function (s) { names[s.id] = s.name; });
+    } catch (e) {}
+    return json({ ok: true, scope: 'schools', now, rows: rows.map(function (r) {
+      return { schoolId: r.school_id, name: names[r.school_id] || r.school_id,
+        total: Number(r.n || 0), online: Number(r.online || 0) > 0, onlineCount: Number(r.online || 0), lastSeen: Number(r.last || 0) };
+    }) });
+  }
+  if (u.role !== 'principal' && u.role !== 'deputy') return json({ ok: false, msg: 'غير مصرّح.' }, 403);
+  if (!u.school_id) return json({ ok: false, msg: 'حسابك غير مرتبط بمدرسة.' }, 400);
+  const rows = await all(env, `SELECT id, name, role, username, status, last_seen, online_since FROM users
+    WHERE school_id = ? AND status = 'active' ORDER BY role, name`, u.school_id);
+  return json({ ok: true, scope: 'school', now, schoolId: u.school_id, rows: rows.map(function (r) {
+    return { id: r.id, name: r.name, role: r.role, username: r.username,
+      online: Number(r.last_seen || 0) >= now - ONLINE_WINDOW, lastSeen: Number(r.last_seen || 0), since: Number(r.online_since || 0) };
+  }) });
 }
 
 /** تهيئة أولية (اختيارية): تنشئ حساب المشرف العام */

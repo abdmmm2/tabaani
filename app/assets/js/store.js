@@ -583,6 +583,60 @@
     return d;
   }
 
+  /* ------------------- دمج تكرار المستخدمين (محلي/سحابي) -------------------
+     نفس المنطق في الخادم: يبقى معرّف واحد (يفضّل معرّف الجلسة ثم معرّف الخادم u_)
+     وتُحوَّل كل المراجع إليه، فلا تنفصل الإسنادات والحضور عن صاحبها. */
+  function dedupeUsersIn(d, preferId) {
+    var res = { merged: 0, map: {} };
+    if (!d || !Array.isArray(d.users) || d.users.length < 2) return res;
+    function ts(v) { var n = Number(v); if (isFinite(n) && n > 0) return n; var t = Date.parse(v); return isFinite(t) ? t : 0; }
+    function empty(v) { return v == null || v === '' || (Array.isArray(v) && !v.length); }
+    function ackRank(a) { return a && a.status === 'approved' ? 3 : a && a.status === 'submitted' ? 2 : a && a.status === 'pending' ? 1 : 0; }
+    var groups = {}, order = [];
+    d.users.forEach(function (u, i) {
+      if (!u || typeof u !== 'object') return;
+      var un = String(u.username || '').trim().toLowerCase();
+      var key = un ? 'u:' + un : 'id:' + String(u.id || ('#' + i));
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(u);
+    });
+    var out = [], oldNew = {};
+    order.forEach(function (key) {
+      var arr = groups[key];
+      if (arr.length === 1) { out.push(arr[0]); return; }
+      var picked = (preferId && arr.filter(function (x) { return x.id === preferId; })[0])
+        || arr.filter(function (x) { return /^u_/.test(String(x.id || '')); }).sort(function (a, b) { return ts(b.createdAt) - ts(a.createdAt); })[0]
+        || arr.slice().sort(function (a, b) { return ts(b.createdAt) - ts(a.createdAt); })[0]
+        || arr[0];
+      arr.forEach(function (x) {
+        if (x === picked) return;
+        if (x.id && x.id !== picked.id) { oldNew[x.id] = picked.id; res.merged++; }
+        Object.keys(x).forEach(function (k) {
+          if (k === 'id') return;
+          if (k === 'ack') {
+            if (ackRank(x.ack) > ackRank(picked.ack)) picked.ack = x.ack;
+            else if (empty(picked.ack) && x.ack) picked.ack = x.ack;
+            return;
+          }
+          if (k === 'owner') { if (x.owner) picked.owner = true; return; }
+          if (empty(picked[k]) && !empty(x[k])) picked[k] = x[k];
+        });
+      });
+      out.push(picked);
+    });
+    if (!res.merged) return res;
+    d.users = out;
+    function remap(v) {
+      if (typeof v === 'string') return oldNew[v] || v;
+      if (Array.isArray(v)) { for (var i = 0; i < v.length; i++) v[i] = remap(v[i]); return v; }
+      if (v && typeof v === 'object') { Object.keys(v).forEach(function (k) { v[k] = remap(v[k]); }); }
+      return v;
+    }
+    Object.keys(d).forEach(function (coll) { if (coll !== 'users') remap(d[coll]); });
+    res.map = oldNew;
+    return res;
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -590,6 +644,11 @@
     } catch (e) { db = emptyDb(); }
     db = normalizeDb(db);
     if (!db || !db.schools) db = seed();
+    try {
+      var pref = store && store.session && store.session.userId;
+      var dd = dedupeUsersIn(db, pref);
+      if (dd.merged) localStorage.setItem(KEY, JSON.stringify(db));
+    } catch (e) {}
     ensureSuper(db);
     try { store._ackBackfill(db); } catch (e) {}
     return db;
@@ -677,6 +736,7 @@
     cloudStart: function (url, token, user, data) {
       cloud = { url: url, token: token, user: user };
       db = normalizeDb(Object.assign(emptyDb(), data || {}));
+      dedupeUsersIn(db, user && user.id);
       store.session = { userId: user.id, role: user.role, schoolId: user.schoolId || null, name: user.name };
       try { sessionStorage.setItem('tabaani-session', JSON.stringify(store.session)); } catch (e) {}
       cloudRemember();

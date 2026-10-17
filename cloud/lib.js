@@ -22,6 +22,85 @@ export function isValidPhone(p) { return /^05\d{8}$/.test(normPhone(p)); }
 export function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || '').trim()); }
 export function clean(s, max = 200) { return String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max); }
 
+
+/* --------------------- تنظيف تكرار المستخدمين (مرّة واحدة) ---------------------
+   يحدث التكرار عندما تُدفع نسخة محلية قديمة (بمعرّفاتها) إلى نسخة سحابية
+   أنشأت الحساب نفسه بمعرّف خادم (u_...). الدمج يحتفظ بمعرّف واحد ويحوّل
+   كل المراجع القديمة إليه، فلا تختفي إسنادات أو حضور أو رسائل.
+   - preferId: معرّف الجلسة الحالية (يبقى هو الأصل حتى لا ينفصل الدخول عن البيانات).
+   - يُفضّل معرّف الخادم u_... ثم الأحدث إنشاءً.
+   - يدمج الحقول الناقصة ويأخذ أقوى حالة إقرار (approved > submitted > pending).
+   ========================================================================== */
+export function dedupeUsers(db, preferId) {
+  const res = { merged: 0, map: {} };
+  if (!db || !Array.isArray(db.users) || db.users.length < 2) return res;
+
+  const ts = (v) => {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return n;
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? t : 0;
+  };
+  const empty = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0);
+  const ackRank = (a) => (a && a.status === 'approved' ? 3 : a && a.status === 'submitted' ? 2 : a && a.status === 'pending' ? 1 : 0);
+
+  const groups = new Map();
+  db.users.forEach((u, i) => {
+    if (!u || typeof u !== 'object') return;
+    const un = String(u.username || '').trim().toLowerCase();
+    const key = un ? 'u:' + un : 'id:' + String(u.id || ('#' + i));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(u);
+  });
+
+  const out = [];
+  const oldNew = {};
+  groups.forEach((arr) => {
+    if (arr.length === 1) { out.push(arr[0]); return; }
+    const picked = (preferId && arr.filter((x) => x.id === preferId)[0])
+      || arr.filter((x) => /^u_/.test(String(x.id || ''))).sort((a, b) => ts(b.createdAt) - ts(a.createdAt))[0]
+      || arr.slice().sort((a, b) => ts(b.createdAt) - ts(a.createdAt))[0]
+      || arr[0];
+    arr.forEach((x) => {
+      if (x === picked) return;
+      if (x.id && x.id !== picked.id) { oldNew[x.id] = picked.id; res.merged++; }
+      Object.keys(x).forEach((k) => {
+        if (k === 'id') return;
+        if (k === 'ack') {
+          if (ackRank(x.ack) > ackRank(picked.ack)) picked.ack = x.ack;
+          else if (empty(picked.ack) && x.ack) picked.ack = x.ack;
+          return;
+        }
+        if (k === 'owner') { if (x.owner) picked.owner = true; return; }
+        if (empty(picked[k]) && !empty(x[k])) picked[k] = x[k];
+      });
+    });
+    out.push(picked);
+  });
+
+  if (!res.merged) return res;
+  db.users = out;
+
+  /* تحويل كل مرجع نصّي مطابق لمعرّف مدموج (في أي مجموعة أو حقل متداخل) */
+  const keys = Object.keys(oldNew);
+  const remap = (v) => {
+    if (typeof v === 'string') return oldNew[v] || v;
+    if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) v[i] = remap(v[i]);
+      return v;
+    }
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach((k) => { v[k] = remap(v[k]); });
+    }
+    return v;
+  };
+  if (keys.length) {
+    Object.keys(db).forEach((coll) => { if (coll !== 'users') remap(db[coll]); });
+  }
+  res.map = oldNew;
+  return res;
+}
+
 /* ------------------------------ الترميزات ------------------------------ */
 export function b64(bytes) {
   let s = '';

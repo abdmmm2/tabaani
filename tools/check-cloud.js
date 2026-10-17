@@ -115,7 +115,30 @@ function ok(cond, label, extra) {
   ok(tch2.scope === 'self' && onlyMine && noOthers && tchRows.length > 0,
     'المعلم: طلاب فصوله فقط ولا يرى أي مستخدم آخر', JSON.stringify({ rows: tchRows.length, onlyMine, noOthers }));
 
-  /* ----------------------------------------------------- ٦) ملفات المشروع */
+  /* --------------------- ٦) دمج تكرار المستخدمين (محلي/سحابي) --------------------- */
+  const dup = {
+    users: [
+      { id: 'u-legacy-teacher', username: 't3210', name: 'أ. هند', role: 'deputy', schoolId: 's1', email: 'hind@school', createdAt: '2026-10-16T07:24:47Z', ack: { status: 'approved' } },
+      { id: 'u_server-teacher', username: 'T3210', name: 'أ. هند', role: 'deputy', schoolId: 's1', createdAt: 1792244391623, ack: { status: 'submitted' } },
+      { id: 'u-one', username: 'unique', name: 'وحيد', role: 'teacher', schoolId: 's1' }
+    ],
+    assignments: [{ id: 'a1', teacherId: 'u-legacy-teacher', subject: 'رياضيات' }],
+    sessions: [{ id: 'x1', teacherId: 'u_server-teacher', records: [{ studentId: 'st1', by: 'u-legacy-teacher' }] }],
+    classrooms: [{ id: 'c1', teacherId: 'u-legacy-teacher' }]
+  };
+  const dres = lib.dedupeUsers(dup, 'u_server-teacher');
+  ok(dup.users.length === 2 && dres.merged === 1 && dup.users.some((u) => u.id === 'u_server-teacher') &&
+    dup.users.filter((u) => (u.username || '').toLowerCase() === 't3210').length === 1,
+    'تكرار اسم المستخدم يُدمج في سجل واحد ويُفضّل معرّف الجلسة/الخادم', JSON.stringify({ left: dup.users.length, merged: dres.merged }));
+  ok(dup.assignments[0].teacherId === 'u_server-teacher' && dup.sessions[0].records[0].by === 'u_server-teacher' &&
+    dup.classrooms[0].teacherId === 'u_server-teacher',
+    'كل المراجع القديمة (إسناد · حضور · فصل) تُحوَّل إلى المعرّف الباقي');
+  ok(dup.users[0].ack && dup.users[0].ack.status === 'approved',
+    'حالة الإقرار الأقوى (approved) تبقى بعد الدمج', dup.users[0].ack && dup.users[0].ack.status);
+  const again = lib.dedupeUsers(dup, 'u_server-teacher');
+  ok(again.merged === 0, 'الدمج آمن للتكرار (idempotent) — لا يغيّر شيئًا في المرة الثانية');
+
+  /* ----------------------------------------------------- ٧) ملفات المشروع */
   /* المخطط المدمج + التهيئة الذاتية */
   const { execFileSync: exf } = require('child_process');
   try {

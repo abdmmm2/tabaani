@@ -28,7 +28,7 @@ import { SCHEMA_SQL, schemaStatements } from './schema-inline.js';
 import {
   validateRegistration, genCode, hashCode, codeExpiry, MAX_CODE_TRIES,
   hashPassword, verifyPassword, packPassword, tempPassword,
-  signToken, verifyToken, scopedSearch, json, clean, normDigits, isValidPhone
+  signToken, verifyToken, scopedSearch, json, clean, normDigits, isValidPhone, dedupeUsers
 } from './lib.js';
 
 const rid = (p = 'r') => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -672,6 +672,7 @@ async function handleMyData(env, ctx) {
   const key = await blobKeyFor(env, u);
   const row = await one(env, 'SELECT version,json,updated_at FROM data WHERE school_id = ?', key);
   let db = row ? JSON.parse(row.json) : null;
+  if (db) dedupeUsers(db, u.id);   /* تنظيف التكرار قبل عرض أي نسخة */
   if (db && u.role !== 'super' && key === 'platform') db = filterSchool(db, u.school_id);
   const view = filterForUser(db, u);
   /* نضمن وجود سجل المستخدم نفسه (حتى لو لم يكن في النسخة) ليكتمل الدخول */
@@ -700,6 +701,7 @@ async function handleMyWrite(env, req, ctx) {
   if (!incoming || typeof incoming !== 'object') return json({ ok: false, msg: 'لا بيانات صالحة.' }, 400);
   const row = await one(env, 'SELECT version,json FROM data WHERE school_id = ?', key);
   const db = row ? JSON.parse(row.json) : skeleton();
+  dedupeUsers(db, u.id);   /* النسخة المخزّنة قد تحمل تكرارًا من دفعات سابقة */
   const allowed = u.role === 'teacher' ? TEACHER_WRITE : (u.role === 'student' ? STUDENT_WRITE
     : ((isSuper || ADMIN_ROLES.indexOf(u.role) > -1) ? Object.keys(skeleton()) : []));
   const ids = u.role === 'teacher' ? myClassIds(db, u) : [];
@@ -726,7 +728,28 @@ async function handleMyWrite(env, req, ctx) {
         okScope = coll === 'messages' && (item.fromUserId === u.id || item.toUserId === u.id);
       }
       if (!okScope) { rejected++; return; }
-      if (upsert(db, coll, item)) changed++;
+      if (coll === 'users') {
+        /* امنع تكرار المستخدم: طابق المعرّف أولًا، ثم اسم المستخدم (يُحدَّث السجل القائم) */
+        const un = String(item.username || '').trim().toLowerCase();
+        const same = (db.users || []).filter(function (x) {
+          return (item.id && x.id === item.id) || (un && String(x.username || '').trim().toLowerCase() === un);
+        })[0];
+        if (same) {
+          const keepId = same.id, oldId = item.id;
+          Object.keys(item).forEach(function (k) { if (k !== 'id') same[k] = item[k]; });
+          if (oldId && oldId !== keepId) {
+            /* حوّل مراجع المعرّف الوارد إلى المعرّف المحفوظ */
+            const fix = function (v) {
+              if (typeof v === 'string') return v === oldId ? keepId : v;
+              if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = fix(v[i]); return v; }
+              if (v && typeof v === 'object') Object.keys(v).forEach(function (k) { v[k] = fix(v[k]); });
+              return v;
+            };
+            fix(incoming);
+          }
+          changed++;
+        } else if (upsert(db, coll, item)) changed++;
+      } else if (upsert(db, coll, item)) changed++;
     });
   });
   /* تحديث كلمات مرور الحسابات السحابية إذا تغيّرت في التطبيق (للمشرف/المدير) */
@@ -754,6 +777,7 @@ async function handleMyWrite(env, req, ctx) {
       changed++;
     });
   }
+  dedupeUsers(db, u.id);   /* لا تُحفظ نسخة مكرّرة بعد الدمج */
   /* التاريخ على الخادم */
   if (db.meta) db.meta.updatedAt = nowMs();
   const version = (row ? row.version : 0) + 1;
