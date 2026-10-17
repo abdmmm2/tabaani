@@ -1067,7 +1067,11 @@
     _doEnter: function (userId) {
       var u = S.login(userId);
       if (!u) { UI.toast('تعذّر الدخول', 'err'); return; }
-      S.notify({ kind: 'system', title: 'تسجيل دخول: ' + u.name, body: S.roleLabel(u.role) });
+      /* تنبيه الدخول: للمدير فقط (داخل مدرسته) — وللطلاب لا شيء (بلا ضجيج) */
+      if (u.role !== 'student') {
+        S.notify({ kind: 'system', title: 'تسجيل دخول: ' + u.name, body: S.roleLabel(u.role),
+          to: u.role === 'principal' ? ['super'] : ['principal'], schoolId: u.schoolId || '' });
+      }
       App.shell();
       var todayDuty = S.todayDutyFor(u.id);
       if (todayDuty) {

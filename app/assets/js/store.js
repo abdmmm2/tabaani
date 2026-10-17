@@ -2911,6 +2911,9 @@
     /* --------------------------------------------------------- الإشعارات */
     notify: function (n) {
       n.id = n.id || uid('nt'); n.at = n.at || now(); n.read = false;
+      /* كل إشعار يُربط بمدرسة صاحبه — فلا يتسرّب لمدرسة أخرى */
+      if (n.schoolId === undefined) n.schoolId = (store.session && store.session.schoolId) || '';
+      if (!n.fromUserId && store.session) n.fromUserId = store.session.userId || '';
       if (!db.notif) db.notif = [];
       db.notif.push(n); save(); return n;
     },
@@ -2918,7 +2921,11 @@
     inbox: function (roles) {
       var rs = [].concat(roles || [store.session.role]);
       var me = store.session.userId;
+      var sid = (store.session && store.session.schoolId) || '';
+      var isSuper = (store.session && store.session.role === 'super');
       return (store.db.notif || []).filter(function (n) {
+        /* المدرسة: كل دور يرى إشعارات مدرسته فقط (المشرف العام يرى الكل) */
+        if (!isSuper && String(n.schoolId || '') !== String(sid)) return false;
         /* إشعار موجَّه لمستخدم بعينه: لا يراه غيره أبدًا */
         if (n.toUsers && n.toUsers.length) return n.toUsers.indexOf(me) > -1;
         return !n.to || n.to.some(function (r) { return rs.indexOf(r) > -1; });
@@ -2927,7 +2934,10 @@
     /** يعلّم المقروء ما يخصّني فقط (لا يمسّ إشعارات الآخرين) */
     markRead: function () {
       var me = store.session.userId, role = store.session.role;
+      var sid = (store.session && store.session.schoolId) || '';
+      var isSuper = (store.session && store.session.role === 'super');
       (store.db.notif || []).forEach(function (n) {
+        if (!isSuper && String(n.schoolId || '') !== String(sid)) return;
         if (n.toUsers && n.toUsers.length) { if (n.toUsers.indexOf(me) > -1) n.read = true; return; }
         if (!n.to || n.to.indexOf(role) > -1) n.read = true;
       });
